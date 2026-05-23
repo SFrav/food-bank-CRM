@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Settings2, Search, Filter, Save, Check, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Settings2, Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { RoleBadge } from '@/components/RoleBadge';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import EditUserModal from '@/components/modals/EditUserModal';
-import { useProfile, UserProfile } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { useTitles } from '@/hooks/useTitles';
 import { useEntities } from '@/hooks/useEntities';
@@ -24,12 +23,12 @@ export default function AdminUsers() {
   const { users, loading: usersLoading, refetch, updateUserProfile, deleteUser } = useAdminUsers(searchQuery, roleFilter);
   const { titles } = useTitles();
   const { entities, refetch: refetchEntities } = useEntities();
-  const { divisions: teams, refetch: refetchTeams } = useDivisions();
+  const { refetch: refetchTeams } = useDivisions();
 
   React.useEffect(() => {
     const handler = () => {
       refetchTeams();
-      refetchEntities(); // Also refresh entities when org units change
+      refetchEntities(); // Also refresh entities when entities change
     };
     window.addEventListener('org-units-changed', handler);
     return () => window.removeEventListener('org-units-changed', handler);
@@ -73,10 +72,10 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Settings2 className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-      </div>
+      {/* <div className="flex items-center gap-2">
+        <Settings2 className="size-8 text-primary" />
+        <h1 className="text-3xl font-semibold text-foreground">Admin Dashboard</h1>
+      </div> */}
 
       <PermissionGuard permission="canAccessUserManagement">
         <Card>
@@ -85,7 +84,7 @@ export default function AdminUsers() {
               <CardTitle className="text-xl">Manage User Roles</CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name or email..."
                   value={searchQuery}
@@ -95,7 +94,7 @@ export default function AdminUsers() {
               </div>
               <Select value={roleFilter} onValueChange={(value: RoleFilter) => setRoleFilter(value)}>
                 <SelectTrigger className="w-full sm:w-40">
-                  <Filter className="mr-2 h-4 w-4" />
+                  <Filter className="mr-2 size-4" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -128,7 +127,7 @@ export default function AdminUsers() {
                 {usersLoading ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Loading users...
+                      Loading users &hellip;
                     </TableCell>
                   </TableRow>
                 ) : filteredUsers.length === 0 ? (
@@ -158,7 +157,7 @@ export default function AdminUsers() {
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
                       {savingUsers.has(user.id)
-                        ? <div className="inline-block h-3 w-3 animate-spin border border-current border-t-transparent rounded-full" />
+                        ? <div className="inline-block size-3 animate-spin border border-current border-t-transparent rounded-full" />
                         : entities.find(e => e.id === user.entity_id)?.name || '—'
                       }
                     </TableCell>
@@ -178,7 +177,6 @@ export default function AdminUsers() {
         onSave={saveUserRole}
         onDelete={handleDeleteUser}
         entities={entities}
-        divisions={teams}
         titles={titles}
         currentUserRole={profile?.role}
         currentUserId={profile?.id}

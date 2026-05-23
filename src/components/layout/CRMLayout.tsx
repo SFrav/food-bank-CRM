@@ -46,7 +46,7 @@ export function CRMLayout({ children }: CRMLayoutProps) {
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 rounded-md hover:bg-muted"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="size-5" />
             </button>
             <div className="flex-1">
               <CRMHeader darkMode={darkMode} onToggleDark={toggleDarkMode} />

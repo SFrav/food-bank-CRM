@@ -88,31 +88,31 @@ export const AuditLogViewer = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
+        {/* <CardTitle className="flex items-center gap-2">
+          <Shield className="size-5" />
           Security Audit Logs
         </CardTitle>
         <CardDescription>
           Comprehensive audit trail of all system activities and changes.
-        </CardDescription>
+        </CardDescription> */}
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="logs" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="logs" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
+              <Database className="size-4" />
               Logs
             </TabsTrigger>
             <TabsTrigger value="activity" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
+              <Activity className="size-4" />
               Activity
             </TabsTrigger>
             <TabsTrigger value="tables" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
+              <Database className="size-4" />
               Tables
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+              <User className="size-4" />
               Users
             </TabsTrigger>
           </TabsList>
@@ -176,17 +176,17 @@ export const AuditLogViewer = () => {
 
               <div className="flex gap-2">
                 <Button onClick={handleApplyFilters} size="sm">
-                  <Filter className="h-4 w-4 mr-2" />
+                  <Filter className="size-4 mr-2" />
                   Apply
                 </Button>
                 <Button onClick={handleClearFilters} variant="outline" size="sm">
                   Clear Filters
                 </Button>
                 <Button onClick={refetch} variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="size-4" />
                 </Button>
                 <Button onClick={handleClearLogs} variant="destructive" size="sm">
-                  <Trash2 className="h-4 w-4 mr-1" />
+                  <Trash2 className="size-4 mr-1" />
                   Clear Logs
                 </Button>
               </div>
@@ -209,7 +209,7 @@ export const AuditLogViewer = () => {
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8">
-                        Loading audit logs...
+                        Loading audit logs &hellip;
                       </TableCell>
                     </TableRow>
                   ) : auditLogs.length === 0 ? (
@@ -246,7 +246,7 @@ export const AuditLogViewer = () => {
                           <Sheet>
                             <SheetTrigger asChild>
                               <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4 mr-1" />
+                                <Eye className="size-4 mr-1" />
                                 View
                               </Button>
                             </SheetTrigger>
@@ -381,7 +381,7 @@ export const AuditLogViewer = () => {
               {tableActivity.map(({ table, count }) => (
                 <div key={table} className="flex items-center justify-between p-3 border rounded">
                   <div className="flex items-center gap-2">
-                    <Database className="h-4 w-4 text-muted-foreground" />
+                    <Database className="size-4 text-muted-foreground" />
                     <span className="font-medium">{table}</span>
                   </div>
                   <Badge variant="secondary">{count} actions</Badge>
@@ -395,7 +395,7 @@ export const AuditLogViewer = () => {
               {userActivity.map(({ userId, name, count }) => (
                 <div key={userId} className="flex items-center justify-between p-3 border rounded">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <User className="size-4 text-muted-foreground" />
                     <span className="font-medium">{name}</span>
                   </div>
                   <Badge variant="secondary">{count} actions</Badge>

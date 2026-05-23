@@ -34,8 +34,7 @@ To do:
 - Add core business logic of referral process, including email notifications of decision
 - Add core business logic of beneficiary visits, with flexibility for discretionary provision of food
 - Renaming roles to include referrers and volunteers
-- Various refinements to dashboards, contacts/beneficiaries, support services, tasks and calendar
-- Add user settings to remove warning alerts and silence notificatins
-- Add settings for alternations to business logic - duration of benefits etc.
 - Full refactor of complex queries to RPC with RLS and role based policies
 - Tests
+
+

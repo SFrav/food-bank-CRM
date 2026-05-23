@@ -23,7 +23,7 @@ export const PermissionGuard = ({
     if (showFallback) {
       return fallback || (
         <Alert className="border-muted-foreground/20">
-          <Lock className="h-4 w-4" />
+          <Lock className="size-4" />
           <AlertDescription>
             You don't have permission to access this feature.
           </AlertDescription>

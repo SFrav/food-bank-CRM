@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import ProfilePage from '@/pages/Profile'; 
-import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
 import { NotificationBell } from '@/components/NotificationBell';
 
 type SettingsSection = 'profile' | 'preferences' | 'security';
@@ -45,7 +43,7 @@ export default function Settings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* @ If implemented here then change the source of truth to be in the database for each user, not in CRMLayout or App.tsx. Then remembered between sessions here and temporarily if header used */}
+        {/* @@@ If implemented here then change the source of truth to be in the database, not in CRMLayout or App.tsx. Then remembered between sessions here and temporarily if header used */}
         {/* <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="theme">Theme</Label>
@@ -54,7 +52,7 @@ export default function Settings() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Sun className="h-4 w-4" />
+            <Sun className="size-4" />
             <Switch
               id="theme"
               checked={isDarkMode}
@@ -63,7 +61,7 @@ export default function Settings() {
                 document.documentElement.classList.toggle("dark", checked); // Toggle based on the new state
               }}
             />
-            <Moon className="h-4 w-4" />
+            <Moon className="size-4" />
           </div>
         </div>
 
@@ -124,7 +122,7 @@ export default function Settings() {
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="flex items-center space-x-3">
-              <Lock className="h-5 w-5 text-muted-foreground" />
+              <Lock className="size-5 text-muted-foreground" />
               <div>
                 <p className="font-medium">Password</p>
                 <p className="text-sm text-muted-foreground">
@@ -137,7 +135,7 @@ export default function Settings() {
 
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="flex items-center space-x-3">
-              <Smartphone className="h-5 w-5 text-muted-foreground" />
+              <Smartphone className="size-5 text-muted-foreground" />
               <div>
                 <p className="font-medium">Two-Factor Authentication</p>
                 <p className="text-sm text-muted-foreground">
@@ -153,7 +151,7 @@ export default function Settings() {
 
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="flex items-center space-x-3">
-              <LogOut className="h-5 w-5 text-muted-foreground" />
+              <LogOut className="size-5 text-muted-foreground" />
               <div>
                 <p className="font-medium">Active Sessions</p>
                 <p className="text-sm text-muted-foreground">
@@ -191,15 +189,15 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+      {/* <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-semibold text-foreground">Settings</h1>
         <NotificationBell />
-      </div>
+      </div> */}
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Navigation Sidebar */}
         <div className="md:col-span-1">
-          <Card className="sticky top-6">
+          <Card className="sticky top-0">
             <CardContent className="p-4">
               <nav className="space-y-2">
                 {settingsNavigation.map((item) => {
@@ -216,7 +214,7 @@ export default function Settings() {
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="size-4" />
                       <span>{item.label}</span>
                     </button>
                   );

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { RoleBadge } from '@/components/RoleBadge';
 import { UserProfile } from '@/hooks/useProfile';
+import { useDivisions } from '@/hooks/useDivisions'; 
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserRow {
@@ -21,7 +22,7 @@ interface UserRow {
 }
 
 interface Entity { id: string; name: string; is_active: boolean; }
-interface Division { id: string; name: string; }
+// interface Division { id: string; name: string; }
 interface Title { id: string; name: string; is_active: boolean; }
 
 interface EditUserModalProps {
@@ -37,7 +38,6 @@ interface EditUserModalProps {
   ) => Promise<{ success: boolean; error?: string }>;
   onDelete: (userId: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   entities: Entity[];
-  divisions: Division[];
   titles: Title[];
   currentUserRole: UserProfile['role'] | undefined;
   currentUserId: string | undefined;
@@ -45,7 +45,7 @@ interface EditUserModalProps {
 
 const EditUserModal = ({
   user, open, onClose, onSave, onDelete,
-  entities, divisions, titles, currentUserRole, currentUserId,
+  entities, titles, currentUserRole, currentUserId,
 }: EditUserModalProps) => {
   const [role, setRole] = useState<UserProfile['role']>('pending');
   const [titleId, setTitleId] = useState<string>('');
@@ -55,7 +55,13 @@ const EditUserModal = ({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const { divisions: filteredDivisions, loading: divisionsLoading } = useDivisions(
+    entityId === 'none' ? null : entityId
+  );
+
+  // Sync local state when user changes
   useEffect(() => {
+    //console.log('EditUserModal user:', user);
     if (user) {
       setRole(user.role);
       setTitleId(user.title_id ?? '');
@@ -146,17 +152,17 @@ const EditUserModal = ({
               <Select
                 value={role}
                 onValueChange={(v) => setRole(v as UserProfile['role'])}
-                disabled={saving || isSelf || isAdminTarget}
+                disabled={saving || isSelf}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pending Assignment</SelectItem>
-                  <SelectItem value="account_manager">Field Sales Staff</SelectItem>
+                  <SelectItem value="account_manager">Account Manager</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="manager">Level Manager</SelectItem>
-                  <SelectItem value="head">Level Head</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="head">Head</SelectItem>
                   <SelectItem value="admin">System Administrator</SelectItem>
                 </SelectContent>
               </Select>
@@ -209,7 +215,11 @@ const EditUserModal = ({
             {/* Team / Division */}
             <div className="space-y-1">
               <Label>Team</Label>
-              <Select value={divisionId} onValueChange={setDivisionId} disabled={saving}>
+              <Select
+                value={divisionId}
+                onValueChange={setDivisionId}
+                disabled={divisionsLoading || entityId === 'none' || saving}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select team" />
                 </SelectTrigger>
@@ -217,7 +227,7 @@ const EditUserModal = ({
                   <SelectItem value="none">
                     <span className="text-muted-foreground">No Team</span>
                   </SelectItem>
-                  {divisions.map((d) => (
+                  {filteredDivisions.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -237,12 +247,12 @@ const EditUserModal = ({
                 disabled={deleting || saving || isSelf || isAdminTarget}
                 className="mr-auto"
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                <Trash2 className="size-3.5 mr-1.5" />
                 {confirmDelete ? '' : ''} {/* confirmDelete ? 'Confirm' : 'Delete' */}
               </Button>
               {confirmDelete && (
                 <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                  <X className="h-3.5 w-3.5 mr-1" />  
+                  <X className="size-3.5 mr-1" />  
                 </Button>
               )}
 
@@ -251,8 +261,8 @@ const EditUserModal = ({
               </Button>
               <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
                 {saving
-                  ? <><div className="h-3 w-3 animate-spin border border-current border-t-transparent rounded-full mr-2" />Saving…</>
-                  : <><Check className="h-3.5 w-3.5 mr-1.5" />Save changes</>
+                  ? <><div className="size-3 animate-spin border border-current border-t-transparent rounded-full mr-2" />Saving…</>
+                  : <><Check className="size-3.5 mr-1.5" />Save changes</>
                 }
               </Button>
             </>

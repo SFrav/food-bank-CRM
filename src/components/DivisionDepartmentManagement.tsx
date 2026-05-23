@@ -63,7 +63,7 @@ export const DivisionDepartmentManagement = () => {
   const handleEditTeam = (team: any) => {
     setEditingTeamId(team.id);
     setEditingTeamName(team.name);
-    setEditingTeamEntityId(team.entity_id || '');
+    setEditingTeamEntityId(team.entity_id || null);
   };
 
   const handleSaveTeam = async (id: string) => {
@@ -73,8 +73,14 @@ export const DivisionDepartmentManagement = () => {
     }
     setUpdatingTeam(id);
     try {
-      const entityId = editingTeamEntityId && editingTeamEntityId !== 'none' ? editingTeamEntityId : null;
-      await updateTeam(id, { name: editingTeamName.trim(), entity_id: entityId });
+      const entityId =
+        editingTeamEntityId && editingTeamEntityId !== null
+          ? editingTeamEntityId
+          : null;
+      await updateTeam(id, 
+        editingTeamName.trim(),
+        entityId,
+      );
       setEditingTeamId(null);
       setEditingTeamName('');
       setEditingTeamEntityId('');
@@ -118,11 +124,11 @@ export const DivisionDepartmentManagement = () => {
           <div>
             <CardTitle>Team Management</CardTitle>
             <CardDescription>
-              Manage teams within entities. Each team can be assigned to an entity and have a head (leader).
+              Manage teams within entities. Each team can be assigned to an entity and have a manager
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={teamsLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${teamsLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 mr-2 ${teamsLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -132,33 +138,35 @@ export const DivisionDepartmentManagement = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="flex items-center gap-1">
-              <Users className="h-3 w-3" /> Teams
+              <Users className="size-3" /> Teams
             </Badge>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <Input
-              placeholder="Enter team name..."
-              value={newTeamName}
-              onChange={(e) => setNewTeamName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateTeam()}
-            />
-            <Select value={newTeamEntityId} onValueChange={setNewTeamEntityId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select entity (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Entity</SelectItem>
-                {entities.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleCreateTeam} disabled={creatingTeam}>
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+              <Input
+                placeholder="Enter team name..."
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateTeam()}
+              />
+              <Select value={newTeamEntityId} onValueChange={setNewTeamEntityId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select entity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Entity</SelectItem>
+                  {entities.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-12"  onClick={handleCreateTeam} disabled={creatingTeam}>
               {creatingTeam ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="size-4 animate-spin" />
               ) : (
-                <Plus className="h-4 w-4" />
+                <Plus className="size-4" />
               )}
             </Button>
           </div>
@@ -231,19 +239,19 @@ export const DivisionDepartmentManagement = () => {
                         {editingTeamId === team.id ? (
                           <>
                             <Button size="sm" onClick={() => handleSaveTeam(team.id)} disabled={updatingTeam === team.id}>
-                              {updatingTeam === team.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                              {updatingTeam === team.id ? <RefreshCw className="size-3 animate-spin" /> : <Save className="size-3" />}
                             </Button>
                             <Button size="sm" variant="outline" onClick={handleCancelTeam} disabled={updatingTeam === team.id}>
-                              <X className="h-3 w-3" />
+                              <X className="size-3" />
                             </Button>
                           </>
                         ) : (
                           <>
                             <Button size="sm" variant="outline" onClick={() => handleEditTeam(team)} disabled={updatingTeam === team.id || deletingTeam === team.id}>
-                              <Edit className="h-3 w-3" />
+                              <Edit className="size-3" />
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => handleDeleteTeam(team.id, team.name)} disabled={updatingTeam === team.id || deletingTeam === team.id} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                              {deletingTeam === team.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                              {deletingTeam === team.id ? <RefreshCw className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
                             </Button>
                           </>
                         )}

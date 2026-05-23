@@ -18,7 +18,7 @@ export interface PermissionSet {
   canApproveReassignments: boolean;
   canCrudCustomers: boolean;
   canCrudDeals: boolean;
-  canCrudActivities: boolean;
+  canCrudTasks: boolean;
 }
 
 const NO_PERMISSIONS: PermissionSet = {
@@ -39,13 +39,13 @@ const NO_PERMISSIONS: PermissionSet = {
   canApproveReassignments: false,
   canCrudCustomers: false,
   canCrudDeals: false,
-  canCrudActivities: false,
+  canCrudTasks: false,
 };
 
 const BASE_CRUD: Partial<PermissionSet> = {
   canCrudCustomers: true,
   canCrudDeals: true,
-  canCrudActivities: true,
+  canCrudTasks: true,
   canCreateOrganizations: true,
 };
 

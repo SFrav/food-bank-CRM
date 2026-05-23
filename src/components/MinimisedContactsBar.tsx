@@ -23,11 +23,11 @@ interface MinimisedContactsBarProps {
 const MinimisedContactsBar: React.FC<MinimisedContactsBarProps> = ({
   minimised, onRestore, onDiscard,
 }) => {
-  if (minimised.length === 0) return null;
-
   const [showUnsavedCloseWarning, setShowUnsavedCloseWarning] = useState(false);
   const [discardId, setDiscardId] = useState<string | null>(null);
 
+  if (minimised.length === 0) return null;
+  
   const handleDiscardClick = (id: string, isDirty: boolean) => {
     if (isDirty) {
       setDiscardId(id);
@@ -71,7 +71,7 @@ const MinimisedContactsBar: React.FC<MinimisedContactsBarProps> = ({
               }}
               title="Restore"
             >
-              <Maximize2 className="h-3.5 w-3.5" />
+              <Maximize2 className="size-3.5" />
             </button>
             <button
               className="text-muted-foreground hover:text-destructive shrink-0"
@@ -81,7 +81,7 @@ const MinimisedContactsBar: React.FC<MinimisedContactsBarProps> = ({
               }}
               title="Discard and close"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="size-3.5" />
             </button>
           </div>
         ))}

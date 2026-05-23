@@ -6,18 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, MapPin } from 'lucide-react';
+import { User, Mail } from 'lucide-react';
 
 export default function Profile() {
-  const { profile, updateProfile, loading } = useProfile();
+  const { profile, updateProfile, refetch, loading } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const [formData, setFormData] = useState({
-    full_name: profile?.full_name || '',
-    phone: profile?.phone || '',
-  });
+  const [formData, setFormData] = useState(() => ({
+    full_name: profile?.full_name ?? '',
+    phone: profile?.phone ?? '',
+  }));
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -48,6 +48,16 @@ export default function Profile() {
           title: "Success",
           description: "Profile updated successfully",
         });
+
+        setFormData(prev => ({
+          ...prev,
+          full_name: formData.full_name,
+          phone: formData.phone,
+        }));
+
+        if (refetch) {
+          await refetch();     
+        }
       }
     } catch (error) {
       toast({
@@ -62,13 +72,15 @@ export default function Profile() {
 
   // Update form data when profile loads
   useEffect(() => {
-    if (profile) {
-      setFormData({
-        full_name: profile.full_name || '',
-        phone: profile.phone || '',
-      });
-    }
-  }, [profile, user?.email]);
+    if (!profile) return;
+    /*  Only set if the values differ to avoid an unnecessary re‑render  */
+    setFormData(prev => ({
+      ...prev,
+      full_name: profile.full_name ?? '',
+      phone: profile.phone ?? '',
+    }));
+  }, [profile]);
+
 
   if (loading) {
     return (
@@ -112,7 +124,7 @@ export default function Profile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="full_name" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
+                  <User className="size-4" />
                   Full Name
                 </Label>
                 <Input
@@ -126,7 +138,7 @@ export default function Profile() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
+                  <Mail className="size-4" />
                   Email
                 </Label>
                 <Input
@@ -140,7 +152,7 @@ export default function Profile() {
 
               <div className="space-y-2">
                 <Label htmlFor="phone" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
+                  <User className="size-4" />
                   Phone
                 </Label>
                 <Input

@@ -15,7 +15,7 @@ export interface UseManagerArchivedOptions {
   period?: string; // e.g., "Q1 2026"
   startDate?: Date;
   endDate?: Date;
-  managerId?: string; // Untuk single manager
+  managerId?: string;
 }
 
 export function useManagerArchived(options: UseManagerArchivedOptions = {}) {
@@ -24,6 +24,7 @@ export function useManagerArchived(options: UseManagerArchivedOptions = {}) {
   return useQuery({
     queryKey: ['manager-archived', period, startDate, endDate, managerId],
     queryFn: async () => {
+
       if (managerId) {
         const { data, error } = await supabase.rpc('get_manager_archived', {
           p_manager_id: managerId,
@@ -34,6 +35,7 @@ export function useManagerArchived(options: UseManagerArchivedOptions = {}) {
 
         if (error) throw error;
 
+        // get_manager_archived returns a single row
         if (data && data.length > 0) {
           return {
             revenue: Number(data[0].revenue || 0),

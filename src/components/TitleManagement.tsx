@@ -107,7 +107,7 @@ export const TitleManagement = () => {
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -123,9 +123,9 @@ export const TitleManagement = () => {
           />
           <Button onClick={handleCreate} disabled={creating}>
             {creating ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
+              <RefreshCw className="size-4 animate-spin" />
             ) : (
-              <Plus className="h-4 w-4" />
+              <Plus className="size-4" />
             )}
           </Button>
         </div>
@@ -133,7 +133,7 @@ export const TitleManagement = () => {
         {/* Titles table */}
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin" />
+            <RefreshCw className="size-6 animate-spin" />
           </div>
         ) : (
           <Table>
@@ -188,9 +188,9 @@ export const TitleManagement = () => {
                               disabled={updating === title.id}
                             >
                               {updating === title.id ? (
-                                <RefreshCw className="h-3 w-3 animate-spin" />
+                                <RefreshCw className="size-3 animate-spin" />
                               ) : (
-                                <Save className="h-3 w-3" />
+                                <Save className="size-3" />
                               )}
                             </Button>
                             <Button
@@ -199,7 +199,7 @@ export const TitleManagement = () => {
                               onClick={handleCancel}
                               disabled={updating === title.id}
                             >
-                              <X className="h-3 w-3" />
+                              <X className="size-3" />
                             </Button>
                           </>
                         ) : (
@@ -210,7 +210,7 @@ export const TitleManagement = () => {
                               onClick={() => handleEdit(title)}
                               disabled={updating === title.id || deleting === title.id}
                             >
-                              <Edit className="h-3 w-3" />
+                              <Edit className="size-3" />
                             </Button>
                             <Button
                               size="sm"
@@ -220,9 +220,9 @@ export const TitleManagement = () => {
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               {deleting === title.id ? (
-                                <RefreshCw className="h-3 w-3 animate-spin" />
+                                <RefreshCw className="size-3 animate-spin" />
                               ) : (
-                                <Trash2 className="h-3 w-3" />
+                                <Trash2 className="size-3" />
                               )}
                             </Button>
                           </>

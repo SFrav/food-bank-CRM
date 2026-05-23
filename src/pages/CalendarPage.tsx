@@ -3,9 +3,12 @@ import { CalendarView } from '@/components/CalendarView';
 export default function CalendarPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
-      </div>
+      {/* <div className="flex items-center justify-between">
+        <div>
+        <h1 className="text-3xl font-semibold text-foreground"></h1>
+        <p className="text-muted-foreground"></p>
+        </div>
+      </div> */}
       
       <CalendarView />
     </div>

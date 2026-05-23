@@ -57,7 +57,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showMinimiseWarning, setShowMinimiseWarning] = useState(false);
+  // const [showMinimiseWarning, setShowMinimiseWarning] = useState(false);
   const [showMaxTabsWarning, setShowMaxTabsWarning] = useState(false);
   const [showUnsavedCloseWarning, setShowUnsavedCloseWarning] = useState(false);
   const [ignoreCloseWarning, setIgnoreCloseWarning] = useState(false);
@@ -77,32 +77,32 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     }
   }, [contact, isOpen, restoredFormData]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const fetchOrgs = async () => {
-      try {
-        const [{ data: customers }, { data: endUsers }] = await Promise.all([
-          supabase
-            .from('v_master_customer')
-            .select('id, name')
-            .eq('is_active', true)
-            .order('name'),
-          supabase
-            .from('v_master_end_user')
-            .select('id, name')
-            .eq('is_active', true)
-            .order('name'),
-        ]);
-        setOrganisations([
-          ...(customers ?? []).map(i => ({ ...i, type: 'customer' })),
-          ...(endUsers ?? []).map(i => ({ ...i, type: 'end_user' })),
-        ]);
-      } catch (e) {
-        console.error('Error fetching organisations:', e);
-      }
-    };
-    fetchOrgs();
-  }, [isOpen]);
+  // useEffect(() => {
+  //   if (!isOpen) return;
+  //   const fetchOrgs = async () => {
+  //     try {
+  //       const [{ data: customers }, { data: endUsers }] = await Promise.all([
+  //         supabase
+  //           .from('v_master_customer')
+  //           .select('id, name')
+  //           .eq('is_active', true)
+  //           .order('name'),
+  //         supabase
+  //           .from('v_master_end_user')
+  //           .select('id, name')
+  //           .eq('is_active', true)
+  //           .order('name'),
+  //       ]);
+  //       setOrganisations([
+  //         ...(customers ?? []).map(i => ({ ...i, type: 'customer' })),
+  //         ...(endUsers ?? []).map(i => ({ ...i, type: 'end_user' })),
+  //       ]);
+  //     } catch (e) {
+  //       console.error('Error fetching organisations:', e);
+  //     }
+  //   };
+  //   fetchOrgs();
+  // }, [isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -114,11 +114,11 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       setShowMaxTabsWarning(true);
       return;
     }
-    if (isDirty) {
-      setShowMinimiseWarning(true);
-    } else {
-      doMinimise();
-    }
+    // if (isDirty) {
+    //   setShowMinimiseWarning(true);
+    // } else {
+    doMinimise();
+    // }
   };
 
   const doMinimise = () => {
@@ -154,7 +154,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         name: formData.name.trim(),
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
-        company: formData.company.trim() || null,
         notes: formData.notes.trim() || null,
         created_at: contact.created_at,
       });
@@ -196,8 +195,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
           <DialogHeader>
             <div className="flex items-start justify-between">
               <div>
-                <DialogTitle>Edit Contact</DialogTitle>
-                <DialogDescription>Update the contact details below.</DialogDescription>
+                <DialogTitle>Edit Beneficiary</DialogTitle>
+                <DialogDescription>Update the beneficiary's details below.</DialogDescription>
               </div>
               <button
                 type="button"
@@ -205,7 +204,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                 className="absolute right-10 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
                 title="Minimise"
               >
-                <Minus className="h-4 w-4" />
+                <Minus className="size-4" />
               </button>
             </div>
           </DialogHeader>
@@ -227,23 +226,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone number" />
               </div>
-              <div className="space-y-2">
-                <Label>Company</Label>
-                <Select value={formData.company} onValueChange={v => setFormData(p => ({ ...p, company: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organisations
-                      .filter(o => o.id?.trim() && o.name?.trim())
-                      .map(o => (
-                        <SelectItem key={o.id} value={o.name}>
-                          {o.name} ({o.type === 'customer' ? 'Customer' : 'End User'})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
             </div>
 
             <div className="space-y-2">
@@ -264,16 +247,16 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                   size="sm"
                   onClick={handleDelete}
                   disabled={deleting || isLoading || !contact}
-                  className="mr-auto w-10 h-10"
+                  className="mr-auto size-10"
                   type="button"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="size-3.5" />
                   {confirmDelete ? '' : ''} {/* confirmDelete ? 'Confirm' : 'Delete' */}
                 </Button>
 
                 {confirmDelete && (
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} className="w-10 h-10" type="button">
-                    <X className="h-3.5 w-3.5" />
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} className="size-10" type="button">
+                    <X className="size-3.5" />
                   </Button>
                 )}
               </div>
@@ -291,7 +274,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showMinimiseWarning} onOpenChange={setShowMinimiseWarning}>
+      {/* <AlertDialog open={showMinimiseWarning} onOpenChange={setShowMinimiseWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
@@ -304,7 +287,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             <AlertDialogAction onClick={doMinimise}>Minimise</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
 
       <AlertDialog open={showMaxTabsWarning} onOpenChange={setShowMaxTabsWarning}>
         <AlertDialogContent>

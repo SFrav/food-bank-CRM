@@ -56,11 +56,11 @@ const AdminDashboard: React.FC = () => {
       <Tabs defaultValue="users" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+            <Users className="size-4" />
             Manage Users
           </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
+            <Settings className="size-4" />
             System Settings
           </TabsTrigger>
         </TabsList>
@@ -70,7 +70,7 @@ const AdminDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+                  <Shield className="size-5" />
                   User Role Management
                 </CardTitle>
                 <CardDescription>
@@ -90,7 +90,7 @@ const AdminDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
+                  <Users className="size-5" />
                   System logs
                 </CardTitle>
                 <CardDescription>
@@ -131,7 +131,7 @@ const AdminDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <User className="size-5" />
                   Profile
                 </CardTitle>
                 <CardDescription>
@@ -151,7 +151,7 @@ const AdminDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sliders className="h-5 w-5" />
+                  <Sliders className="size-5" />
                   Preferences
                 </CardTitle>
                 <CardDescription>
@@ -171,7 +171,7 @@ const AdminDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+                  <Shield className="size-5" />
                   Security
                 </CardTitle>
                 <CardDescription>

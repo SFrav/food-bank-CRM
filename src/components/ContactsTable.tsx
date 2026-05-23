@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Search, Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ export interface Contact {
   name: string;
   email: string | null;
   phone: string | null;
-  company: string | null;
+  status: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -22,6 +22,49 @@ export interface Contact {
 interface ContactsTableProps {
   onEditContact: (contact: Contact) => void;
 }
+
+interface BadgeProps {
+  role: 'active' | 'inactive' | 'pending';
+  className?: string;
+}
+
+export const StatusBadge = ({ role, className = "" }: BadgeProps) => {
+  const getConfig = (role: string) => {
+    switch (role) {
+      case 'active':
+        return {
+          label: 'Active',
+          className: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+        };
+      case 'pending':
+        return {
+          label: 'Pending',
+          className: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800'
+        };
+      case 'inactive':
+        return {
+          label: 'Inactive',
+          className: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-800'
+        };
+      default:
+        return {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-800'
+        };
+    }
+  };
+
+  const config = getConfig(role);
+
+  return (
+  <Badge 
+    variant='default'
+    className={`flex items-center gap-1 ${config.className} ${className}`}
+  >
+    {config.label}
+  </Badge>
+);
+};
 
 export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) => {
   const [orderDesc] = React.useState(false);
@@ -40,7 +83,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
         c.name.toLowerCase().includes(q) ||
         c.email?.toLowerCase().includes(q) ||
         c.phone?.toLowerCase().includes(q) ||
-        c.company?.toLowerCase().includes(q)
+        c.status?.toLowerCase().includes(q)
     );
   }, [searchTerm, contacts]);
 
@@ -50,7 +93,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
       `"${c.name}"`,
       `"${c.email ?? ''}"`,
       `"${c.phone ?? ''}"`,
-      `"${c.company ?? ''}"`,
+      `"${c.status ?? ''}"`,
       `"${c.notes ?? ''}"`,
       `"${new Date(c.created_at).toLocaleDateString()}"`,
     ].join(','));
@@ -63,20 +106,20 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
     URL.revokeObjectURL(url);
     toast({ title: 'Success', description: 'Contacts exported to CSV!' });
   };
-
+    
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Contacts</CardTitle>
-          <CardDescription>Manage your contact database. Click a row to edit.</CardDescription>
+          {/* <CardTitle> </CardTitle>
+          <CardDescription> </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent> */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, email, phone, or company…"
+                placeholder="Search by name or email …"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -84,17 +127,18 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={exportToCSV} disabled={filteredContacts.length === 0}>
-                <Download className="h-4 w-4 mr-2" />Export CSV
+                <Download className="size-4 mr-2" />Export CSV
               </Button>
               <Button onClick={() => setIsAddModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />Add Contact
+                <Plus className="size-4 mr-2" />Add Beneficiary
               </Button>
             </div>
           </div>
-
+          </CardHeader>
+        <CardContent>
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              <div className="animate-spin rounded-full size-8 border-b-2 border-primary" />
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -102,7 +146,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
               {!searchTerm && (
                 <div className="mt-4">
                   <Button onClick={() => setIsAddModalOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />Add Your First Contact
+                    <Plus className="size-4 mr-2" />Add Your First Beneficiary
                   </Button>
                 </div>
               )}
@@ -115,7 +159,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
                     <TableHead>Name</TableHead>
                     <TableHead className="hidden sm:table-cell">Email</TableHead>
                     <TableHead className="hidden md:table-cell">Phone</TableHead>
-                    <TableHead className="hidden lg:table-cell">Company</TableHead>
+                    <TableHead className="hidden lg:table-cell">Status</TableHead>
                     <TableHead className="text-right text-xs font-normal text-muted-foreground">
                       Note
                     </TableHead>
@@ -135,7 +179,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
                             {c.email}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">&hellip;</span>
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -148,15 +192,22 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
                             {c.phone}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">&hellip;</span>
                         )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {c.company ? <Badge variant="secondary">{c.company}</Badge> : <span className="text-muted-foreground">—</span>}
+                        {c.status ? <StatusBadge role={c.status}>
+                          {c.status} </StatusBadge> : <span className="text-muted-foreground">&hellip;</span>}
                       </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground pl-1 pr-0">
-                        {c.notes ? (<span className="block max-w-[150px] max-h-[50px]" title={c.notes}> {c.notes} </span>) : ('—')}
-                      </TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground pl-1 pr-0">
+                          {c.notes ? (
+                            <span className="max-w-[150px] line-clamp-2" title={c.notes}>
+                              {c.notes}
+                            </span>
+                          ) : (
+                            '&hellip;'
+                          )}
+                        </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -167,7 +218,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
           {filteredContacts.length > 0 && (
             <div className="flex justify-between items-center mt-4 text-sm text-muted-foreground">
               <span>
-                Showing {filteredContacts.length} of {contacts.length} contacts
+                Showing {filteredContacts.length} of {contacts.length} beneficiaries
               </span>
               {searchTerm && <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')}>Clear search</Button>}
             </div>

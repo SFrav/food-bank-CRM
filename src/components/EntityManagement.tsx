@@ -136,7 +136,7 @@ export const EntityManagement = () => {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-6">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2 className="size-6 animate-spin" />
         </CardContent>
       </Card>
     );
@@ -147,7 +147,7 @@ export const EntityManagement = () => {
       <CardHeader>
         <CardTitle>Entity Management</CardTitle>
         <CardDescription>
-          Manage organizational entities. Entities represent different business units or companies.
+          Manage organizational entities. Entities represent different business units or companies
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -178,14 +178,14 @@ export const EntityManagement = () => {
                 <Button
                   onClick={handleCreateEntity}
                   disabled={!newEntityName.trim() || isSubmitting}
-                  className="w-full"
+                  className="w-12"
                 >
                   {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="size-4 animate-spin mr-2" />
                   ) : (
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="size-4" />
                   )}
-                  Add Entity
+                  {/* Add Entity */}
                 </Button>
               </div>
             </div>
@@ -256,7 +256,7 @@ export const EntityManagement = () => {
                                 disabled={isSubmitting}
                               >
                                 {isSubmitting ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="size-4 animate-spin" />
                                 ) : (
                                   'Save'
                                 )}
@@ -280,7 +280,7 @@ export const EntityManagement = () => {
                                   code: entity.code || ''
                                 })}
                               >
-                                <Edit3 className="h-4 w-4" />
+                                <Edit3 className="size-4" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -290,9 +290,9 @@ export const EntityManagement = () => {
                                     className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                                   >
                                     {deletingEntityId === entity.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <Loader2 className="size-4 animate-spin" />
                                     ) : (
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="size-4" />
                                     )}
                                   </Button>
                                 </AlertDialogTrigger>

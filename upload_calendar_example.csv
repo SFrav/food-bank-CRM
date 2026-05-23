@@ -1,0 +1,5 @@
+title,location,date,time,description,status
+New bulk event 7,Here,09-07-2026,17:00:00,The event 8,scheduled
+New bulk event 8,Here,10-10-2026,05:00:00,Event 9,scheduled
+New bulk event 9,Here,12-7-2026,17:00:00,Event 10,scheduled
+New bulk event 10,Here,9-7-2026,05:00:00,Event 11,scheduled

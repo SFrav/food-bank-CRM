@@ -1,84 +1,83 @@
-import { useState } from "react";
-import { useRoleBasedData, FilterOptions } from "@/hooks/useRoleBasedData";
-import { RoleBadge } from "@/components/RoleBadge";
-import { RoleBasedFilters } from "@/components/RoleBasedFilters";
-import { MeetingCalendar } from "@/components/dashboard/MeetingCalendar";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DivisionSummary } from "@/components/dashboard/DivisionSummary";
+import { DivisionChart } from "@/components/dashboard/DivisionBeneficiaryChart";
+import { CalendarDays } from "lucide-react";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Dashboard() {
-  const [filters, setFilters] = useState<FilterOptions>({});
-  const {
-    userProfile,
-    availableReps,
-    availableHeads,
-    loading,
-    error,
-    refreshData
-  } = useRoleBasedData();
+  const { profile } = useProfile();
+  const [dateRange, setDateRange] = useState<string>("month");
 
-  const handleFilterChange = (newFilters: Partial<FilterOptions>) => {
-    const updatedFilters = { ...filters, ...newFilters };
-    setFilters(updatedFilters);
-    refreshData(updatedFilters);
-  };
+  const role = profile?.role as string;
 
-  if (loading) {
+  if (!profile) {
     return (
-      <div className="space-y-8">
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-96" />
+      <div className={`flex items-center gap-4 `}>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-foreground">
+
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge className= 'bg-primary text-primary-foreground'>
+                User
+              </Badge>
+            </div>
+          </div>
         </div>
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
       </div>
     );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-destructive">Error: {error}</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  }  
 
   return (
-    <div className="space-y-8">
-      {/* Header with Role Badge */}
-      <div className="flex items-center justify-between">
-        <DashboardHeader role={userProfile?.role || 'account_manager'} />
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <DashboardHeader role= {role || 'staff'} /> 
       </div>
 
-      {/* Role-based Filters */}
-      {userProfile && (
-        <RoleBasedFilters
-          userRole={userProfile.role}
-          availableReps={availableReps}
-          availableHeads={availableHeads}
-          selectedRep={filters.selectedRep}
-          selectedHead={filters.selectedManager}
-          onRepChange={(repId) => handleFilterChange({ selectedRep: repId === 'all' ? undefined : repId })}
-          onHeadChange={(headId) => handleFilterChange({ selectedManager: headId === 'all' ? undefined : headId })}
-          onRefresh={() => refreshData(filters)}
-          loading={loading}
-        />
-      )}
+      <DivisionSummary />
 
-      {/* Calendar Section */}
-      <section id="calendar" className="scroll-mt-6">
-        <div className="border-t border-border pt-8">
-          <h2 className="text-2xl font-bold mb-4">Calendar</h2>
-          <p className="text-muted-foreground mb-6">
-            Manage your meetings and upcoming appointments
-          </p>
-          <MeetingCalendar />
+      {/* Filters Section */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground">Date Range</label>
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">This Month</SelectItem>
+              <SelectItem value="month">Year to Date</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </section>
+
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-2">
+            <CalendarDays className="size-4" />
+            Custom Range
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Left Column - Primary Content */}
+        <div className="xl:col-span-2 space-y-6">
+          <DivisionChart dateRange={dateRange} />
+        </div>
+
+        {/* Right Column - Secondary Content */}
+        <div className="space-y-6">
+          
+        </div>
+      </div>
     </div>
   );
 }

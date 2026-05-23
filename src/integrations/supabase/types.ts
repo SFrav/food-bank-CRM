@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -72,49 +77,119 @@ export type Database = {
           },
         ]
       }
+      calendar: {
+        Row: {
+          beneficiary_id: string | null
+          created_at: string
+          created_by: string | null
+          due_at: string | null
+          entry_type: string
+          id: string
+          location: string | null
+          notes: string | null
+          pic_id: string | null
+          scheduled_at: string | null
+          status: string | null
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          beneficiary_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          entry_type: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          pic_id?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          beneficiary_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          entry_type?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          pic_id?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "calendar_pic_id_fkey"
+            columns: ["pic_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           company: string | null
           created_at: string | null
-          deleted_at: string | null
-          deleted_by: string | null
           email: string | null
           id: string
-          is_deleted: boolean | null
           name: string
           notes: string | null
           owner_id: string | null
           phone: string | null
+          status: Database["public"]["Enums"]["beneficiary_enum"]
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           company?: string | null
           created_at?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
           email?: string | null
           id?: string
-          is_deleted?: boolean | null
           name: string
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          status?: Database["public"]["Enums"]["beneficiary_enum"]
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           company?: string | null
           created_at?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
           email?: string | null
           id?: string
-          is_deleted?: boolean | null
           name?: string
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          status?: Database["public"]["Enums"]["beneficiary_enum"]
           updated_at?: string | null
           user_id?: string | null
         }
@@ -178,7 +253,7 @@ export type Database = {
             columns: ["head_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -247,6 +322,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          calendar_id: string | null
           created_at: string
           id: string
           is_read: boolean
@@ -256,9 +332,10 @@ export type Database = {
           org_role: string | null
           title: string | null
           type: Database["public"]["Enums"]["notification_type_enum"]
-          user_id: string
+          user_id: string | null
         }
         Insert: {
+          calendar_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -268,9 +345,10 @@ export type Database = {
           org_role?: string | null
           title?: string | null
           type: Database["public"]["Enums"]["notification_type_enum"]
-          user_id: string
+          user_id?: string | null
         }
         Update: {
+          calendar_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -280,9 +358,16 @@ export type Database = {
           org_role?: string | null
           title?: string | null
           type?: Database["public"]["Enums"]["notification_type_enum"]
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_notifications_calendar"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "calendar"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_user_fk"
             columns: ["user_id"]
@@ -292,138 +377,52 @@ export type Database = {
           },
         ]
       }
-      organization_contacts: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          email: string | null
-          full_name: string
-          id: string
-          is_active: boolean
-          is_primary: boolean
-          mobile: string | null
-          organization_id: string
-          phone: string | null
-          title: string | null
-          updated_at: string
-          whatsapp_number: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          email?: string | null
-          full_name: string
-          id?: string
-          is_active?: boolean
-          is_primary?: boolean
-          mobile?: string | null
-          organization_id: string
-          phone?: string | null
-          title?: string | null
-          updated_at?: string
-          whatsapp_number?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          email?: string | null
-          full_name?: string
-          id?: string
-          is_active?: boolean
-          is_primary?: boolean
-          mobile?: string | null
-          organization_id?: string
-          phone?: string | null
-          title?: string | null
-          updated_at?: string
-          whatsapp_number?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_contacts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "organization_contacts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_contacts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_customer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_contacts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_end_user"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       organizations: {
         Row: {
-          addresses: Json | null
+          address: Json | null
           approval_status: string | null
           created_at: string
           created_by: string | null
           email: string | null
           id: string
-          industry: string | null
           is_active: boolean
-          market_size: string | null
           name: string
           notes: string | null
           org_type: Database["public"]["Enums"]["org_type_enum"]
           phone: string | null
-          tax_id: string | null
-          type: string | null
+          service: string | null
           updated_at: string
           website: string | null
         }
         Insert: {
-          addresses?: Json | null
+          address?: Json | null
           approval_status?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
-          industry?: string | null
           is_active?: boolean
-          market_size?: string | null
           name: string
           notes?: string | null
           org_type?: Database["public"]["Enums"]["org_type_enum"]
           phone?: string | null
-          tax_id?: string | null
-          type?: string | null
+          service?: string | null
           updated_at?: string
           website?: string | null
         }
         Update: {
-          addresses?: Json | null
+          address?: Json | null
           approval_status?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
-          industry?: string | null
           is_active?: boolean
-          market_size?: string | null
           name?: string
           notes?: string | null
           org_type?: Database["public"]["Enums"]["org_type_enum"]
           phone?: string | null
-          tax_id?: string | null
-          type?: string | null
+          service?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -466,90 +465,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      sales_activities: {
-        Row: {
-          activity_type: string
-          created_at: string
-          created_by: string | null
-          customer_id: string | null
-          description: string | null
-          due_at: string | null
-          id: string
-          notes: string | null
-          pic_id: string | null
-          scheduled_at: string | null
-          status: string | null
-          subject: string | null
-          updated_at: string
-        }
-        Insert: {
-          activity_type: string
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_at?: string | null
-          id?: string
-          notes?: string | null
-          pic_id?: string | null
-          scheduled_at?: string | null
-          status?: string | null
-          subject?: string | null
-          updated_at?: string
-        }
-        Update: {
-          activity_type?: string
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_at?: string | null
-          id?: string
-          notes?: string | null
-          pic_id?: string | null
-          scheduled_at?: string | null
-          status?: string | null
-          subject?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sales_activities_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_customer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_end_user"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_pic_id_fkey"
-            columns: ["pic_id"]
-            isOneToOne: false
-            referencedRelation: "organization_contacts"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       system_settings: {
         Row: {
@@ -691,179 +606,6 @@ export type Database = {
       }
     }
     Views: {
-      activities: {
-        Row: {
-          activity_type: string | null
-          created_at: string | null
-          created_by: string | null
-          customer_id: string | null
-          description: string | null
-          due_at: string | null
-          id: string | null
-          notes: string | null
-          scheduled_at: string | null
-          status: string | null
-          subject: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          activity_type?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_at?: string | null
-          id?: string | null
-          notes?: string | null
-          scheduled_at?: string | null
-          status?: string | null
-          subject?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          activity_type?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_at?: string | null
-          id?: string | null
-          notes?: string | null
-          scheduled_at?: string | null
-          status?: string | null
-          subject?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sales_activities_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_customer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_end_user"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sales_activity: {
-        Row: {
-          activity_type: string | null
-          created_at: string | null
-          customer_id: string | null
-          customer_name: string | null
-          date: string | null
-          id: string | null
-          notes: string | null
-          time: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sales_activities_created_by_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_customer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_end_user"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sales_activity_v2: {
-        Row: {
-          activity_type: string | null
-          created_at: string | null
-          created_by: string | null
-          customer_id: string | null
-          customer_name: string | null
-          description: string | null
-          due_at: string | null
-          id: string | null
-          notes: string | null
-          pic_id: string | null
-          scheduled_at: string | null
-          status: string | null
-          subject: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sales_activities_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_customer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "v_master_end_user"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_activities_pic_id_fkey"
-            columns: ["pic_id"]
-            isOneToOne: false
-            referencedRelation: "organization_contacts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_audit_log_complete: {
         Row: {
           action_type: string | null
@@ -899,60 +641,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      v_master_customer: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          industry: string | null
-          is_active: boolean | null
-          name: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          industry?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          industry?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      v_master_end_user: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          industry: string | null
-          is_active: boolean | null
-          name: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          industry?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          industry?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
       }
     }
     Functions: {
@@ -1011,11 +699,47 @@ export type Database = {
         }
         Returns: boolean
       }
+      bulk_insert_calendar: { Args: { events: Json }; Returns: undefined }
       can_manage_contact: {
         Args: { target_owner_id: string }
         Returns: boolean
       }
+      create_calendar: {
+        Args: {
+          p_beneficiary_id: string
+          p_created_by: string
+          p_entry_type: string
+          p_location: string
+          p_notes: string
+          p_pic_id: string
+          p_scheduled_at: string
+          p_status: string
+          p_subject: string
+        }
+        Returns: undefined
+      }
+      create_calendar_bulk: { Args: { events: Json }; Returns: undefined }
+      create_division: {
+        Args: { p_entity_id: string; p_head_id?: string; p_name: string }
+        Returns: string
+      }
+      delete_calendar: { Args: { p_id: string }; Returns: undefined }
+      delete_division: { Args: { p_id: string }; Returns: undefined }
       ensure_admin_profile: { Args: never; Returns: undefined }
+      get_calendar: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_type: string
+          id: string
+          location: string
+          notes: string
+          scheduled_at: string
+          status: string
+          subject: string
+        }[]
+      }
       get_current_profile: {
         Args: never
         Returns: {
@@ -1023,6 +747,16 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["role_enum"]
           user_id: string
+        }[]
+      }
+      get_divisions_by_entity: {
+        Args: { p_entity_id?: string }
+        Returns: {
+          created_at: string
+          entity_id: string
+          head_id: string
+          id: string
+          name: string
         }[]
       }
       get_head_manager_archived: {
@@ -1059,6 +793,20 @@ export type Database = {
         }[]
       }
       get_my_role: { Args: never; Returns: string }
+      get_tasks: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_type: string
+          id: string
+          notes: string
+          pic_id: string
+          pic_name: string
+          scheduled_at: string
+          status: string
+        }[]
+      }
       get_users_with_profiles: {
         Args: { p_query?: string; p_role?: string }
         Returns: {
@@ -1084,11 +832,34 @@ export type Database = {
       }
       mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_notification_read: { Args: { p_id: string }; Returns: undefined }
+      update_calendar: {
+        Args: {
+          p_beneficiary_id: string
+          p_entry_type: string
+          p_id: string
+          p_location: string
+          p_notes: string
+          p_pic_id: string
+          p_scheduled_at: string
+          p_status: string
+          p_subject: string
+        }
+        Returns: undefined
+      }
+      update_division: {
+        Args: {
+          p_entity_id: string
+          p_head_id?: string
+          p_id: string
+          p_name: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      approval_status_enum: "pending" | "approved" | "rejected"
-      notification_type_enum: "alert" | "target" | "task" | "ai" | "system"
-      org_type_enum: "customer" | "end_user" | "partner" | "vendor"
+      beneficiary_enum: "pending" | "active" | "inactive" | "banned"
+      notification_type_enum: "alert" | "calendar" | "system"
+      org_type_enum: "government" | "ngo" | "faith_based"
       role_enum:
         | "admin"
         | "head"
@@ -1228,9 +999,9 @@ export const Constants = {
   },
   public: {
     Enums: {
-      approval_status_enum: ["pending", "approved", "rejected"],
-      notification_type_enum: ["alert", "target", "task", "ai", "system"],
-      org_type_enum: ["customer", "end_user", "partner", "vendor"],
+      beneficiary_enum: ["pending", "active", "inactive", "banned"],
+      notification_type_enum: ["alert", "calendar", "system"],
+      org_type_enum: ["government", "ngo", "faith_based"],
       role_enum: [
         "admin",
         "head",
@@ -1244,4 +1015,3 @@ export const Constants = {
     },
   },
 } as const
-

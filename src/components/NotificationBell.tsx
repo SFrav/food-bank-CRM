@@ -15,12 +15,12 @@ import { useNavigate } from 'react-router-dom';
 
 const getTypeIcon = (type: Notification['type']) => {
   switch (type) {
-    case 'alert': return <AlertTriangle className="h-4 w-4 text-destructive" />;
-    case 'target': return <Target className="h-4 w-4 text-primary" />;
-    case 'task': return <CheckSquare className="h-4 w-4 text-blue-500" />;
-    case 'ai': return <Brain className="h-4 w-4 text-purple-500" />;
-    case 'system': return <Settings className="h-4 w-4 text-muted-foreground" />;
-    default: return <Bell className="h-4 w-4" />;
+    case 'alert': return <AlertTriangle className="size-4 text-destructive" />;
+    case 'target': return <Target className="size-4 text-primary" />;
+    case 'task': return <CheckSquare className="size-4 text-blue-500" />;
+    case 'ai': return <Brain className="size-4 text-purple-500" />;
+    case 'system': return <Settings className="size-4 text-muted-foreground" />;
+    default: return <Bell className="size-4" />;
   }
 };
 
@@ -57,11 +57,11 @@ export const NotificationBell: React.FC = () => {
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
-          <Bell className="h-5 w-5" />
+          <Bell className="size-5" />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center text-xs p-0"
+              className="absolute -top-2 -right-2 size-5 flex items-center justify-center text-xs p-0"
             >
               {displayCount}
             </Badge>
@@ -103,14 +103,14 @@ export const NotificationBell: React.FC = () => {
                         {notification.title}
                       </h4>
                       {!notification.is_read && (
-                        <div className="h-2 w-2 bg-primary rounded-full flex-shrink-0" />
+                        <div className="size-2 bg-primary rounded-full flex-shrink-0" />
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                       {notification.message}
                     </p>
                     <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
+                      <Clock className="size-3" />
                       {getRelativeTime(notification.created_at)}
                     </div>
                   </div>

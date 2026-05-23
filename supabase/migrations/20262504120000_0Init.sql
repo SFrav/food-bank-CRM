@@ -7,25 +7,23 @@ SET row_security = off;
 --
 --Types / enums
 --
-CREATE TYPE "public"."approval_status_enum" AS ENUM (
+CREATE TYPE "public"."beneficiary_enum" AS ENUM (
     'pending',
-    'approved',
-    'rejected'
+    'active',
+    'inactive',
+    'banned'
 );
 
 CREATE TYPE "public"."notification_type_enum" AS ENUM (
     'alert',
-    'target',
-    'task',
-    'ai',
+    'calendar',
     'system'
 );
 
 CREATE TYPE "public"."org_type_enum" AS ENUM (
-    'customer',
-    'end_user',
-    'partner',
-    'vendor'
+    'government',
+    'ngo',
+    'faith_based'
 );
 
 CREATE TYPE "public"."role_enum" AS ENUM (
@@ -51,22 +49,12 @@ CREATE TYPE "public"."user_status_enum" AS ENUM (
 --Tables
 --
 
-
-CREATE TABLE IF NOT EXISTS "public"."sales_activities" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "activity_type" "text" NOT NULL,
-    "subject" "text",
-    "description" "text",
-    "notes" "text",
-    "status" "text",
-    "scheduled_at" timestamp with time zone,
-    "created_by" "uuid",
-    "customer_id" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "due_at" timestamp with time zone,
-    "pic_id" "uuid"
+CREATE TABLE IF NOT EXISTS "public"."manager_team_members" (
+    "manager_id" "uuid" NOT NULL,
+    "account_manager_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
+
 
 CREATE TABLE IF NOT EXISTS "public"."audit_logs" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
@@ -83,13 +71,12 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "name" "text" NOT NULL,
     "email" "text",
     "phone" "text",
-    "company" "text",
     "notes" "text",
     "owner_id" "uuid",
     "user_id" "uuid",
-    "is_deleted" boolean DEFAULT false,
-    "deleted_at" timestamp with time zone,
-    "deleted_by" "uuid",
+    "status" "public"."beneficiary_enum" DEFAULT 'inactive'::"public"."beneficiary_enum" NOT NULL,
+    "approved_at" timestamp with time zone,
+    "approved_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -123,15 +110,26 @@ CREATE TABLE IF NOT EXISTS "public"."entities" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "public"."manager_team_members" (
-    "manager_id" "uuid" NOT NULL,
-    "account_manager_id" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."calendar" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "entry_type" "text" NOT NULL,
+    "subject" "text",
+    "location" "text",
+    "notes" "text",
+    "status" "text",
+    "scheduled_at" timestamp with time zone,
+    "created_by" "uuid",
+    "beneficiary_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "due_at" timestamp with time zone,
+    "pic_id" "uuid"
 );
 
 CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
+    "calendar_id" "uuid",
+    "user_id" "uuid",
     "org_role" "text",
     "type" "public"."notification_type_enum" NOT NULL,
     "title" "text",
@@ -142,38 +140,20 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "public"."organization_contacts" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "organization_id" "uuid" NOT NULL,
-    "full_name" "text" NOT NULL,
-    "email" "text",
-    "phone" "text",
-    "mobile" "text",
-    "whatsapp_number" "text",
-    "title" "text",
-    "is_primary" boolean DEFAULT false NOT NULL,
-    "is_active" boolean DEFAULT true NOT NULL,
-    "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
 
 CREATE TABLE IF NOT EXISTS "public"."organizations" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
-    "org_type" "public"."org_type_enum" DEFAULT 'customer'::"public"."org_type_enum" NOT NULL,
-    "industry" "text",
+    "org_type" "public"."org_type_enum" DEFAULT 'ngo'::"public"."org_type_enum" NOT NULL,
+    "service" "text",
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "addresses" "jsonb",
-    "tax_id" "text",
+    "address" "jsonb",
     "website" "text",
     "phone" "text",
     "email" "text",
-    "market_size" "text",
-    "type" "text" DEFAULT 'customer'::"text",
     "approval_status" "text" DEFAULT 'approved'::"text",
     "notes" "text"
 );
@@ -227,54 +207,6 @@ COMMENT ON COLUMN "public"."user_profiles"."division_id" IS 'Team ID (formerly d
 --
 --VIEWS
 --
-CREATE OR REPLACE VIEW "public"."activities" AS
- SELECT "id",
-    "activity_type",
-    "subject",
-    "description",
-    "notes",
-    "status",
-    "scheduled_at",
-    "due_at",
-    "created_by",
-    "customer_id",
-    "created_at",
-    "updated_at"
-   FROM "public"."sales_activities" "sa";
-
-CREATE OR REPLACE VIEW "public"."sales_activity" AS
- SELECT "sa"."id",
-    "sa"."activity_type",
-    "sa"."notes",
-    (COALESCE("sa"."scheduled_at", "sa"."created_at"))::"date" AS "date",
-    (COALESCE("sa"."scheduled_at", "sa"."created_at"))::time without time zone AS "time",
-    "sa"."created_at",
-    "sa"."updated_at",
-    "sa"."customer_id",
-    "org"."name" AS "customer_name",
-    "sa"."created_by" AS "user_id"
-   FROM (("public"."sales_activities" "sa"
-     LEFT JOIN "public"."organizations" "org" ON (("org"."id" = "sa"."customer_id"))))
-  ORDER BY "sa"."created_at" DESC;
-
-CREATE OR REPLACE VIEW "public"."sales_activity_v2" AS
- SELECT "sa"."id",
-    "sa"."activity_type",
-    "sa"."subject",
-    "sa"."description",
-    "sa"."scheduled_at",
-    "sa"."due_at",
-    "sa"."status",
-    "sa"."notes",
-    "sa"."created_by",
-    "sa"."created_at",
-    "sa"."updated_at",
-    "sa"."customer_id",
-    "sa"."pic_id",
-    "org"."name" AS "customer_name"
-   FROM ("public"."sales_activities" "sa"
-     LEFT JOIN "public"."organizations" "org" ON (("org"."id" = "sa"."customer_id")))
-  ORDER BY "sa"."created_at" DESC;
 
 CREATE OR REPLACE VIEW "public"."v_audit_log_complete" AS
  SELECT "al"."id",
@@ -296,26 +228,6 @@ CREATE OR REPLACE VIEW "public"."v_audit_log_complete" AS
    FROM ("public"."audit_logs" "al"
      LEFT JOIN "public"."user_profiles" "up" ON (("up"."user_id" = "al"."user_id")))
   ORDER BY "al"."created_at" DESC;
-
-CREATE OR REPLACE VIEW "public"."v_master_customer" AS
- SELECT "id",
-    "name",
-    "industry",
-    "is_active",
-    "created_at",
-    "updated_at"
-   FROM "public"."organizations" "o"
-  WHERE (("org_type" = 'customer'::"public"."org_type_enum") AND ("is_active" = true));
-
-CREATE OR REPLACE VIEW "public"."v_master_end_user" AS
- SELECT "id",
-    "name",
-    "industry",
-    "is_active",
-    "created_at",
-    "updated_at"
-   FROM "public"."organizations" "o"
-  WHERE (("org_type" = 'end_user'::"public"."org_type_enum") AND ("is_active" = true));
 
 
 --
@@ -340,17 +252,14 @@ ALTER TABLE ONLY "public"."manager_team_members"
 ALTER TABLE ONLY "public"."notifications"
     ADD CONSTRAINT "notifications_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."organization_contacts"
-    ADD CONSTRAINT "organization_contacts_pkey" PRIMARY KEY ("id");
-
 ALTER TABLE ONLY "public"."organizations"
     ADD CONSTRAINT "organizations_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."regions"
     ADD CONSTRAINT "regions_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."sales_activities"
-    ADD CONSTRAINT "sales_activities_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."system_settings"
     ADD CONSTRAINT "system_settings_pkey" PRIMARY KEY ("id");
@@ -393,19 +302,21 @@ CREATE INDEX "idx_user_profiles_role" ON "public"."user_profiles" USING "btree" 
 
 CREATE INDEX "idx_user_profiles_user_id" ON "public"."user_profiles" USING "btree" ("user_id");
 
+CREATE UNIQUE INDEX "one_head_per_entity" ON "public"."user_profiles" USING "btree" ("entity_id") WHERE (("role" = 'head'::"public"."role_enum") AND ("is_active" = true));
+
 CREATE UNIQUE INDEX "one_manager_per_division" ON "public"."user_profiles" USING "btree" ("division_id") WHERE (("role" = 'manager'::"public"."role_enum") AND ("is_active" = true));
 
-CREATE INDEX "sales_activities_created_at_idx" ON "public"."sales_activities" USING "btree" ("created_at");
+CREATE INDEX "calendar_created_at_idx" ON "public"."calendar" USING "btree" ("created_at");
 
-CREATE INDEX "sales_activities_created_by_idx" ON "public"."sales_activities" USING "btree" ("created_by");
+CREATE INDEX "calendar_created_by_idx" ON "public"."calendar" USING "btree" ("created_by");
 
-CREATE INDEX "sales_activities_customer_id_idx" ON "public"."sales_activities" USING "btree" ("customer_id");
+CREATE INDEX "calendar_beneficiary_id_idx" ON "public"."calendar" USING "btree" ("beneficiary_id");
 
-CREATE INDEX "sales_activities_due_at_idx" ON "public"."sales_activities" USING "btree" ("due_at");
+CREATE INDEX "calendar_due_at_idx" ON "public"."calendar" USING "btree" ("due_at");
 
-CREATE INDEX "sales_activities_pic_id_idx" ON "public"."sales_activities" USING "btree" ("pic_id");
+CREATE INDEX "calendar_pic_id_idx" ON "public"."calendar" USING "btree" ("pic_id");
 
-CREATE INDEX "sales_activities_scheduled_at_idx" ON "public"."sales_activities" USING "btree" ("scheduled_at");
+CREATE INDEX "calendar_scheduled_at_idx" ON "public"."calendar" USING "btree" ("scheduled_at");
 
 --
 -- Foreign keys
@@ -424,7 +335,7 @@ ALTER TABLE ONLY "public"."divisions"
     ADD CONSTRAINT "divisions_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."divisions"
-    ADD CONSTRAINT "divisions_head_id_fkey" FOREIGN KEY ("head_id") REFERENCES "public"."user_profiles"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "divisions_head_id_fkey" FOREIGN KEY ("head_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."manager_team_members"
     ADD CONSTRAINT "manager_team_members_account_manager_id_fkey" FOREIGN KEY ("account_manager_id") REFERENCES "public"."user_profiles"("id") ON DELETE CASCADE;
@@ -435,23 +346,20 @@ ALTER TABLE ONLY "public"."manager_team_members"
 ALTER TABLE ONLY "public"."notifications"
     ADD CONSTRAINT "notifications_user_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
 
-ALTER TABLE ONLY "public"."organization_contacts"
-    ADD CONSTRAINT "organization_contacts_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."organization_contacts"
-    ADD CONSTRAINT "organization_contacts_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
-
 ALTER TABLE ONLY "public"."organizations"
     ADD CONSTRAINT "organizations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
 
-ALTER TABLE ONLY "public"."sales_activities"
-    ADD CONSTRAINT "sales_activities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
 
-ALTER TABLE ONLY "public"."sales_activities"
-    ADD CONSTRAINT "sales_activities_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."organizations"("id") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_beneficiary_id_fkey" FOREIGN KEY ("beneficiary_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
 
-ALTER TABLE ONLY "public"."sales_activities"
-    ADD CONSTRAINT "sales_activities_pic_id_fkey" FOREIGN KEY ("pic_id") REFERENCES "public"."organization_contacts"("id") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_pic_id_fkey" FOREIGN KEY ("pic_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
+
+ALTER TABLE public.notifications
+  ADD CONSTRAINT fk_notifications_calendar FOREIGN KEY (calendar_id) REFERENCES public.calendar(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."user_profiles"
     ADD CONSTRAINT "user_profiles_division_id_fkey" FOREIGN KEY ("division_id") REFERENCES "public"."divisions"("id") ON DELETE SET NULL;
@@ -476,112 +384,6 @@ ALTER TABLE ONLY "public"."user_profiles"
 --Functions
 --
 
-CREATE OR REPLACE FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("user_id" "uuid", "profile_id" "uuid", "role" "public"."role_enum", "entity_id" "uuid", "division_id" "uuid")
-    LANGUAGE "sql"
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-  SELECT 
-    up.user_id,
-    up.id AS profile_id,
-    up.role,
-    up.entity_id,
-    up.division_id -- This is now semantically "team_id"
-  FROM public.user_profiles up
-  WHERE up.user_id = COALESCE(p_user_id, auth.uid())
-  LIMIT 1;
-$$;
-
-
-COMMENT ON FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid") IS 'Returns user profile info including entity_id and team (division_id). Used by entity-scoped RPCs.';
-
-
-CREATE OR REPLACE FUNCTION "public"."activities_delete_trigger"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  -- Ensure user can only delete their own activities
-  IF OLD.created_by != auth.uid() THEN
-    RAISE EXCEPTION 'You can only delete your own activities';
-  END IF;
-  
-  DELETE FROM public.sales_activities 
-  WHERE id = OLD.id AND created_by = auth.uid();
-  
-  RETURN OLD;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."activities_insert_trigger"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-    -- Set created_by to current user if not provided or null
-    IF NEW.created_by IS NULL THEN
-        NEW.created_by = auth.uid();
-    END IF;
-    
-    -- If auth.uid() is still null, try to get from JWT
-    IF NEW.created_by IS NULL THEN
-        NEW.created_by = (auth.jwt() ->> 'sub')::uuid;
-    END IF;
-    
-    -- Set created_at if not provided
-    IF NEW.created_at IS NULL THEN
-        NEW.created_at = NOW();
-    END IF;
-    
-    -- Set updated_at
-    NEW.updated_at = NOW();
-    
-    INSERT INTO public.sales_activities (
-        subject,
-        description,
-        status,
-        due_at,
-        scheduled_at,
-        created_by,
-        created_at,
-        updated_at
-    ) VALUES (
-        NEW.subject,
-        NEW.description,
-        NEW.status,
-        NEW.due_at,
-        NEW.scheduled_at,
-        NEW.created_by,
-        NEW.created_at,
-        NEW.updated_at
-    );
-    
-    RETURN NEW;
-END;
-$$;
-
-
-CREATE OR REPLACE FUNCTION "public"."activities_update_trigger"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-BEGIN
-  -- Ensure user can only update their own activities
-  IF OLD.created_by != auth.uid() THEN
-    RAISE EXCEPTION 'You can only update your own activities';
-  END IF;
-  
-  UPDATE public.sales_activities SET
-    activity_type = NEW.activity_type,
-    subject = NEW.subject,
-    description = NEW.description,
-    notes = NEW.notes,
-    status = NEW.status,
-    scheduled_at = NEW.scheduled_at,
-    due_at = NEW.due_at,
-    customer_id = NEW.customer_id,
-    updated_at = now()
-  WHERE id = OLD.id AND created_by = auth.uid();
-  
-  RETURN NEW;
-END;
-$$;
 
 CREATE OR REPLACE FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text" DEFAULT NULL::"text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -736,23 +538,7 @@ BEGIN
   DELETE FROM manager_team_members
   WHERE manager_id = v_profile_id OR account_manager_id = v_profile_id;
 
-  DELETE FROM sales_targets
-  WHERE assigned_to = v_profile_id;
-
-  -- WITH fallback_admin AS (
-  --   SELECT up.user_id
-  --   FROM user_profiles up
-  --   WHERE up.role = 'admin'
-  --     AND up.user_id != v_user_id
-  --   ORDER BY up.created_at
-  --   LIMIT 1
-  -- )
-  -- UPDATE opportunities
-  -- SET owner_id = COALESCE((SELECT user_id FROM fallback_admin), owner_id),
-  --     created_by = COALESCE((SELECT user_id FROM fallback_admin), created_by)
-  -- WHERE owner_id = v_user_id;
-
-  DELETE FROM sales_activities
+  DELETE FROM calendar
   WHERE created_by = v_user_id;
 
   DELETE FROM user_profiles
@@ -1009,13 +795,14 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."get_current_profile"() RETURNS TABLE("id" "uuid", "user_id" "uuid", "role" "public"."role_enum", "division_id" "uuid")
+CREATE OR REPLACE FUNCTION "public"."get_current_profile"() RETURNS TABLE("id" "uuid", "user_id" "uuid", "role" "public"."role_enum", "entity_id" "uuid" "division_id" "uuid")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
   SELECT up.id,
          up.user_id,
          up.role,
+         up.entity_id,
          up.division_id
   FROM public.user_profiles up
   WHERE up.user_id = auth.uid()
@@ -1023,139 +810,218 @@ CREATE OR REPLACE FUNCTION "public"."get_current_profile"() RETURNS TABLE("id" "
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."get_head_manager_archived"("p_period" "text" DEFAULT NULL::"text", "p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date") RETURNS TABLE("manager_id" "uuid", "manager_name" "text", "entity_id" "uuid", "division_id" "uuid", "revenue" numeric, "margin" numeric, "project_count" bigint)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $_$
-DECLARE
-  v_user_id UUID;
-  v_head_profile RECORD;
-  v_start_date DATE;
-  v_end_date DATE;
-  v_quarter INT;
-  v_year INT;
-BEGIN
-  -- Get current user
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
-  END IF;
-
-  -- Get head profile
-  SELECT * INTO v_head_profile
-  FROM public.user_profiles
-  WHERE user_id = v_user_id
-    AND role = 'head';
-
-  IF v_head_profile IS NULL THEN
-    RAISE EXCEPTION 'User is not a head';
-  END IF;
-
-  -- Parse period jika diberikan
-  IF p_period IS NOT NULL AND p_period ~ '^Q[1-4] \d{4}$' THEN
-    v_quarter := SUBSTRING(p_period FROM 2 FOR 1)::INT;
-    v_year := SUBSTRING(p_period FROM 4)::INT;
-    v_start_date := MAKE_DATE(v_year, (v_quarter - 1) * 3 + 1, 1);
-    v_end_date := (v_start_date + INTERVAL '3 MONTHS')::DATE - 1;
-  ELSIF p_start_date IS NOT NULL AND p_end_date IS NOT NULL THEN
-    v_start_date := p_start_date;
-    v_end_date := p_end_date;
-  ELSE
-    -- Default: current quarter
-    v_start_date := DATE_TRUNC('quarter', CURRENT_DATE)::DATE;
-    v_end_date := (v_start_date + INTERVAL '3 MONTHS' - INTERVAL '1 day')::DATE;
-  END IF;
-
-  -- Return archived untuk semua manager di tim/entity head
-  RETURN QUERY
+CREATE OR REPLACE FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("user_id" "uuid", "profile_id" "uuid", "role" "public"."role_enum", "entity_id" "uuid", "division_id" "uuid")
+    LANGUAGE "sql"
+    SET "search_path" TO 'public', 'auth'
+    AS $$
   SELECT 
-    m.id AS manager_id,
-    m.full_name AS manager_name,
-    m.entity_id,
-    m.division_id,
-    COALESCE(archived.revenue, 0)::NUMERIC AS revenue,
-    COALESCE(archived.margin, 0)::NUMERIC AS margin,
-    COALESCE(archived.project_count, 0)::BIGINT AS project_count
-  FROM public.user_profiles m
-  CROSS JOIN LATERAL (
-    SELECT * FROM public.get_manager_archived(
-      m.id,
-      NULL,
-      v_start_date,
-      v_end_date
-    )
-  ) archived
-  WHERE m.role = 'manager'
-    AND m.is_active = true
-    AND (
-      -- Head melihat manager di tim mereka (division_id)
-      (v_head_profile.division_id IS NOT NULL 
-       AND m.division_id = v_head_profile.division_id)
-      OR
-      -- Fallback: Head melihat manager di entity mereka
-      (v_head_profile.division_id IS NULL 
-       AND v_head_profile.entity_id IS NOT NULL
-       AND m.entity_id = v_head_profile.entity_id)
-    )
-  ORDER BY m.full_name;
-END;
-$_$;
+    up.user_id,
+    up.id AS profile_id,
+    up.role,
+    up.entity_id,
+    up.division_id 
+  FROM public.user_profiles up
+  WHERE up.user_id = COALESCE(p_user_id, auth.uid())
+  LIMIT 1;
+$$;
 
---@Placeholder
-CREATE OR REPLACE FUNCTION public.get_manager_archived(
-  p_manager_id uuid,
-  p_period text DEFAULT NULL,
-  p_start_date date DEFAULT NULL,
-  p_end_date date DEFAULT NULL
-) RETURNS TABLE(
-  revenue   numeric,
-  margin    numeric,
-  project_count bigint
+
+COMMENT ON FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid") IS 'Returns user profile info including entity_id and team (division_id). Used by entity-scoped RPCs.';
+
+
+-- CREATE OR REPLACE FUNCTION "public"."get_head_manager_archived"("p_period" "text" DEFAULT NULL::"text", "p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date") RETURNS TABLE("manager_id" "uuid", "manager_name" "text", "entity_id" "uuid", "division_id" "uuid", "revenue" numeric, "margin" numeric, "project_count" bigint)
+--     LANGUAGE "plpgsql" SECURITY DEFINER
+--     SET "search_path" TO 'public'
+--     AS $_$
+-- DECLARE
+--   v_user_id UUID;
+--   v_head_profile RECORD;
+--   v_start_date DATE;
+--   v_end_date DATE;
+--   v_quarter INT;
+--   v_year INT;
+-- BEGIN
+--   -- Get current user
+--   v_user_id := auth.uid();
+  
+--   IF v_user_id IS NULL THEN
+--     RAISE EXCEPTION 'User not authenticated';
+--   END IF;
+
+--   -- Get head profile
+--   SELECT * INTO v_head_profile
+--   FROM public.user_profiles
+--   WHERE user_id = v_user_id
+--     AND role = 'head';
+
+--   IF v_head_profile IS NULL THEN
+--     RAISE EXCEPTION 'User is not a head';
+--   END IF;
+
+--   -- Parse period jika diberikan
+--   IF p_period IS NOT NULL AND p_period ~ '^Q[1-4] \d{4}$' THEN
+--     v_quarter := SUBSTRING(p_period FROM 2 FOR 1)::INT;
+--     v_year := SUBSTRING(p_period FROM 4)::INT;
+--     v_start_date := MAKE_DATE(v_year, (v_quarter - 1) * 3 + 1, 1);
+--     v_end_date := (v_start_date + INTERVAL '3 MONTHS')::DATE - 1;
+--   ELSIF p_start_date IS NOT NULL AND p_end_date IS NOT NULL THEN
+--     v_start_date := p_start_date;
+--     v_end_date := p_end_date;
+--   ELSE
+--     -- Default: current quarter
+--     v_start_date := DATE_TRUNC('quarter', CURRENT_DATE)::DATE;
+--     v_end_date := (v_start_date + INTERVAL '3 MONTHS' - INTERVAL '1 day')::DATE;
+--   END IF;
+
+--   RETURN QUERY
+--   SELECT 
+--     m.id AS manager_id,
+--     m.full_name AS manager_name,
+--     m.entity_id,
+--     m.division_id,
+--     COALESCE(archived.revenue, 0)::NUMERIC AS revenue,
+--     COALESCE(archived.margin, 0)::NUMERIC AS margin,
+--     COALESCE(archived.project_count, 0)::BIGINT AS project_count
+--   FROM public.user_profiles m
+--   CROSS JOIN LATERAL (
+--     SELECT * FROM public.get_manager_archived(
+--       m.id,
+--       NULL,
+--       v_start_date,
+--       v_end_date
+--     )
+--   ) archived
+--   WHERE m.role = 'manager'
+--     AND m.is_active = true
+--     AND (
+--       (v_head_profile.division_id IS NOT NULL 
+--        AND m.division_id = v_head_profile.division_id)
+--       OR
+--       (v_head_profile.division_id IS NULL 
+--        AND v_head_profile.entity_id IS NOT NULL
+--        AND m.entity_id = v_head_profile.entity_id)
+--     )
+--   ORDER BY m.full_name;
+-- END;
+-- $_$;
+
+-- --@Placeholder
+-- CREATE OR REPLACE FUNCTION public.get_manager_archived(
+--   p_manager_id uuid,
+--   p_period text DEFAULT NULL,
+--   p_start_date date DEFAULT NULL,
+--   p_end_date date DEFAULT NULL
+-- ) RETURNS TABLE(
+--   revenue   numeric,
+--   margin    numeric,
+--   project_count bigint
+-- )
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- SET search_path TO 'public'
+-- AS $$
+-- DECLARE
+--   v_entity_id  uuid;
+--   v_division_id uuid;
+--   v_start_date date;
+--   v_end_date   date;
+--   v_quarter    int;
+--   v_year       int;
+-- BEGIN
+--   -- Get manager's entity and division
+--   SELECT entity_id, division_id
+--     INTO v_entity_id, v_division_id
+--     FROM public.user_profiles
+--    WHERE id = p_manager_id
+--      AND role = 'manager';
+
+--   IF v_entity_id IS NULL OR v_division_id IS NULL THEN
+--     RAISE EXCEPTION 'Manager not found or missing entity/division assignment';
+--   END IF;
+
+--   IF p_period IS NOT NULL AND p_period ~ '^Q[1-4] \\d{4}$' THEN
+--     v_quarter := SUBSTRING(p_period FROM 2 FOR 1)::int;
+--     v_year    := SUBSTRING(p_period FROM 4)::int;
+--     v_start_date := MAKE_DATE(v_year, (v_quarter - 1) * 3 + 1, 1);
+--     v_end_date   := (v_start_date + INTERVAL '3 MONTHS')::date - 1;
+--   ELSIF p_start_date IS NOT NULL AND p_end_date IS NOT NULL THEN
+--     v_start_date := p_start_date;
+--     v_end_date   := p_end_date;
+--   ELSE
+--     v_start_date := DATE_TRUNC('quarter', CURRENT_DATE)::date;
+--     v_end_date   := (v_start_date + INTERVAL '3 MONTHS' - INTERVAL '1 day')::date;
+--   END IF;
+
+--   -- Placeholder – no source tables left, return zeros
+--   RETURN QUERY
+--     SELECT
+--       0::numeric  AS revenue,
+--       0::numeric  AS margin,
+--       0::bigint   AS project_count;
+-- END;
+-- $$;
+
+CREATE OR REPLACE FUNCTION public.get_division_summary(
+  p_entity_id uuid DEFAULT NULL
 )
-LANGUAGE plpgsql
+RETURNS TABLE (
+  id uuid,
+  name text,
+  pending_beneficiaries bigint,
+  beneficiaries bigint,
+  referrers bigint,
+  workforce bigint
+)
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
-DECLARE
-  v_entity_id  uuid;
-  v_division_id uuid;
-  v_start_date date;
-  v_end_date   date;
-  v_quarter    int;
-  v_year       int;
-BEGIN
-  -- Get manager's entity and division
-  SELECT entity_id, division_id
-    INTO v_entity_id, v_division_id
-    FROM public.user_profiles
-   WHERE id = p_manager_id
-     AND role = 'manager';
+  SELECT
+    d.id,
+    d.name,
+    p.cnt AS pending_beneficiaries,
+    -- COALESCE(p.cnt,0) AS pending_beneficiaries,
+    COALESCE(a.cnt,0) AS beneficiaries,
+    0 AS referrers,
+    COALESCE(w.cnt,0) AS workforce
+  FROM public.divisions d
 
-  IF v_entity_id IS NULL OR v_division_id IS NULL THEN
-    RAISE EXCEPTION 'Manager not found or missing entity/division assignment';
-  END IF;
+  LEFT JOIN LATERAL (
+      SELECT *
+      FROM public.user_profiles up
+      WHERE up.user_id = auth.uid()
+        AND up.division_id = d.id
+  ) up_user ON true
 
-  IF p_period IS NOT NULL AND p_period ~ '^Q[1-4] \\d{4}$' THEN
-    v_quarter := SUBSTRING(p_period FROM 2 FOR 1)::int;
-    v_year    := SUBSTRING(p_period FROM 4)::int;
-    v_start_date := MAKE_DATE(v_year, (v_quarter - 1) * 3 + 1, 1);
-    v_end_date   := (v_start_date + INTERVAL '3 MONTHS')::date - 1;
-  ELSIF p_start_date IS NOT NULL AND p_end_date IS NOT NULL THEN
-    v_start_date := p_start_date;
-    v_end_date   := p_end_date;
-  ELSE
-    v_start_date := DATE_TRUNC('quarter', CURRENT_DATE)::date;
-    v_end_date   := (v_start_date + INTERVAL '3 MONTHS' - INTERVAL '1 day')::date;
-  END IF;
+  LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS cnt
+      FROM public.contacts c
+      -- JOIN public.user_profiles up2
+      --   ON up2.user_id = c.user_id
+      -- WHERE up2.division_id = d.id
+      --   AND c.status = 'pending'
+      WHERE  c.status = 'pending'
+  ) p ON true
 
-  -- Placeholder – no source tables left, return zeros
-  RETURN QUERY
-    SELECT
-      0::numeric  AS revenue,
-      0::numeric  AS margin,
-      0::bigint   AS project_count;
-END;
+  LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS cnt
+      FROM public.contacts c
+      JOIN public.user_profiles up2
+        ON up2.user_id = c.user_id
+      WHERE up2.division_id = d.id
+        AND c.status = 'active'
+  ) a ON true
+
+  LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS cnt
+      FROM public.user_profiles up2
+      WHERE up2.division_id = d.id
+        AND up2.role IN ('manager','account_manager','staff','sales')
+        AND up2.is_active = true
+  ) w ON true
+
+  WHERE (p_entity_id IS NOT NULL AND d.entity_id = p_entity_id)
+     OR (p_entity_id IS NULL AND up_user.user_id IS NOT NULL);
 $$;
 
 
@@ -1364,12 +1230,10 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_activities()
+CREATE OR REPLACE FUNCTION public.get_tasks()
 RETURNS TABLE (
   id uuid,
-  activity_type text,
-  customer_id uuid,
-  customer_name text,
+  entry_type text,
   pic_id uuid,
   pic_name text,
   scheduled_at timestamptz,
@@ -1385,23 +1249,402 @@ AS $$
 BEGIN
   RETURN QUERY
     SELECT
-      sa.id,
-      sa.activity_type,
-      sa.customer_id,
-      o.name          AS customer_name,
-      sa.pic_id,
-      oc.full_name    AS pic_name,
-      sa.scheduled_at,
-      sa.status,
-      sa.notes,
-      sa.created_by,
-      sa.created_at
-    FROM public.sales_activities sa
-    LEFT JOIN public.organizations o
-      ON sa.customer_id = o.id
-    LEFT JOIN public.organization_contacts oc
-      ON sa.pic_id = oc.id
-    ORDER BY sa.scheduled_at DESC;
+      ta.id,
+      ta.entry_type,
+      ta.pic_id,
+      co.name    AS pic_name,
+      ta.scheduled_at,
+      ta.status,
+      ta.notes,
+      ta.created_by,
+      ta.created_at
+    FROM public.calendar ta
+    LEFT JOIN public.contacts co
+      ON ta.pic_id = co.id
+    WHERE ta.entry_type <> 'event'
+    ORDER BY ta.scheduled_at DESC;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.get_calendar(timestamptz, timestamptz);
+
+CREATE OR REPLACE FUNCTION public.get_calendar(
+    start_date timestamptz,
+    end_date   timestamptz
+)
+RETURNS TABLE (
+    id            uuid,
+    entry_type    text,
+    subject       text,
+    location      text,
+    notes         text,
+    scheduled_at  timestamptz,
+    status        text,
+    created_by    uuid,
+    created_at    timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_role         text;
+    v_entity_id    uuid;
+    v_division_id  uuid;
+    v_user_id      uuid;
+    v_where        text := '';
+BEGIN
+    -- Fetch the viewer's profile
+    SELECT role, entity_id, division_id, user_id
+    INTO   v_role, v_entity_id, v_division_id, v_user_id
+    FROM   public.user_profiles
+    WHERE  user_id = auth.uid();
+
+    -- Build role‑specific filter
+    IF v_role = 'admin' THEN
+        v_where := '';
+    ELSIF v_role = 'head' OR v_role = 'manager' OR v_role = 'account_manager' THEN
+        IF v_entity_id IS NOT NULL THEN
+            v_where := format(' AND up_creator.entity_id = %L', v_entity_id);
+        END IF;
+    ELSIF v_role = 'staff' THEN
+        IF v_division_id IS NOT NULL THEN
+            v_where := format(' AND up_creator.division_id = %L', v_division_id);
+        END IF;
+    ELSE
+        v_where := format(' AND up_creator.user_id = %L', v_user_id);
+    END IF;
+
+    -- Return events for the requested date range, applying the filter
+    RETURN QUERY EXECUTE format(
+        'SELECT c.id,
+                c.entry_type,
+                c.subject,
+                c.location,
+                c.notes,
+                c.scheduled_at,
+                c.status,
+                c.created_by,
+                c.created_at
+         FROM   public.calendar c
+         JOIN   public.user_profiles up_creator
+                ON c.created_by = up_creator.user_id
+         WHERE  c.scheduled_at BETWEEN %L AND %L' || v_where || '
+         ORDER BY c.scheduled_at ASC',
+        start_date,
+        end_date
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.create_calendar(
+    p_entry_type   text,
+    p_subject     text,
+    p_location    text,
+    p_beneficiary_id uuid,
+    p_pic_id      uuid,
+    p_scheduled_at timestamptz,
+    p_status      text,
+    p_notes       text,
+    p_created_by  uuid
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO public.calendar (
+        entry_type, subject, location, beneficiary_id, pic_id,
+        scheduled_at, status, notes,
+        created_by, created_at, updated_at
+    ) VALUES (
+        p_entry_type, P_subject, p_location, p_beneficiary_id, p_pic_id,
+        p_scheduled_at, p_status, p_notes,
+        p_created_by, NOW(), NOW()
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.create_calendar_bulk(events jsonb)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  rec jsonb;
+BEGIN
+  FOR rec IN SELECT * FROM jsonb_array_elements(events)
+  LOOP
+    INSERT INTO public.calendar (
+        entry_type, subject, location, beneficiary_id, pic_id,
+        scheduled_at, status, notes,
+        created_by, created_at, updated_at
+    ) VALUES (
+        rec->>'p_entry_type',
+        rec->>'p_subject',
+        rec->>'p_location',
+        (rec->>'p_beneficiary_id')::uuid,
+        (rec->>'p_pic_id')::uuid,
+        (rec->>'p_scheduled_at')::timestamptz,
+        rec->>'p_status',
+        rec->>'p_notes',
+        (rec->>'p_created_by')::uuid,
+        NOW(),
+        NOW()
+    );
+  END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_calendar(
+    p_id          uuid,
+    p_entry_type   text,
+    p_subject     text,
+    p_location    text,
+    p_beneficiary_id uuid,
+    p_pic_id      uuid,
+    p_scheduled_at timestamptz,
+    p_status      text,
+    p_notes       text
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    UPDATE public.calendar SET
+        entry_type     = p_entry_type,
+        subject       = p_subject,
+        location      = p_location,
+        beneficiary_id = p_beneficiary_id,
+        pic_id        = p_pic_id,
+        scheduled_at  = p_scheduled_at,
+        status        = p_status,
+        notes         = p_notes,
+        updated_at    = NOW()
+    WHERE id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_calendar(
+    p_id uuid
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    DELETE FROM public.calendar WHERE id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.calendar_notify_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_message text;
+BEGIN
+    CASE NEW.entry_type
+        WHEN 'referrer_request' THEN
+            v_message := 'You have a new referrer request';
+        WHEN 'client_requests' THEN
+            v_message := 'You have a new beneficiary request';
+        WHEN 'staff_todo' THEN
+            v_message := 'A calendar for staff has been added';
+        WHEN 'volunteer_todo' THEN
+            v_message := 'A calendar for volunteers has been added';
+        WHEN 'event' THEN
+            v_message := 'A new event has been added';
+        ELSE
+            v_message := 'A new calendar item has been added';
+    END CASE;
+
+    INSERT INTO public.notifications (
+        user_id,  
+        org_role,  
+        type,      
+        title,    
+        message,
+        link,      
+        meta,
+        is_read,
+        created_at,
+        calendar_id
+    ) VALUES (
+        NULL,
+        'staff',
+        'calendar',
+        v_message,
+        v_message,
+        NULL,
+        '{}'::jsonb,
+        FALSE,
+        NOW(),
+        NEW.id
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_calendar_notify_insert
+AFTER INSERT ON public.calendar
+FOR EACH ROW
+EXECUTE FUNCTION public.calendar_notify_insert();
+
+CREATE OR REPLACE FUNCTION public.calendar_notify_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM public.notifications
+    WHERE calendar_id = OLD.id;
+    RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER trg_calendar_notify_delete
+AFTER DELETE ON public.calendar
+FOR EACH ROW
+EXECUTE FUNCTION public.calendar_notify_delete();
+
+
+--used in admin's role management 
+CREATE OR REPLACE FUNCTION public.get_divisions_by_entity(
+  p_entity_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  entity_id uuid,
+  head_id uuid,
+  created_at timestamp with time zone
+)
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT
+    d.id,
+    d.name,
+    d.entity_id,
+    d.head_id,
+    d.created_at
+  FROM public.divisions d
+  WHERE (p_entity_id IS NULL OR d.entity_id = p_entity_id)
+    AND d.is_active = true
+  ORDER BY d.name;
+$$;
+
+CREATE OR REPLACE FUNCTION public.create_division(
+    p_name text,
+    p_entity_id uuid,
+    p_head_id uuid DEFAULT NULL
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    new_id uuid;
+BEGIN
+    IF p_head_id IS NULL THEN
+        SELECT head_id
+        INTO p_head_id
+        FROM public.divisions d
+        WHERE d.entity_id = p_entity_id
+          AND d.head_id IS NOT NULL
+          AND EXISTS (
+              SELECT 1
+              FROM public.user_profiles u
+              WHERE u.user_id = d.head_id
+          )
+        ORDER BY d.created_at
+        LIMIT 1;
+    END IF;
+
+    INSERT INTO public.divisions (name, entity_id, head_id, created_at, is_active)
+    VALUES (p_name, p_entity_id, p_head_id, now(), true)
+    RETURNING id INTO new_id;
+
+    RETURN new_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_division(
+  p_id          uuid,
+  p_name        text,
+  p_entity_id   uuid,
+  p_head_id     uuid DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_head_id uuid;
+BEGIN
+  IF p_head_id IS NULL THEN
+    SELECT head_id
+      INTO v_head_id
+      FROM public.divisions d
+      WHERE d.entity_id = p_entity_id
+        AND d.head_id IS NOT NULL
+      ORDER BY d.created_at
+      LIMIT 1;
+  ELSE
+    v_head_id := p_head_id;
+  END IF;
+
+  UPDATE public.divisions
+  SET    name      = p_name,
+         entity_id = p_entity_id,
+         head_id   = v_head_id  
+  WHERE  id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_division(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  DELETE FROM public.divisions
+  WHERE id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_division_manager()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  other_manager uuid;
+BEGIN
+  --Manager added / moved to a division
+  IF NEW.role = 'manager' AND NEW.is_active AND NEW.division_id IS NOT NULL THEN
+    UPDATE public.divisions
+       SET manager_id = NEW.user_id
+     WHERE id = NEW.division_id;
+    RETURN NEW;
+  END IF;
+
+  --Manager removed / deactivated / moved out of division
+  IF OLD.role = 'manager' AND OLD.is_active AND OLD.division_id IS NOT NULL THEN
+    IF TG_OP = 'DELETE' OR
+       (NEW.role <> 'manager' OR NEW.is_active IS NOT TRUE OR NEW.division_id IS NULL) THEN
+      SELECT id INTO other_manager
+      FROM public.user_profiles
+      WHERE division_id = OLD.division_id
+        AND role = 'manager'
+        AND is_active
+        AND id <> OLD.id
+      LIMIT 1;
+      IF other_manager IS NULL THEN
+        UPDATE public.divisions
+           SET manager_id = NULL
+         WHERE id = OLD.division_id;
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN NEW;
 END;
 $$;
 
@@ -1412,11 +1655,11 @@ $$;
 -- Trigger: after insert on auth.users
 CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
-CREATE OR REPLACE TRIGGER "activities_delete_trigger" INSTEAD OF DELETE ON "public"."activities" FOR EACH ROW EXECUTE FUNCTION "public"."activities_delete_trigger"();
+-- CREATE OR REPLACE TRIGGER "calendar_delete_trigger" BEFORE DELETE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_delete_trigger"();
 
-CREATE OR REPLACE TRIGGER "activities_insert_trigger" INSTEAD OF INSERT ON "public"."activities" FOR EACH ROW EXECUTE FUNCTION "public"."activities_insert_trigger"();
+-- CREATE OR REPLACE TRIGGER "calendar_insert_trigger" BEFORE INSERT ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_insert_trigger"();
 
-CREATE OR REPLACE TRIGGER "activities_update_trigger" INSTEAD OF UPDATE ON "public"."activities" FOR EACH ROW EXECUTE FUNCTION "public"."activities_update_trigger"();
+-- CREATE OR REPLACE TRIGGER "calendar_update_trigger" BEFORE UPDATE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_update_trigger"();
 
 CREATE OR REPLACE TRIGGER "trigger_preserve_non_admin_fields" BEFORE UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."preserve_non_admin_fields"();
 
@@ -1426,6 +1669,17 @@ CREATE OR REPLACE TRIGGER "trigger_validate_user_profile" BEFORE INSERT OR UPDAT
 
 CREATE OR REPLACE TRIGGER "update_organizations_updated_at" BEFORE UPDATE ON "public"."organizations" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
+CREATE OR REPLACE TRIGGER divisionManager_update_trigger
+AFTER INSERT OR UPDATE OF role, division_id, is_active
+ON public.user_profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.update_division_manager();
+
+CREATE OR REPLACE TRIGGER divisionManager_delete_trigger
+AFTER DELETE
+ON public.user_profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.update_division_manager();
 
 --
 -- Policies and RLS
@@ -1511,9 +1765,6 @@ CREATE POLICY "notifications_select" ON "public"."notifications" FOR SELECT TO "
 CREATE POLICY "notifications_update" ON "public"."notifications" FOR UPDATE TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
 
 
-ALTER TABLE "public"."organization_contacts" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."organizations" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1541,10 +1792,10 @@ CREATE POLICY "read_own_profile" ON "public"."user_profiles" FOR SELECT USING ((
 ALTER TABLE "public"."regions" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."sales_activities" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."calendar" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY sales_activities_select
-  ON public.sales_activities
+CREATE POLICY calendar_select
+  ON public.calendar
   FOR SELECT
   TO authenticated
   USING (
@@ -1558,14 +1809,14 @@ CREATE POLICY sales_activities_select
     )
   );
 
-CREATE POLICY sales_activities_insert
-  ON public.sales_activities
+CREATE POLICY calendar_insert
+  ON public.calendar
   FOR INSERT
   TO authenticated
   WITH CHECK (created_by = auth.uid());
 
-CREATE POLICY ssales_activities_update
-  ON public.sales_activities
+CREATE POLICY calendar_update
+  ON public.calendar
   FOR UPDATE
   TO authenticated
   USING (
@@ -1573,7 +1824,7 @@ CREATE POLICY ssales_activities_update
       SELECT 1
       FROM public.user_profiles up_user
       LEFT JOIN public.user_profiles up_creator 
-        ON up_creator.user_id = sales_activities.created_by
+        ON up_creator.user_id = calendar.created_by
       WHERE up_user.user_id = auth.uid()
       AND (
         up_user.role IN ('admin', 'head')
@@ -1581,7 +1832,7 @@ CREATE POLICY ssales_activities_update
           up_user.role IN ('manager', 'account_manager', 'staff')
           AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
         )
-        OR sales_activities.created_by = auth.uid()
+        OR calendar.created_by = auth.uid()
       )
     )
   )
@@ -1590,7 +1841,7 @@ CREATE POLICY ssales_activities_update
       SELECT 1
       FROM public.user_profiles up_user
       LEFT JOIN public.user_profiles up_creator 
-        ON up_creator.user_id = sales_activities.created_by
+        ON up_creator.user_id = calendar.created_by
       WHERE up_user.user_id = auth.uid()
       AND (
         up_user.role IN ('admin', 'head')
@@ -1598,13 +1849,13 @@ CREATE POLICY ssales_activities_update
           up_user.role IN ('manager', 'account_manager', 'staff')
           AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
         )
-        OR sales_activities.created_by = auth.uid()
+        OR calendar.created_by = auth.uid()
       )
     )
   );
 
-CREATE POLICY sales_activities_delete
-  ON public.sales_activities
+CREATE POLICY calendar_delete
+  ON public.calendar
   FOR DELETE
   TO authenticated
   USING (
@@ -1612,7 +1863,7 @@ CREATE POLICY sales_activities_delete
       SELECT 1
       FROM public.user_profiles up_user
       LEFT JOIN public.user_profiles up_creator 
-        ON up_creator.user_id = sales_activities.created_by
+        ON up_creator.user_id = calendar.created_by
       WHERE up_user.user_id = auth.uid()
       AND (
         -- Admin & Head: Can delete anything
@@ -1621,7 +1872,7 @@ CREATE POLICY sales_activities_delete
           up_user.role IN ('manager', 'account_manager', 'staff')
           AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
         )
-        OR sales_activities.created_by = auth.uid()
+        OR calendar.created_by = auth.uid()
       )
     )
   );
@@ -1658,11 +1909,15 @@ CREATE POLICY "user_profiles_update" ON "public"."user_profiles" FOR UPDATE TO "
 
 GRANT EXECUTE ON FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."activities_delete_trigger"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION public.create_calendar(text, text, text, uuid, uuid, timestamptz, text, text, uuid) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION "public"."activities_insert_trigger"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION public.update_calendar(uuid, text, text, text, uuid, uuid, timestamptz, text, text) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION "public"."activities_update_trigger"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION public.delete_calendar(uuid) TO authenticated;
+
+-- GRANT EXECUTE ON FUNCTION "public"."calendar_delete_trigger"() TO "authenticated";
+
+-- GRANT EXECUTE ON FUNCTION "public"."calendar_insert_trigger"() TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text") TO "authenticated";
 
@@ -1712,9 +1967,9 @@ GRANT EXECUTE ON FUNCTION "public"."update_updated_at_column"() TO "authenticate
 
 GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."sales_activities" TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."activities" TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."audit_logs" TO "authenticated";
 
@@ -1728,15 +1983,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."manager_team_members" TO
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications" TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."organization_contacts" TO "authenticated";
-
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."organizations" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."regions" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."sales_activity" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."sales_activity_v2" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."system_settings" TO "authenticated";
 
@@ -1745,10 +1994,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."titles" TO "authenticate
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_profiles" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_audit_log_complete" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_master_customer" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_master_end_user" TO "authenticated";
 
 SET row_security = on;
 

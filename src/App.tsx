@@ -5,26 +5,27 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CRMLayout } from "@/components/layout/CRMLayout";
 import Forbidden from "./pages/Forbidden";
-import Index from "./pages/Index";
-import Activities from "./pages/Activities";
+import Index from "./Index";
+import Tasks from "./pages/Tasks";
 import CalendarPage from "./pages/CalendarPage";
-import Contacts from "./pages/Contacts";
-import Customers from "./pages/Customers";
-import EndUsers from "./pages/EndUsers";
+import Beneficiaries from "./pages/Beneficiaries";
+import Services from "./pages/Services";
+import Referrals from "./pages/Referrals";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
-import StrategicDashboard from "./pages/StrategicDashboard";
-import OperationalDashboard from "./pages/OperationalDashboard";
-import PendingApproval from "./pages/PendingApproval";
-import AccountManagerDashboard from "./pages/AccountManagerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Dashboard from "./pages/Dashboard";
+// import OperationalDashboard from "./pages/DashboardOperational";
+// import AccountManagerDashboard from "./pages/DashboardAccountManager";
+// import StaffDashboard from "./pages/DashboardStaff";
+import PendingApproval from "./pages/PendingApproval";
 import AdminOther from "./pages/AdminOther";
 import AdminUsers from "./pages/AdminUsers";
 import AdminLogs from "./pages/AdminLogs";
 import Auth from "./pages/Auth";
-import ManagerSalesSummary from "./pages/ManagerSalesSummary";
-import HeadSalesSummary from "./pages/HeadSalesSummary";
+// import ManagerSalesSummary from "./pages/ManagerSalesSummary";
+// import HeadSalesSummary from "./pages/HeadSalesSummary";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { RoleBasedRoute } from "./components/RoleBasedRoute";
@@ -43,111 +44,8 @@ const App = () => (
               <Index />
             </ProtectedRoute>
           } />
-          <Route path="/admin-dashboard" element={
-            <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['admin']}>
-                <CRMLayout>
-                  <AdminDashboard />
-                </CRMLayout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          } />
-          <Route path="/sales-dashboard" element={
-            <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['account_manager', 'staff']}>
-                <CRMLayout>
-                  <AccountManagerDashboard />
-                </CRMLayout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          } />
-          {/* Head-specific routes */}
-          <Route path="/head/executive-dashboard" element={
-            <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['head', 'admin']}>
-                <CRMLayout>
-                  <StrategicDashboard />
-                </CRMLayout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          } />
 
-          {/* Redirect old executive-dashboard to new head route */}
-          <Route path="/executive-dashboard" element={
-            <Navigate to="/head/executive-dashboard" replace />
-          } />
-          <Route path="/team-dashboard" element={
-            <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['manager', 'head', 'admin']}>
-                <CRMLayout>
-                  <OperationalDashboard />
-                </CRMLayout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          } />
-          <Route path="/activities" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <Activities />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/calendar" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <CalendarPage />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/notifications" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <Notifications />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/contacts" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <Contacts />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/customers" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <Customers />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/end-users" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <EndUsers />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <Settings />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <CRMLayout>
-                <Profile />
-              </CRMLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/pending" element={
-            <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['pending']}>
-                <PendingApproval />
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          } />
+          {/* Admin specific routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute>
               <RoleBasedRoute allowedRoles={['admin']}>
@@ -183,55 +81,81 @@ const App = () => (
                 </CRMLayout>
               </RoleBasedRoute>
             </ProtectedRoute>
-          } />          
-          <Route path="/am/dashboard" element={
+          } />      
+          {/* Dashboards */}
+          <Route path="/dashboard" element={
             <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['account_manager', 'staff']}>
+              <RoleBasedRoute allowedRoles={['staff', 'account_manager', 'manager', 'head', 'admin']}>
                 <CRMLayout>
-                  <AccountManagerDashboard />
+                  <Dashboard />
                 </CRMLayout>
               </RoleBasedRoute>
             </ProtectedRoute>
           } />
-          {/* Backward compatibility redirects for old dashboard routes */}
-          <Route path="/dashboard/admin" element={
+          {/* Main routes */}
+          <Route path="/tasks" element={
             <ProtectedRoute>
-              <Navigate to="/admin-dashboard" replace />
+              <CRMLayout>
+                <Tasks />
+              </CRMLayout>
             </ProtectedRoute>
           } />
-          <Route path="/dashboard/account-manager" element={
+          <Route path="/calendar" element={
             <ProtectedRoute>
-              <Navigate to="/sales-dashboard" replace />
+              <CRMLayout>
+                <CalendarPage />
+              </CRMLayout>
             </ProtectedRoute>
           } />
-          <Route path="/dashboard/strategic" element={
+          <Route path="/notifications" element={
             <ProtectedRoute>
-              <Navigate to="/executive-dashboard" replace />
+              <CRMLayout>
+                <Notifications />
+              </CRMLayout>
             </ProtectedRoute>
           } />
-          <Route path="/dashboard/operational" element={
+          <Route path="/beneficiaries" element={
             <ProtectedRoute>
-              <Navigate to="/team-dashboard" replace />
+              <CRMLayout>
+                <Beneficiaries />
+              </CRMLayout>
             </ProtectedRoute>
           } />
-          <Route path="/manager/team-dashboard" element={
+          <Route path="/services" element={
             <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['manager', 'head', 'admin']}>
-                <CRMLayout>
-                  <OperationalDashboard />
-                </CRMLayout>
+              <CRMLayout>
+                <Services />
+              </CRMLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/referrals" element={
+            <ProtectedRoute>
+              <CRMLayout>
+                <Referrals />
+              </CRMLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <CRMLayout>
+                <Settings />
+              </CRMLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <CRMLayout>
+                <Profile />
+              </CRMLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/pending" element={
+            <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['pending']}>
+                <PendingApproval />
               </RoleBasedRoute>
             </ProtectedRoute>
-          } />
-          <Route path="/admin/settings" element={
-            <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['admin']}>
-                <CRMLayout>
-                  <Settings />
-                </CRMLayout>
-              </RoleBasedRoute>
-            </ProtectedRoute>
-          } />
+          } />    
           <Route path="/auth" element={<Auth />} />
           <Route path="/403" element={<Forbidden />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -22,6 +22,12 @@ if (!SUPABASE_KEY) {
   );
 }
 
+/**
+ * Supabase client instance.
+ * - persistSession: keeps the user logged in across page reloads.
+ * - detectSessionInUrl: reads auth tokens from the URL on initial load.
+ * - flowType: PKCE is recommended for SPA and serverless deployments.
+ */
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,

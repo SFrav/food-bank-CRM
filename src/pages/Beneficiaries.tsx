@@ -79,9 +79,12 @@ export default function Contacts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Contacts</h1>
-      </div>
+      {/* <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Contacts</h1>
+          <p className="text-muted-foreground">Manage your contact database</p>
+        </div>
+      </div> */}
 
       <ContactsTable key={refreshKey} onEditContact={handleEditContact} />
 

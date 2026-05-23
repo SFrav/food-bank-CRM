@@ -41,7 +41,7 @@ const isAdminEmail = (email: string): boolean => {
   return list.includes(email.toLowerCase());
 };
 
-const ADMIN_UUID = ''; //Add admin's UUID here
+const ADMIN_UUID = '';
 
 export const useProfile = () => {
   const { user, loading: authLoading } = useAuth();
@@ -95,6 +95,30 @@ export const useProfile = () => {
       }
       setProfile(profileData as UserProfile);
 
+      // if (profileData) {
+      //     // Row exists — always trust the DB role exactly as stored.
+      //     // Never auto-promote here; admin assignment is done via admin_update_user_profile RPC.  
+      //   setProfile(profileData as UserProfile); // cast after adding department and entity
+      //   return;
+      // }
+
+      // const { data, error: fetchError } = await supabase
+      //   .from('user_profiles')
+      //   .select('*')
+      //   .eq('user_id', user.id)
+      //   .maybeSingle();
+
+      // if (fetchError) throw fetchError;
+
+      // if (data) {
+      //   // Row exists — always trust the DB role exactly as stored.
+      //   // Never auto-promote here; admin assignment is done via admin_update_user_profile RPC.
+      //   setProfile(data as UserProfile);
+      //   return;
+      // }
+
+      // No row found. The handle_new_auth_user trigger should have created one.
+      // This path means signup trigger failed or this is a legacy admin user.
       const userEmail = user.email ?? '';
       const isAdmin = user.id === ADMIN_UUID || isAdminEmail(userEmail);
 
@@ -112,7 +136,7 @@ export const useProfile = () => {
             return;
           }
         } catch {
-
+          // RPC unavailable — fall through to mock
         }
 
         // Last resort mock — only for admin, never for regular users

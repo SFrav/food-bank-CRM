@@ -1,14 +1,9 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart3, Users, Calendar, FileText, Settings, PieChart, Building2, Shield, Activity, X, ContactRound, GitBranch, CheckSquare, LogOut, Plus, Bell, Database, UserPlus, Building, TrendingUp, Briefcase, Target, Home, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState} from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleBadge } from './RoleBadge';
 import { Button } from './ui/button';
-import { toast } from '@/hooks/use-toast';
-import AddCustomerModal from '@/components/modals/AddCustomerModal';
-import AddEndUserModal from '@/components/modals/AddEndUserModal';
-import { AddContactModal } from '@/components/modals/AddContactModal';
 
 interface RoleBasedSidebarProps {
   onClose?: () => void;
@@ -25,12 +20,8 @@ export const RoleBasedSidebar = ({
   const {
     signOut
   } = useAuth();
-  const navigate = useNavigate();
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [customerModalMode, setCustomerModalMode] = useState<'customer' | 'end-user'>('customer');
-  const [showEndUserModal, setShowEndUserModal] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
 
+  const navigate = useNavigate();
 
   if (loading || !profile) {
     return null;
@@ -40,6 +31,7 @@ export const RoleBasedSidebar = ({
       await signOut();
     } catch (error) {
     } finally {
+      // Redirect without clearing arbitrary local storage
       if (onClose) onClose();
       navigate('/auth', { replace: true });
     }
@@ -48,93 +40,70 @@ export const RoleBasedSidebar = ({
     switch (profile.role) {
       case 'admin':
         return [
-          { title: 'Admin Dashboard', url: '/admin/dashboard', icon: BarChart3 },
+          { title: 'Dashboard', url: '/admin/dashboard', icon: BarChart3 },
           { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'System Logs', url: '/admin/logs', icon: Database },
-          { title: 'Contact', url: '/contacts', icon: ContactRound },
-          { title: 'Customer', url: '/customers', icon: Building },
-          { title: 'End User', url: '/end-users', icon: UserPlus },
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'System Settings', url: '/admin/settings', icon: Settings }
         ];
       case 'head':
         return [
-          { title: 'Executive Dashboard', url: '/head/executive-dashboard', icon: BarChart3 },
-          { title: 'Contact', url: '/contacts', icon: ContactRound },
-          { title: 'Customer', url: '/customers', icon: Building },
-          { title: 'End User', url: '/end-users', icon: UserPlus },
-          { title: 'Activities', url: '/activities', icon: Activity },
+          { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
       case 'manager':
         return [
-          { title: 'Team Dashboard', url: '/manager/team-dashboard', icon: Home },
-          { title: 'Contact', url: '/contacts', icon: ContactRound },
-          { title: 'Customer', url: '/customers', icon: Building },
-          { title: 'End User', url: '/end-users', icon: UserPlus },
-          { title: 'Activities', url: '/activities', icon: Activity },
+          { title: 'Dashboard', url: '/dashboard', icon: Home },
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
-          { title: 'User & Roles', url: '/admin/users', icon: Shield },
+          // { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
       case 'account_manager':
         return [
-          { title: 'Dashboard', url: '/am/dashboard', icon: Home },
-          { title: 'Contacts', url: '/contacts', icon: ContactRound },
-          { title: 'Customers', url: '/customers', icon: Building },
-          { title: 'End Users', url: '/end-users', icon: UserPlus },
-          { title: 'Activities', url: '/activities', icon: Activity },
+          { title: 'Dashboard', url: '/dashboard', icon: Home },
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Tasks', url: '/tasks', icon: Activity },
+          { title: 'Calendar', url: '/calendar', icon: Calendar },
+          { title: 'Settings', url: '/settings', icon: Settings }
+        ];
+      case 'staff':
+        return [
+          { title: 'Dashboard', url: '/dashboard', icon: Home },
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          // { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
       default:
-        return [{ title: 'Contacts', url: '/contacts', icon: ContactRound }];
-    }
-  };
-  const getQuickActions = () => {
-    switch (profile.role) {
-      case 'account_manager':
-        return [];
-      default:
-        return [];
+        return [
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Calendar', url: '/calendar', icon: Calendar },
+          { title: 'Settings', url: '/settings', icon: Settings }
+        ];
     }
   };
 
   const navigationItems = getNavigationItems()
-  const quickActions = getQuickActions();
-  // const masterDataActions = getMasterDataActions();
 
-  const handleQuickAction = (action: string) => {
-    switch (action) {
-      case 'add-deal':
-        toast({
-          title: "Add Deal",
-          description: "Opening deal creation form..."
-        });
-        break;
-      case 'add-contact':
-        setShowContactModal(true);
-        break;
-      case 'add-activity':
-        toast({
-          title: "Add Activity",
-          description: "Opening activity creation dialog..."
-        });
-        navigate('/activities?quick=add-activity');
-        if (onClose) onClose();
-        break;
-      case 'add-customer':
-        setCustomerModalMode('customer');
-        setShowCustomerModal(true);
-        break;
-      case 'add-end-user':
-        setCustomerModalMode('end-user');
-        setShowCustomerModal(true);
-        break;
-    }
-  };
+
   return <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border">
       {/* Mobile close button */}
       {onClose && <div className="flex items-center justify-between p-4 lg:hidden">
@@ -143,7 +112,7 @@ export const RoleBasedSidebar = ({
             <span className="font-bold text-sidebar-foreground">Food bank CRM</span>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </Button>
         </div>}
 
@@ -151,7 +120,7 @@ export const RoleBasedSidebar = ({
       <div className="hidden lg:flex items-center gap-2 p-6 border-b border-sidebar-border">
         <img src={darkMode ? "/uploads/8c148cd9-1116-481a-8d3c-454f3698dd7b.png" : "/uploads/5dc53a1f-9dd0-4780-84e9-823a8105b510.png"} alt="Logo" className="h-8 w-auto" />
         <div>
-          <h2 className="font-bold text-sidebar-foreground">Food bank CRM</h2>
+          <h2 className="font-medium text-sidebar-foreground">Food bank CRM</h2>
           <p className="text-xs text-sidebar-foreground/60">Serve humbly in love</p>
         </div>
       </div>
@@ -167,20 +136,6 @@ export const RoleBasedSidebar = ({
         </div>
         <RoleBadge role={profile.role} className="mt-2" />
       </div>
-
-
-      {/* Quick Actions */}
-      {quickActions.length > 0 && <div className="p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wider mb-2">
-            Quick Actions
-          </h3>
-          <div className="space-y-1">
-            {quickActions.map(action => <Button key={action.title} variant="default" size="sm" className="w-full justify-start gap-2 h-8" onClick={() => handleQuickAction(action.action)}>
-                <action.icon className="h-3 w-3" />
-                {action.title}
-              </Button>)}
-          </div>
-        </div>}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4">
@@ -203,7 +158,7 @@ export const RoleBasedSidebar = ({
                        }`
                      }
                    >
-                     <item.icon className="h-4 w-4 flex-shrink-0" />
+                     <item.icon className="size-4 flex-shrink-0" />
                      <span className="truncate flex-1">{item.title}</span>
                    </NavLink>
                </li>
@@ -215,37 +170,9 @@ export const RoleBasedSidebar = ({
       {/* Logout Button */}
       <div className="p-4 border-t border-sidebar-border">
         <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent/50" onClick={handleLogout}>
-          <LogOut className="h-4 w-4" />
+          <LogOut className="size-4" />
           Logout
         </Button>
       </div>
-
-      {/* Customer Modal */}
-      <AddCustomerModal 
-        isOpen={showCustomerModal} 
-        onOpenChange={setShowCustomerModal} 
-        mode={customerModalMode}
-        onSuccess={() => {
-          toast({
-            title: "Success!",
-            description: customerModalMode === 'end-user' ? "End user created successfully." : "Customer created successfully."
-          });
-        }} />
-
-      {/* End User Modal */}
-      <AddEndUserModal isOpen={showEndUserModal} onOpenChange={setShowEndUserModal} onSuccess={() => {
-      toast({
-        title: "Success!",
-        description: "End user created successfully."
-      });
-    }} />
-
-      {/* Contact Modal */}
-      <AddContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} onContactAdded={() => {
-      toast({
-        title: "Success!",
-        description: "Contact created successfully."
-      });
-    }} />
     </div>;
 };

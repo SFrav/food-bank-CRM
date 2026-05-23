@@ -82,7 +82,7 @@ const PendingApproval = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full size-32 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -93,7 +93,7 @@ const PendingApproval = () => {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-warning/10 rounded-full">
-              <Clock className="h-8 w-8 text-warning" />
+              <Clock className="size-8 text-warning" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Account Pending Approval</CardTitle>
@@ -104,7 +104,7 @@ const PendingApproval = () => {
         <CardContent className="space-y-6">
           <div className="text-center">
             <Badge variant="outline" className="mb-4">
-              <Shield className="h-3 w-3 mr-1" />
+              <Shield className="size-3 mr-1" />
               Current Status: Pending
             </Badge>
             <p className="text-sm text-muted-foreground mb-4">
@@ -116,15 +116,15 @@ const PendingApproval = () => {
             <h4 className="font-medium text-sm">What happens next?</h4>
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
-                <Users className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                <Users className="size-4 mt-0.5 flex-shrink-0 text-primary" />
                 <span>A Strategic Leader will review your account</span>
               </div>
               <div className="flex items-start gap-2">
-                <Building className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                <Building className="size-4 mt-0.5 flex-shrink-0 text-primary" />
                 <span>You'll be assigned to the appropriate role and department</span>
               </div>
               <div className="flex items-start gap-2">
-                <Shield className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                <Shield className="size-4 mt-0.5 flex-shrink-0 text-primary" />
                 <span>Once approved, you'll have access to your CRM dashboard</span>
               </div>
             </div>
@@ -140,7 +140,7 @@ const PendingApproval = () => {
             onClick={handleSignOut}
             className="w-full"
           >
-            <LogOut className="h-4 w-4 mr-2" />
+            <LogOut className="size-4 mr-2" />
             Sign Out
           </Button>
         </CardContent>

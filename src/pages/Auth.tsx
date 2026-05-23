@@ -17,10 +17,14 @@ const Auth = () => {
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [formData, setFormData] = useState({ email: '', password: '', fullName: '' });
 
+  // Track whether this session was a just-completed signup
+  // so we can suppress the auto-navigate and show the pending modal instead
   const justSignedIn = useRef(false);
   const justSignedUp = useRef(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
 
+  // Navigate away only for authenticated non-pending users,
+  // and only when we didn't just sign up (pending modal takes over in that case)
   useEffect(() => {
     if (!user || profileLoading) return;
     if (justSignedUp.current) return; // stay on page — modal is showing
@@ -28,6 +32,7 @@ const Auth = () => {
 
     if (profile.role === 'pending') {
       if (justSignedIn.current || justSignedUp.current) {
+      // Returning pending user signed in again — show modal instead of redirecting
         setShowPendingModal(true);
       }
       return;
@@ -74,8 +79,17 @@ const Auth = () => {
     }
   };
 
+  // const handlePendingSignOut = async () => {
+  //   setShowPendingModal(false);
+  //   justSignedIn.current = false;
+  //   justSignedUp.current = false;
+  //   await signOut();
+  //   // Already on /auth — no navigate needed
+  // };
 
   const handlePendingDismiss = () => {
+    // Keep them on /auth, signed in but modal closed.
+    // If they navigate elsewhere ProtectedRoute will catch the pending role.
     setShowPendingModal(false);
     justSignedIn.current = false;
     justSignedUp.current = false;
@@ -93,10 +107,10 @@ const Auth = () => {
           />
         </div>
         <div className="relative z-10">
-          <span className="text-xl font-bold">Food bank CRM</span>
+          <span className="text-xl font-semibold">Food bank CRM</span>
         </div>
         <div className="relative z-10">
-          <h1 className="text-xl font-black leading-tight tracking-tight">Scotland's food bank network</h1>
+          <h1 className="text-xl font-semibold leading-tight tracking-tight">Scotland's food bank network</h1>
           <p className="mt-2 max-w-md text-base text-gray-300">
             Short-term support for people in crisis 
           </p>
@@ -137,7 +151,7 @@ const Auth = () => {
                     onChange={handleInputChange} placeholder="Enter your password" required className="h-12" />
                 </label>
                 <Button type="submit" className="w-full h-12" disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in…</> : 'Sign In'}
+                  {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />Signing in…</> : 'Sign In'}
                 </Button>
               </form>
               <p className="text-center text-sm text-muted-foreground">
@@ -165,7 +179,7 @@ const Auth = () => {
                     onChange={handleInputChange} placeholder="Create a strong password" required className="h-12" />
                 </label>
                 <Button type="submit" className="w-full h-12" disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account…</> : 'Create Account'}
+                  {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />Creating account…</> : 'Create Account'}
                 </Button>
               </form>
               <p className="text-center text-sm text-muted-foreground">
@@ -184,7 +198,7 @@ const Auth = () => {
           </div>
 
           <Button variant="outline" onClick={handleGoogleSignIn} disabled={loading} className="w-full h-12">
-            <Chrome className="mr-2 h-4 w-4" />Google
+            <Chrome className="mr-2 size-4" />Google
           </Button>
         </div>
       </div>
@@ -195,7 +209,7 @@ const Auth = () => {
           <DialogHeader>
             <div className="flex justify-center mb-2">
               <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
-                <Clock className="h-7 w-7 text-yellow-600" />
+                <Clock className="size-7 text-yellow-600" />
               </div>
             </div>
             <DialogTitle className="text-center">Account Pending Approval</DialogTitle>
@@ -213,6 +227,15 @@ const Auth = () => {
               <li>Contact your administrator if you have any questions</li>
             </ul>
           </div>
+
+          {/* <div className="flex flex-col gap-2 pt-2">
+            <Button variant="outline" onClick={handlePendingSignOut} className="w-full">
+              <LogOut className="size-4 mr-2" />Sign out
+            </Button>
+            <Button variant="ghost" onClick={handlePendingDismiss} className="w-full text-muted-foreground">
+              Stay signed in
+            </Button>
+          </div> */}
         </DialogContent>
       </Dialog>
     </div>

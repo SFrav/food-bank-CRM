@@ -80,7 +80,7 @@ export const GlobalSettings = () => {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-6">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2 className="size-6 animate-spin" />
         </CardContent>
       </Card>
     );
@@ -93,7 +93,7 @@ export const GlobalSettings = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <Settings className="size-5" />
             Entity Mode Configuration
           </CardTitle>
           <CardDescription>
@@ -150,7 +150,7 @@ export const GlobalSettings = () => {
             className="w-full sm:w-auto"
           >
             {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="size-4 animate-spin mr-2" />
             ) : null}
             Save Entity Mode
           </Button>
@@ -164,7 +164,7 @@ export const GlobalSettings = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <Settings className="size-5" />
             Dashboard Display Options
           </CardTitle>
           <CardDescription>
@@ -189,8 +189,8 @@ export const GlobalSettings = () => {
             <AlertDescription>
               <strong>Examples:</strong>
               <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                <li><strong>OFF:</strong> "Team Dashboard — Operational Leader"</li>
-                <li><strong>ON:</strong> "Team Dashboard — Operational Leader (Retail, APAC)"</li>
+                <li><strong>OFF:</strong> "Team Dashboard: Operational Leader"</li>
+                <li><strong>ON:</strong> "Team Dashboard: Operational Leader (Retail, APAC)"</li>
               </ul>
               <div className="mt-2">
                 <strong>Note:</strong> Badges remain fixed per role and are never user-editable.
@@ -205,7 +205,7 @@ export const GlobalSettings = () => {
             className="w-full sm:w-auto"
           >
             {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="size-4 animate-spin mr-2" />
             ) : null}
             Save Dashboard Display
           </Button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from './useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,7 +21,7 @@ export const useEntities = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEntities = async () => {
+  const fetchEntities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -38,7 +39,7 @@ export const useEntities = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const createEntity = async (name: string, code?: string) => {
     if (!profile?.role || profile.role !== 'admin') {
@@ -153,10 +154,11 @@ export const useEntities = () => {
   };
 
   useEffect(() => {
-    if(user){
-      fetchEntities();
-    }
-  }, [user]);
+    if (!user) return;
+      (async () => {
+        await fetchEntities();
+      })();
+    }, [user]);
 
   return {
     entities,

@@ -6,20 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building, Search, Plus, Phone, Mail } from "lucide-react";
-import AddCustomerModal from "@/components/modals/AddCustomerModal";
+import AddServiceModal from "@/components/modals/AddServiceModal";
 import { toast } from "@/hooks/use-toast";
 
-const Customers = () => {
+const Services = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: customers, isLoading, refetch } = useQuery({
-    queryKey: ["customers"],
+  const { data: services, isLoading, refetch } = useQuery({
+    queryKey: ["services"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("organizations")
         .select("*")
-        .eq("type", "customer")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -27,71 +26,64 @@ const Customers = () => {
     },
   });
 
-  const filteredCustomers = customers?.filter((customer) =>
-    customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.industry?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredServices = services?.filter((service) =>
+    service.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    service.industry?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Customers</h1>
-          <p className="text-muted-foreground">Manage your customer accounts</p>
-        </div>
-        <Button onClick={() => setShowAddModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Customer
-        </Button>
-      </div>
-
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search customers..."
+                placeholder="Search support services …"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="size-4 mr-2" />
+              Add Service
+            </Button>            
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
-          ) : filteredCustomers && filteredCustomers.length > 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Loading &hellip;</div>
+          ) : filteredServices && filteredServices.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredCustomers.map((customer) => (
-                <Card key={customer.id} className="hover:shadow-md transition-shadow">
+              {filteredServices.map((service) => (
+                <Card key={service.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg">
-                        <Building className="h-5 w-5 text-primary" />
+                        <Building className="size-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{customer.name}</h3>
-                        {customer.industry && (
+                        <h3 className="font-semibold truncate">{service.name}</h3>
+                        {/* {service.industry && (
                           <Badge variant="secondary" className="mt-1">
-                            {customer.industry}
+                            {service.industry}
                           </Badge>
-                        )}
+                        )} */}
                       </div>
                     </div>
 
                     <div className="mt-4 space-y-2 text-sm">
-                      {customer.phone && (
+                      {service.phone && (
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <Phone className="h-4 w-4 flex-shrink-0" />
-                          <span>{customer.phone}</span>
+                          <Phone className="size-4 flex-shrink-0" />
+                          <span>{service.phone}</span>
                         </div>
                       )}
-                      {customer.email && (
+                      {service.email && (
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mail className="h-4 w-4 flex-shrink-0" />
-                          <span className="truncate">{customer.email}</span>
+                          <Mail className="size-4 flex-shrink-0" />
+                          <span className="truncate">{service.email}</span>
                         </div>
                       )}
                     </div>
@@ -101,29 +93,21 @@ const Customers = () => {
             </div>
           ) : (
             <div className="text-center py-12">
-              <Building className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <Building className="size-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery ? "No customers found" : "No customers yet"}
+                {searchQuery ? "No support service found" : "No support service yet"}
               </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <AddCustomerModal
+      <AddServiceModal
         isOpen={showAddModal}
         onOpenChange={setShowAddModal}
-        mode="customer"
-        onSuccess={() => {
-          refetch();
-          toast({
-            title: "Success",
-            description: "Customer created successfully",
-          });
-        }}
       />
     </div>
   );
 };
 
-export default Customers;
+export default Services;

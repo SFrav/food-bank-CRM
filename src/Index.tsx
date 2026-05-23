@@ -14,7 +14,7 @@ const Index = () => {
 
     if (user && !profile) {
       // Check if this is the admin user by ID
-      if (user.id === '3212a172-b6c8-417c-811a-735cc0033041') {
+      if (user.role === 'admin') {
         // This is the admin user, redirect to admin dashboard instead of pending
         navigate('/admin/dashboard', { replace: true });
         return;
@@ -66,15 +66,15 @@ const Index = () => {
 
       switch (profile.role) {
         case 'staff':
-          navigate('/sales-dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
         case 'account_manager':
-          navigate('/sales-dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
           break;
         case 'head':
-          navigate('/executive-dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
           break;
         case 'manager':
-          navigate('/team-dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
           break;
         case 'admin':
           navigate('/admin/dashboard', { replace: true });
@@ -88,7 +88,7 @@ const Index = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="size-8 animate-spin" />
       </div>
     );
   }

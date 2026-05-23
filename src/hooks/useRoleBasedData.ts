@@ -11,41 +11,10 @@ export interface UserProfile {
   manager_id?: string;
 }
 
-export interface Opportunity {
+export interface Task {
   id: string;
-  name: string;
-  description: string | null;
-  amount: number | null;
-  currency: string;
-  probability: number;
-  stage: string | null;
-  forecast_category: string | null;
-  next_step_title: string | null;
-  next_step_due_date: string | null;
-  is_closed: boolean;
-  is_won: boolean;
-  owner_id: string;
-  customer_id: string;
-  end_user_id: string | null;
-  customer_name?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  created_from_activity_id?: string | null;
-  last_activity_at?: string | null;
-  // Backward compatibility with Deal interface
-  company_name: string;
-  contact_person: string | null;
-  contact_email?: string | null;
-  deal_value: number;
-  notes?: string | null;
-}
-
-export interface SalesActivity {
-  id: string;
-  activity_time: string;
-  activity_type: 'Call' | 'Email' | 'Meeting';
-  customer_name: string;
+  task_time: string;
+  task_type: 'Call' | 'Email' | 'Meeting';
   notes?: string;
   user_id: string;
   created_at: string;
@@ -60,7 +29,7 @@ export interface FilterOptions {
 export const useRoleBasedData = () => {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [activities, setActivities] = useState<SalesActivity[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [availableReps, setAvailableReps] = useState<{ id: string; name: string }[]>([]);
   const [availableHeads, setAvailableHeads] = useState<{ id: string; name: string }[]>([]);
   const [availableManagers, setAvailableManagers] = useState<{ id: string; name: string }[]>([]);
@@ -112,26 +81,28 @@ export const useRoleBasedData = () => {
   }, [user]);
 
 
-  // Fetch activities based on user role
-  const fetchActivities = async (filters?: FilterOptions) => {
+  // Fetch tasks based on user role
+  const fetchTasks = async (filters?: FilterOptions) => {
     if (!userProfile || !user) return;
 
     try {
       // First attempt: query the new v2 table
-      let query = supabase.from('sales_activity_v2').select('*');
+      let query = supabase.from('calendar').select('*');
 
       // Role-based filtering (v2 uses created_by)
       if (userProfile.role === 'account_manager') {
         query = query.eq('created_by', user.id);
       } else if (userProfile.role === 'head' && userProfile.division_id && userProfile.entity_id) {
-        // Head sees ONLY their TEAM activities
+        // Head sees ONLY their TEAM tasks
         const { data: teamUsers } = await (supabase as any)
           .from('user_profiles')
           .select('user_id')
           .eq('division_id', userProfile.division_id)
           .eq('entity_id', userProfile.entity_id);
 
-        const userIds = (teamUsers || []).map((u: any) => u.user_id).filter(Boolean);
+        const userIds = (teamUsers || []).flatMap((u: any) =>
+          u.user_id ? [u.user_id] : []
+        );
         if (userIds.length > 0) {
           query = query.in('created_by', userIds);
         }
@@ -142,7 +113,9 @@ export const useRoleBasedData = () => {
           .eq('division_id', userProfile.division_id)
           .eq('entity_id', userProfile.entity_id);
 
-        const userIds = (teamUsers || []).map((u: any) => u.user_id).filter(Boolean);
+        const userIds = (teamUsers || []).flatMap((u: any) =>
+          u.user_id ? [u.user_id] : []
+        );
         if (userIds.length > 0) {
           query = query.in('created_by', userIds);
         }
@@ -159,7 +132,9 @@ export const useRoleBasedData = () => {
           .select('user_id')
           .eq('division_id', filters.selectedManager);
 
-        const userIds = (managerUsers || []).map((u: any) => u.user_id).filter(Boolean);
+        const userIds = (managerUsers || []).flatMap((u: any) =>
+          u.user_id ? [u.user_id] : []
+        );
         if (userIds.length > 0) {
           query = query.in('created_by', userIds);
         }
@@ -167,97 +142,26 @@ export const useRoleBasedData = () => {
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      // If v2 relation is missing (42P01 or 404), fall back to legacy table
-      if (error && (error.code === '42P01' || (error.message || '').includes('sales_activity_v2'))) {
-        // Legacy attempt: query the old table which uses user_id
-        let legacyQuery = supabase.from('sales_activity').select('*');
-
-        if (userProfile.role === 'account_manager') {
-          legacyQuery = legacyQuery.eq('user_id', user.id);
-        } else if (userProfile.role === 'head' && userProfile.division_id && userProfile.entity_id) {
-          // Head sees ONLY their TEAM activities (legacy)
-          const { data: teamUsers } = await (supabase as any)
-            .from('user_profiles')
-            .select('user_id')
-            .eq('division_id', userProfile.division_id)
-            .eq('entity_id', userProfile.entity_id);
-
-          const userIds = (teamUsers || []).map((u: any) => u.user_id).filter(Boolean);
-          if (userIds.length > 0) {
-            legacyQuery = legacyQuery.in('user_id', userIds);
-          }
-        } else if (userProfile.role === 'manager' && userProfile.division_id && userProfile.entity_id) {
-          const { data: teamUsers } = await (supabase as any)
-            .from('user_profiles')
-            .select('user_id')
-            .eq('division_id', userProfile.division_id)
-            .eq('entity_id', userProfile.entity_id);
-
-          const userIds = (teamUsers || []).map((u: any) => u.user_id).filter(Boolean);
-          if (userIds.length > 0) {
-            legacyQuery = legacyQuery.in('user_id', userIds);
-          }
-        }
-
-        if (filters?.selectedRep && userProfile.role !== 'account_manager') {
-          legacyQuery = legacyQuery.eq('user_id', filters.selectedRep);
-        }
-
-        if (filters?.selectedManager && filters.selectedManager !== 'all' && userProfile.role === 'manager') {
-          const { data: managerUsers } = await (supabase as any)
-            .from('user_profiles')
-            .select('user_id')
-            .eq('division_id', filters.selectedManager);
-
-          const userIds = (managerUsers || []).map((u: any) => u.user_id).filter(Boolean);
-          if (userIds.length > 0) {
-            legacyQuery = legacyQuery.in('user_id', userIds);
-          }
-        }
-
-        const { data: legacyData, error: legacyError } = await legacyQuery.order('created_at', { ascending: false });
-        if (legacyError) throw legacyError;
-
-        const mappedActivities: SalesActivity[] = (legacyData || []).map((activity: any) => ({
-          id: activity.id,
-          activity_time: activity.activity_time || activity.created_at,
-          activity_type:
-            activity.activity_type?.toLowerCase() === 'meeting'
-              ? 'Meeting'
-              : activity.activity_type?.toLowerCase() === 'email'
-                ? 'Email'
-                : 'Call',
-          customer_name: activity.customer_name || '-',
-          notes: activity.notes || undefined,
-          user_id: activity.user_id,
-          created_at: activity.created_at || activity.activity_time,
-        }));
-
-        setActivities(mappedActivities);
-        return;
-      }
-
       if (error) throw error;
 
-      const mappedActivities: SalesActivity[] = (data || []).map((activity: any) => ({
-        id: activity.id,
-        activity_time: activity.scheduled_at || activity.created_at,
-        activity_type:
-          activity.activity_type?.toLowerCase() === 'meeting'
+      const mappedTasks: Task[] = (data || []).map((task: any) => ({
+        id: task.id,
+        task_time: task.scheduled_at || task.created_at,
+        task_type:
+          task.task_type?.toLowerCase() === 'meeting'
             ? 'Meeting'
-            : activity.activity_type?.toLowerCase() === 'email'
+            : task.task_type?.toLowerCase() === 'email'
               ? 'Email'
               : 'Call',
-        customer_name: activity.customer_name || '-',
-        notes: activity.notes || activity.mom_text || undefined,
-        user_id: activity.created_by,
-        created_at: activity.created_at || activity.scheduled_at,
+        notes: task.notes || task.mom_text || undefined,
+        user_id: task.created_by,
+        created_at: task.created_at || task.scheduled_at,
       }));
 
-      setActivities(mappedActivities);
+      setTasks(mappedTasks);
     } catch (err) {
-      console.error('Failed to load activities:', err);
-      setError('Failed to load activities');
+      console.error('Failed to load tasks:', err);
+      setError('Failed to load tasks');
     }
   };
 
@@ -331,16 +235,33 @@ export const useRoleBasedData = () => {
     }
   };
 
+  const handleUserProfileChange = async () => {
+    if (!userProfile) return;
+    try {
+      await Promise.all([
+        fetchTasks(),
+        fetchAvailableReps(),
+        fetchAvailableManagers(),
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load data when profile is available
   useEffect(() => {
-    if (userProfile) {
-      Promise.all([
-        fetchActivities(),
-        fetchAvailableReps(),
-        fetchAvailableManagers()
-      ]).finally(() => setLoading(false));
-    }
-  }, [userProfile]);
+    handleUserProfileChange(); 
+  }, [userProfile]); 
+  
+  // useEffect(() => {
+  //   if (userProfile) {
+  //     Promise.all([
+  //       fetchTasks(),
+  //       fetchAvailableReps(),
+  //       fetchAvailableManagers()
+  //     ]).finally(() => setLoading(false));
+  //   }
+  // }, [userProfile]);
 
   // Refresh data with filters
   const refreshData = async (filters?: FilterOptions) => {
@@ -348,20 +269,20 @@ export const useRoleBasedData = () => {
     
     setLoading(true);
     await Promise.all([
-      fetchActivities(filters)
+      fetchTasks(filters)
     ]);
     setLoading(false);
   };
 
   // Calculate metrics
   const metrics = {
-    totalActivities: activities.length,
-    recentActivities: activities.slice(0, 10)
+    totalTasks: tasks.length,
+    recentTasks: tasks.slice(0, 10)
   };
 
   return {
     userProfile,
-    activities,
+    tasks,
     availableReps,
     availableHeads,
     availableManagers,

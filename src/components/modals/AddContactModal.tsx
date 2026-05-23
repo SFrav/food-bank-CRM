@@ -23,7 +23,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  // const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; type: string }>>([]); //@Org->referrer?
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,40 +32,43 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     notes: '',
   });
 
-  useEffect(() => {
-    const fetchOrganizations = async () => {
-      try {
-        const { data: customers, error: customerError } = await supabase
-          .from('v_master_customer')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
+  // useEffect(() => {
+  //   const fetchOrganizations = async () => {
+  //     try {
+  //       // Fetch customers from master data
+  //       const { data: customers, error: customerError } = await supabase
+  //         .from('v_master_customer')
+  //         .select('id, name')
+  //         .eq('is_active', true)
+  //         .order('name');
 
-        if (customerError) throw customerError;
+  //       if (customerError) throw customerError;
 
-        const { data: endUsers, error: endUserError } = await supabase
-          .from('v_master_end_user')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
+  //       // Fetch end users from master data
+  //       const { data: endUsers, error: endUserError } = await supabase
+  //         .from('v_master_end_user')
+  //         .select('id, name')
+  //         .eq('is_active', true)
+  //         .order('name');
 
-        if (endUserError) throw endUserError;
+  //       if (endUserError) throw endUserError;
 
-        const combinedData = [
-          ...(customers || []).map(item => ({ ...item, type: 'customer' })),
-          ...(endUsers || []).map(item => ({ ...item, type: 'end_user' }))
-        ];
+  //       // Combine and format the data
+  //       const combinedData = [
+  //         ...(customers || []).map(item => ({ ...item, type: 'customer' })),
+  //         ...(endUsers || []).map(item => ({ ...item, type: 'end_user' }))
+  //       ];
 
-        setOrganizations(combinedData);
-      } catch (error) {
-        console.error('Error fetching organizations:', error);
-      }
-    };
+  //       setOrganizations(combinedData);
+  //     } catch (error) {
+  //       console.error('Error fetching organizations:', error);
+  //     }
+  //   };
 
-    if (isOpen) {
-      fetchOrganizations();
-    }
-  }, [isOpen]);
+  //   if (isOpen) {
+  //     fetchOrganizations();
+  //   }
+  // }, [isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -118,9 +121,10 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
 
       toast({
         title: "Success",
-        description: "Contact added successfully!",
+        description: "Beneficiary added successfully!",
       });
 
+      // Reset form
       setFormData({
         name: '',
         email: '',
@@ -132,10 +136,10 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       onContactAdded();
       onClose();
     } catch (error) {
-      console.error('Error adding contact:', error);
+      console.error('Error adding beneficiary:', error);
       toast({
         title: "Error",
-        description: "Failed to add contact. Please try again.",
+        description: "Failed to add beneficairy. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -158,9 +162,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Add New Contact</DialogTitle>
+          <DialogTitle>Add New Beneficiary</DialogTitle>
           <DialogDescription>
-            Add a new contact to your CRM. Fill in the contact details below.
+            Add a new beneficiary to your CRM. Fill in the details below.
           </DialogDescription>
         </DialogHeader>
         
@@ -203,7 +207,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               />
             </div>
             
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="company">Company</Label>
               <Select value={formData.company} onValueChange={handleCompanyChange}>
                 <SelectTrigger>
@@ -219,7 +223,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                     ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
 
           <div className="space-y-2">
@@ -244,7 +248,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Contact"}
+              {isLoading ? "Adding..." : "Add Beneficiary"}
             </Button>
           </div>
         </form>

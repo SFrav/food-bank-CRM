@@ -20,12 +20,12 @@ import { useNavigate } from 'react-router-dom';
 
 const getTypeIcon = (type: Notification['type']) => {
   switch (type) {
-    case 'alert': return <AlertTriangle className="h-4 w-4 text-destructive" />;
-    case 'target': return <Target className="h-4 w-4 text-primary" />;
-    case 'task': return <CheckSquare className="h-4 w-4 text-blue-500" />;
-    case 'ai': return <Brain className="h-4 w-4 text-purple-500" />;
-    case 'system': return <SettingsIcon className="h-4 w-4 text-muted-foreground" />;
-    default: return <Bell className="h-4 w-4" />;
+    case 'alert': return <AlertTriangle className="size-4 text-destructive" />;
+    case 'target': return <Target className="size-4 text-primary" />;
+    case 'task': return <CheckSquare className="size-4 text-blue-500" />;
+    case 'ai': return <Brain className="size-4 text-purple-500" />;
+    case 'system': return <SettingsIcon className="size-4 text-muted-foreground" />;
+    default: return <Bell className="size-4" />;
   }
 };
 
@@ -93,7 +93,7 @@ const NotificationsPage: React.FC = () => {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Notifications</h1>
+          <h1 className="text-3xl font-semibold">Notifications</h1>
           <p className="text-muted-foreground">
             {unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}
           </p>
@@ -107,7 +107,7 @@ const NotificationsPage: React.FC = () => {
 
       <div className="flex gap-4 items-center">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder="Search notifications..."
             value={searchTerm}
@@ -116,7 +116,7 @@ const NotificationsPage: React.FC = () => {
           />
         </div>
         <Button variant="outline" size="sm">
-          <Filter className="h-4 w-4 mr-2" />
+          <Filter className="size-4 mr-2" />
           Filters
         </Button>
       </div>
@@ -135,7 +135,7 @@ const NotificationsPage: React.FC = () => {
           {filteredNotifications.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Bell className="h-12 w-12 text-muted-foreground mb-4" />
+                <Bell className="size-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium">No notifications found</h3>
                 <p className="text-muted-foreground text-center">
                   {searchTerm ? 'Try adjusting your search terms' : 'All notifications have been cleared'}
@@ -167,7 +167,7 @@ const NotificationsPage: React.FC = () => {
                             {notification.type}
                           </Badge>
                           {!notification.is_read && (
-                            <div className="h-2 w-2 bg-primary rounded-full" />
+                            <div className="size-2 bg-primary rounded-full" />
                           )}
                         </div>
                         
@@ -176,7 +176,7 @@ const NotificationsPage: React.FC = () => {
                         </p>
                         
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="size-3" />
                           {getRelativeTime(notification.created_at)}
                         </div>
                       </div>

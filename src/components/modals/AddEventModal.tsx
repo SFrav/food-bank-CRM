@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useCalendarForm } from "@/hooks/useCalendarForm";
+import { format } from 'date-fns';
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -27,115 +22,48 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   selectedDate,
 }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [date, setDate] = useState<Date>(selectedDate || new Date());
-  const [formData, setFormData] = useState({
-    title: '',
-    time: '',
-    location: '',
-    description: '',
+
+  const {
+    form,
+    setForm,
+    submitAdd,
+    isSubmitting,
+  } = useCalendarForm({
+    onSuccess: onEventAdded,
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      entry_type: 'event',
+    }));
+  }, [setForm]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      // Convert the Date to the format expected by the datetime‑local input
+      const formatted = format(selectedDate, "yyyy-MM-dd'T'HH:mm");
+      setForm((prev) => ({ ...prev, scheduled_at: formatted }));
+    }
+  }, [selectedDate, setForm]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to add events.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSave = async () => {
+    if (!user) return;
 
-    if (!formData.title.trim()) {
-      toast({
-        title: "Error", 
-        description: "Event title is required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.time.trim()) {
-      toast({
-        title: "Error", 
-        description: "Event time is required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Combine date and time into a single datetime
-      const eventDateTime = new Date(date);
-      const [hours, minutes] = formData.time.split(':');
-      eventDateTime.setHours(parseInt(hours), parseInt(minutes));
-
-      const endDateTime = new Date(eventDateTime);
-      endDateTime.setHours(eventDateTime.getHours() + 1); // Default 1 hour duration
-
-      const { error } = await (supabase as any)
-        .from('sales_activities')
-        .insert([
-          {
-            subject: formData.title.trim(),
-            scheduled_at: eventDateTime.toISOString(),
-            description: formData.description.trim() || null,
-            activity_type: 'meeting',
-            status: 'scheduled',
-            created_by: user.id,
-          },
-        ]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Event added successfully!",
-      });
-
-      // Reset form
-      setFormData({
-        title: '',
-        time: '',
-        location: '',
-        description: '',
-      });
-      setDate(new Date());
-
-      onEventAdded();
-      onClose();
-    } catch (error) {
-      console.error('Error adding event:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add event. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    await submitAdd();
+    onClose();
   };
 
   const handleClose = () => {
-    setFormData({
-      title: '',
-      time: '',
-      location: '',
-      description: '',
-    });
-    setDate(selectedDate || new Date());
     onClose();
-  };
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -146,14 +74,14 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             Schedule a new event in your calendar. Fill in the event details below.
           </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Event Title *</Label>
+            <Label htmlFor="subject">Event Title *</Label>
             <Input
-              id="title"
-              name="title"
-              value={formData.title}
+              id="subject"
+              name="subject"
+              value={form.subject}
               onChange={handleInputChange}
               placeholder="Enter event title"
               required
@@ -162,46 +90,13 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(newDate) => newDate && setDate(newDate)}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="time">Time *</Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  id="time"
-                  name="time"
-                  type="time"
-                  value={formData.time}
-                  onChange={handleInputChange}
-                  className="pl-10"
-                  required
-                />
-              </div>
+            <Label htmlFor="scheduled-at">Scheduled Date & Time *</Label>
+            <Input
+              id="scheduled-at"
+              type="datetime-local"
+              value={form.scheduled_at}
+              onChange={(e) => setForm((prev) => ({...prev, scheduled_at: e.target.value, })) }
+            />
             </div>
           </div>
 
@@ -210,18 +105,18 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             <Input
               id="location"
               name="location"
-              value={formData.location}
+              value={form.location}
               onChange={handleInputChange}
               placeholder="Enter event location"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="notes">Description</Label>
             <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
+              id="notes"
+              name="notes"
+              value={form.notes}
               onChange={handleInputChange}
               placeholder="Add event details..."
               rows={3}
@@ -233,12 +128,12 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Event"}
+            <Button type="button" disabled={isSubmitting} onClick={handleSave}>
+              {isSubmitting ? "Adding…" : "Add Event"}
             </Button>
           </div>
         </form>

@@ -1,11 +1,4 @@
-import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, MapPin, FileText, Edit, Trash2, X } from 'lucide-react';
@@ -35,7 +28,7 @@ export function EventDetailModal({
   isOpen,
   onClose,
   event,
-  onEdit,
+  // onEdit,
   onDelete,
 }: EventDetailModalProps) {
   if (!event) return null;
@@ -48,17 +41,17 @@ export function EventDetailModal({
             <div className="flex-1">
               <DialogTitle className="text-xl">{event.subject}</DialogTitle>
               <DialogDescription className="mt-2">
-                Event Details
+
               </DialogDescription>
             </div>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-8 w-8 p-0"
+              className="size-8 p-0"
             >
-              <X className="h-4 w-4" />
-            </Button>
+              <X className="size-4" />
+            </Button> */}
           </div>
         </DialogHeader>
 
@@ -85,7 +78,7 @@ export function EventDetailModal({
 
           {/* Date and Time */}
           <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="size-4 text-muted-foreground" />
             <div>
               <div className="font-medium">
                 {format(parseISO(event.starts_at), 'EEEE, MMMM d, yyyy')}
@@ -100,7 +93,7 @@ export function EventDetailModal({
           {/* Location */}
           {event.location && (
             <div className="flex items-start gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <MapPin className="size-4 text-muted-foreground mt-0.5" />
               <div>
                 <div className="font-medium">Location</div>
                 <div className="text-muted-foreground">{event.location}</div>
@@ -111,7 +104,7 @@ export function EventDetailModal({
           {/* Description */}
           {event.description && (
             <div className="flex items-start gap-2 text-sm">
-              <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <FileText className="size-4 text-muted-foreground mt-0.5" />
               <div className="flex-1">
                 <div className="font-medium mb-1">Description</div>
                 <div className="text-muted-foreground whitespace-pre-wrap">
@@ -134,29 +127,28 @@ export function EventDetailModal({
               variant="destructive"
               size="sm"
               onClick={() => {
-                if (window.confirm('Are you sure you want to delete this event?')) {
                   onDelete(event.id);
                   onClose();
-                }
               }}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="size-4 mr-2" />
               Delete
             </Button>
           )}
-          {onEdit && (
+          {/* {onEdit && (
             <Button
               variant="default"
               size="sm"
-              onClick={() => {
-                onEdit(event);
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditEvent(event);
                 onClose();
               }}
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Edit className="size-4 mr-2" />
               Edit
             </Button>
-          )}
+          )} */}
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
