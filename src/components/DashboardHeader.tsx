@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Crown, Users, Target, User } from 'lucide-react';
 
 interface DashboardHeaderProps {
-  role: 'admin' | 'head' | 'manager' | 'account_manager' | 'staff';
+  role: 'admin' | 'head' | 'manager' | 'branch_manager' | 'staff';
   className?: string;
 }
 
@@ -25,7 +25,7 @@ const ROLE_CONFIG = {
     icon: Target,
     badgeClass: 'bg-primary text-primary-foreground'
   },
-  account_manager: {
+  branch_manager: {
     dashboard: 'Branch Manager Dashboard',
     badge: 'Field Sales Staff',
     icon: User,

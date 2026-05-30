@@ -31,7 +31,7 @@ export const RoleBasedSidebar = ({
       await signOut();
     } catch (error) {
     } finally {
-      // Redirect without clearing arbitrary local storage
+
       if (onClose) onClose();
       navigate('/auth', { replace: true });
     }
@@ -71,7 +71,7 @@ export const RoleBasedSidebar = ({
           // { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
-      case 'account_manager':
+      case 'branch_manager':
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },

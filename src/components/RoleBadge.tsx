@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Users, Building } from "lucide-react";
 
 interface RoleBadgeProps {
-  role: 'admin' | 'head' | 'manager' | 'account_manager' | 'pending' | 'staff';
+  role: 'admin' | 'head' | 'manager' | 'branch_manager' | 'pending' | 'staff';
   className?: string;
   showEnhanced?: boolean;
   title?: string;
@@ -19,9 +19,9 @@ export const RoleBadge = ({ role, className = "", showEnhanced = false, title, r
           variant: 'default' as const,
           className: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
         };
-      case 'account_manager':
+      case 'branch_manager':
         return {
-          label: 'Account Manager',
+          label: 'Branch Manager',
           icon: <Shield className="size-3" />,
           variant: 'default' as const,
           className: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'

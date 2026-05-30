@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings2, Search, Filter } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { useEntities } from '@/hooks/useEntities';
 import { useDivisions } from '@/hooks/useDivisions';
 import { toast } from 'sonner';
 
-type RoleFilter = 'all' | 'account_manager' | 'staff' | 'head' | 'manager' | 'admin' | 'pending';
+type RoleFilter = 'all' | 'branch_manager' | 'staff' | 'head' | 'manager' | 'admin' | 'pending';
 
 export default function AdminUsers() {
   const { profile } = useProfile();
@@ -72,11 +72,6 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      {/* <div className="flex items-center gap-2">
-        <Settings2 className="size-8 text-primary" />
-        <h1 className="text-3xl font-semibold text-foreground">Admin Dashboard</h1>
-      </div> */}
-
       <PermissionGuard permission="canAccessUserManagement">
         <Card>
           <CardHeader className="pb-4">
@@ -100,7 +95,7 @@ export default function AdminUsers() {
                 <SelectContent>
           <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="pending">Pending Assignment</SelectItem>
-          <SelectItem value="account_manager">Field Sales Staff</SelectItem>
+          <SelectItem value="branch_manager">Field Sales Staff</SelectItem>
           <SelectItem value="head">Level Head</SelectItem>
           <SelectItem value="manager">Level Manager</SelectItem>
           <SelectItem value="admin">System Administrator</SelectItem>

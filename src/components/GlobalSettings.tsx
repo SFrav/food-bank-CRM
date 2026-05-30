@@ -137,7 +137,7 @@ export const GlobalSettings = () => {
             <AlertDescription>
               <strong>Assignment Rules:</strong>
               <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                <li><strong>Account Manager:</strong> Admin picks Manager (auto-inherits Head + Entity)</li>
+                <li><strong>Branch Manager:</strong> Admin picks Manager (auto-inherits Head + Entity)</li>
                 <li><strong>Manager:</strong> Admin picks Head (auto-inherits Entity)</li>
                 <li><strong>Head:</strong> {entityMode === 'single' ? 'Automatically covers all Managers' : 'Admin selects Entity and assigns Managers'}</li>
               </ul>

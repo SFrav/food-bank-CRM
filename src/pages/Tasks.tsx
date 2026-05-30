@@ -33,7 +33,7 @@ interface Task {
 }
 
 interface Contact {
-  id: string; // formatted as "org:{uuid}" or "ctc:{uuid}"
+  id: string; 
   name: string;
 }
 
@@ -67,9 +67,6 @@ export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  // const [isAddOpen, setIsAddOpen] = useState(false);
-  // const [isEditOpen, setIsEditOpen] = useState(false);
-  // const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [uiState, dispatchUI] = useReducer(
     (state: { isAddOpen: boolean; isEditOpen: boolean; editingTask: Task | null }, action: any) => {
       switch (action.type) {
@@ -223,22 +220,6 @@ export default function Tasks() {
       });
     }
   };
-
-  // const handleDeleteTask = async (id: string) => {
-  //   try {
-  //     const { error } = await sb.from("calendar").delete().eq("id", id);
-  //     if (error) throw error;
-  //     toast({ title: "Success", description: "Task deleted!" });
-  //     loadTasks();
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to delete task.",
-  //       variant: "destructive",
-  //     });
-  //   }
-  // };
 
   if (loading) {
     return (

@@ -47,7 +47,6 @@ export const useEntities = () => {
     }
 
     try {
-      // Use RPC function to bypass RLS issues
       const { data: entityId, error: rpcError } = await supabase.rpc('admin_create_entity', {
         p_name: name,
         p_code: code || null
@@ -58,7 +57,6 @@ export const useEntities = () => {
         throw rpcError;
       }
 
-      // Fetch the created entity
       const { data, error: fetchError } = await supabase
         .from('entities')
         .select('*')
@@ -67,7 +65,6 @@ export const useEntities = () => {
 
       if (fetchError) {
         console.error('Error fetching created entity:', fetchError);
-        // Still return success if RPC succeeded
         await fetchEntities();
         return { data: null, error: null };
       }
@@ -86,7 +83,6 @@ export const useEntities = () => {
     }
 
     try {
-      // Use RPC function to bypass RLS issues
       const { data: success, error: rpcError } = await supabase.rpc('admin_update_entity', {
         p_entity_id: id,
         p_name: updates.name || null,
@@ -103,7 +99,6 @@ export const useEntities = () => {
         throw new Error('Entity not found or update failed');
       }
 
-      // Fetch the updated entity
       const { data, error: fetchError } = await supabase
         .from('entities')
         .select('*')
@@ -112,7 +107,6 @@ export const useEntities = () => {
 
       if (fetchError) {
         console.error('Error fetching updated entity:', fetchError);
-        // Still return success if RPC succeeded
         await fetchEntities();
         return { data: null, error: null };
       }
@@ -131,7 +125,6 @@ export const useEntities = () => {
     }
 
     try {
-      // Use RPC function to bypass RLS issues
       const { data: success, error: rpcError } = await supabase.rpc('admin_delete_entity', {
         p_entity_id: id
       });

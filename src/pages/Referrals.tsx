@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { AddContactModal } from '@/components/modals/AddContactModal';
-// import { toast } from "@/hooks/use-toast";
 
 const EndUsers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,11 +64,6 @@ const EndUsers = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">{endUser.name}</h3>
-                        {/* {endUser.industry && (
-                          <Badge variant="secondary" className="mt-1">
-                            {endUser.industry}
-                          </Badge>
-                        )} */}
                       </div>
                     </div>
 

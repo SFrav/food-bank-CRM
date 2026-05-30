@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Clock, Shield, Users, Building, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
@@ -13,7 +12,6 @@ const PendingApproval = () => {
   const { profile, loading } = useProfile();
   const navigate = useNavigate();
 
-  // Jika profile sudah approved, keluar dari halaman pending secara otomatis
   useEffect(() => {
     if (loading) return;
     if (!profile) return;
@@ -29,7 +27,6 @@ const PendingApproval = () => {
 
     const roleText = String(profile.role);
     
-    // Manager memerlukan entity_id DAN division_id
     const managerNeedsApproval = profile.role === 'manager' && (!profile.entity_id || !profile.division_id);
     
     const needsApproval = (
@@ -52,14 +49,14 @@ const PendingApproval = () => {
         case 'admin':
           navigate('/admin/dashboard', { replace: true });
           return;
-        case 'account_manager':
-          navigate('/sales-dashboard', { replace: true });
+        case 'branch_manager':
+          navigate('/dashboard', { replace: true });
           return;
         case 'head':
-          navigate('/executive-dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
           return;
         case 'manager':
-          navigate('/team-dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
           return;
         default:
           break;
@@ -70,11 +67,9 @@ const PendingApproval = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      // Navigate within SPA to avoid full page reloads
       navigate('/auth', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);
-      // Navigate even if logout fails
       navigate('/auth', { replace: true });
     }
   };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock } from 'lucide-react';
+// import { Alert, AlertDescription } from '@/components/ui/alert';
+// import { Lock } from 'lucide-react';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -22,12 +22,13 @@ export const PermissionGuard = ({
   if (!hasPermission) {
     if (showFallback) {
       return fallback || (
-        <Alert className="border-muted-foreground/20">
-          <Lock className="size-4" />
-          <AlertDescription>
-            You don't have permission to access this feature.
-          </AlertDescription>
-        </Alert>
+        <div></div>
+        // <Alert className="border-muted-foreground/20">
+        //   <Lock className="size-4" />
+        //   <AlertDescription>
+        //     You don't have permission to access this feature.
+        //   </AlertDescription>
+        // </Alert>
       );
     }
     return null;

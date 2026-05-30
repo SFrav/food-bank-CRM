@@ -22,8 +22,7 @@ const ACTION_COLORS = {
 };
 
 const TABLE_NAMES = [
-  'user_profiles', 'sales_targets', 
-  'entities', 'system_settings', 'organizations', 'contacts'
+  'user_profiles', 'entities', 'system_settings', 'organizations', 'contacts'
 ];
 
 export const AuditLogViewer = () => {

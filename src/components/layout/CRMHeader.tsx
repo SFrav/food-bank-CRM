@@ -1,7 +1,7 @@
 import { Moon, Sun, Search, User, LogOut, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
+// import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { RoleBadge } from "@/components/RoleBadge";
 import { NotificationBell } from "@/components/NotificationBell";
-import { toast } from "sonner";
+// import { toast } from "sonner";
 
 interface CRMHeaderProps {
   darkMode: boolean;

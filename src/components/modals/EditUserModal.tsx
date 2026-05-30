@@ -90,7 +90,7 @@ const EditUserModal = ({
   const handleSave = async () => {
     setSaving(true);
 
-    if (role === 'account_manager' && divisionId !== 'none') {
+    if (role === 'branch_manager' && divisionId !== 'none') {
       const { data } = await supabase
         .from('user_profiles')
         .select('id')
@@ -159,7 +159,7 @@ const EditUserModal = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pending Assignment</SelectItem>
-                  <SelectItem value="account_manager">Account Manager</SelectItem>
+                  <SelectItem value="branch_manager">Branch Manager</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="head">Head</SelectItem>

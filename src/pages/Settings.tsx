@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { User, Settings as SettingsIcon, Shield, Moon, Sun, Bell, Globe, Lock, LogOut, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,15 +8,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import ProfilePage from '@/pages/Profile'; 
-import { NotificationBell } from '@/components/NotificationBell';
+import { useProfile } from "@/hooks/useProfile";
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { useNotifications } from '@/hooks/useNotificationsContext';
+// import { NotificationBell } from '@/components/NotificationBell';
 
 type SettingsSection = 'profile' | 'preferences' | 'security';
 
-const settingsNavigation = [
-  { id: 'profile' as SettingsSection, label: 'Profile', icon: User },
-  { id: 'preferences' as SettingsSection, label: 'Preferences', icon: SettingsIcon },
-  { id: 'security' as SettingsSection, label: 'Security', icon: Shield },
-];
+interface Settings {
+  dark_mode?: string;
+  notification_email?: string;
+  notification_tasks?: string;
+  notification_calendar?: string;
+}
+
+// const settingsNavigation = [
+//   { id: 'profile' as SettingsSection, label: 'Profile', icon: User },
+//   { id: 'preferences' as SettingsSection, label: 'Preferences', icon: SettingsIcon },
+//   { id: 'security' as SettingsSection, label: 'Security', icon: Shield },
+// ];
 
 const timezones = [
   { value: 'UTC', label: 'UTC (GMT+0)' },
@@ -29,10 +40,21 @@ const timezones = [
 ];
 
 export default function Settings() {
+  const { profile } = useProfile();
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   // const [isDarkMode, setIsDarkMode] = useState(false);
-  const [notifications, setNotifications] = useState(true);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { refetch } = useNotifications();
+  const { settings, loading, updateSetting } = useUserSettings();
+
+  useEffect(() => {
+    if (location.pathname === '/notifications') {
+      const timer = setTimeout(() => refetch(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, refetch]);
 
   const renderPreferencesSection = () => (
     <Card>
@@ -43,8 +65,7 @@ export default function Settings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* @@@ If implemented here then change the source of truth to be in the database, not in CRMLayout or App.tsx. Then remembered between sessions here and temporarily if header used */}
-        {/* <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="theme">Theme</Label>
             <p className="text-sm text-muted-foreground">
@@ -54,31 +75,58 @@ export default function Settings() {
           <div className="flex items-center space-x-2">
             <Sun className="size-4" />
             <Switch
-              id="theme"
-              checked={isDarkMode}
-              onCheckedChange={(checked) => {
-                setIsDarkMode(checked);
-                document.documentElement.classList.toggle("dark", checked); // Toggle based on the new state
-              }}
+              id="dark_mode"
+              checked={settings.dark_mode === 'true'}
+              onCheckedChange={checked => updateSetting('dark_mode', String(checked))}
             />
             <Moon className="size-4" />
           </div>
         </div>
 
-        <Separator /> */}
+        <Separator />
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="notifications">Notifications</Label>
-            <p className="text-sm text-muted-foreground">
-              Receive email notifications for updates
-            </p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="notifications">Notifications</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive emails when a new referral notification arrives
+              </p>
+            </div>
+            <Switch
+              id="notification_email"
+              checked={settings.notification_email === 'true'}
+              onCheckedChange={checked => updateSetting('notification_email', String(checked))}
+            />
           </div>
-          <Switch
-            id="notifications"
-            checked={notifications}
-            onCheckedChange={setNotifications}
-          />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="tasks">Tasks</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive notifications for new tasks
+              </p>
+            </div>
+            <Switch
+              id="notification_tasks"
+              checked={settings.notification_tasks === 'true'}
+              onCheckedChange={checked => updateSetting('notification_tasks', String(checked))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="calendar">Calendar</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive notifications for added calendar events
+              </p>
+            </div>
+            <Switch
+              id="notification_calendar"
+              checked={settings.notification_calendar === 'true'}
+              onCheckedChange={checked => updateSetting('notification_calendar', String(checked))}
+            />
+          </div>
         </div>
 
         <Separator />
@@ -100,12 +148,12 @@ export default function Settings() {
             </SelectContent>
           </Select>
         </div>
-
+{/* 
         <Separator />
 
         <div className="flex justify-end">
           <Button>Save Changes</Button>
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );
@@ -200,14 +248,14 @@ export default function Settings() {
           <Card className="sticky top-0">
             <CardContent className="p-4">
               <nav className="space-y-2">
-                {settingsNavigation.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeSection === item.id;
-                  
+                {['profile', 'preferences', 'security'].map((id: SettingsSection) => {
+                  const Icon = id === 'profile' ? User : id === 'preferences' ? SettingsIcon : Shield;
+                  const isActive = activeSection === id;
+
                   return (
                     <button
-                      key={item.id}
-                      onClick={() => setActiveSection(item.id)}
+                      key={id}
+                      onClick={() => setActiveSection(id)}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         isActive
                           ? 'bg-primary text-primary-foreground'
@@ -215,7 +263,7 @@ export default function Settings() {
                       }`}
                     >
                       <Icon className="size-4" />
-                      <span>{item.label}</span>
+                      <span>{id.charAt(0).toUpperCase() + id.slice(1)}</span>
                     </button>
                   );
                 })}

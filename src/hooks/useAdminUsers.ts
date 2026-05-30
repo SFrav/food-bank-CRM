@@ -10,7 +10,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
     admin: 'admin',
     head: 'head',
     manager: 'manager',
-    account_manager: 'account_manager',
+    branch_manager: 'branch_manager',
     staff: 'staff',
     pending: 'pending',
   };

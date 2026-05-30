@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -151,7 +146,6 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          company: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -159,6 +153,7 @@ export type Database = {
           notes: string | null
           owner_id: string | null
           phone: string | null
+          postcode: string | null
           status: Database["public"]["Enums"]["beneficiary_enum"]
           updated_at: string | null
           user_id: string | null
@@ -166,7 +161,6 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          company?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -174,6 +168,7 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          postcode?: string | null
           status?: Database["public"]["Enums"]["beneficiary_enum"]
           updated_at?: string | null
           user_id?: string | null
@@ -181,7 +176,6 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          company?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -189,6 +183,7 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          postcode?: string | null
           status?: Database["public"]["Enums"]["beneficiary_enum"]
           updated_at?: string | null
           user_id?: string | null
@@ -287,78 +282,39 @@ export type Database = {
         }
         Relationships: []
       }
-      manager_team_members: {
-        Row: {
-          account_manager_id: string
-          created_at: string
-          manager_id: string
-        }
-        Insert: {
-          account_manager_id: string
-          created_at?: string
-          manager_id: string
-        }
-        Update: {
-          account_manager_id?: string
-          created_at?: string
-          manager_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "manager_team_members_account_manager_id_fkey"
-            columns: ["account_manager_id"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "manager_team_members_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notifications: {
         Row: {
           calendar_id: string | null
           created_at: string
           id: string
-          is_read: boolean
           link: string | null
           message: string
           meta: Json | null
           org_role: string | null
           title: string | null
           type: Database["public"]["Enums"]["notification_type_enum"]
-          user_id: string | null
         }
         Insert: {
           calendar_id?: string | null
           created_at?: string
           id?: string
-          is_read?: boolean
           link?: string | null
           message: string
           meta?: Json | null
           org_role?: string | null
           title?: string | null
           type: Database["public"]["Enums"]["notification_type_enum"]
-          user_id?: string | null
         }
         Update: {
           calendar_id?: string | null
           created_at?: string
           id?: string
-          is_read?: boolean
           link?: string | null
           message?: string
           meta?: Json | null
           org_role?: string | null
           title?: string | null
           type?: Database["public"]["Enums"]["notification_type_enum"]
-          user_id?: string | null
         }
         Relationships: [
           {
@@ -368,12 +324,54 @@ export type Database = {
             referencedRelation: "calendar"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      notifications_user: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          notification_id: string | null
+          read_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          notification_id?: string | null
+          read_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          notification_id?: string | null
+          read_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
           {
             foreignKeyName: "notifications_user_fk"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_notify_id_fk"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_notify_id_fk"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "user_notifications"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -604,8 +602,49 @@ export type Database = {
           },
         ]
       }
+      user_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string | null
+          updated_at: string | null
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
+      user_notifications: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_read: boolean | null
+          link: string | null
+          message: string | null
+          meta: Json | null
+          org_role: string | null
+          title: string | null
+          type: Database["public"]["Enums"]["notification_type_enum"] | null
+        }
+        Relationships: []
+      }
       v_audit_log_complete: {
         Row: {
           action_type: string | null
@@ -699,7 +738,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      bulk_insert_calendar: { Args: { events: Json }; Returns: undefined }
       can_manage_contact: {
         Args: { target_owner_id: string }
         Returns: boolean
@@ -723,6 +761,18 @@ export type Database = {
         Args: { p_entity_id: string; p_head_id?: string; p_name: string }
         Returns: string
       }
+      create_notification: {
+        Args: {
+          p_calendar_id?: string
+          p_link: string
+          p_message: string
+          p_org_role?: string
+          p_target_user?: string
+          p_title: string
+          p_type: Database["public"]["Enums"]["notification_type_enum"]
+        }
+        Returns: string
+      }
       delete_calendar: { Args: { p_id: string }; Returns: undefined }
       delete_division: { Args: { p_id: string }; Returns: undefined }
       ensure_admin_profile: { Args: never; Returns: undefined }
@@ -744,9 +794,21 @@ export type Database = {
         Args: never
         Returns: {
           division_id: string
+          entity_id: string
           id: string
           role: Database["public"]["Enums"]["role_enum"]
           user_id: string
+        }[]
+      }
+      get_division_summary: {
+        Args: { p_entity_id?: string }
+        Returns: {
+          beneficiaries: number
+          id: string
+          name: string
+          pending_beneficiaries: number
+          referrers: number
+          workforce: number
         }[]
       }
       get_divisions_by_entity: {
@@ -757,31 +819,6 @@ export type Database = {
           head_id: string
           id: string
           name: string
-        }[]
-      }
-      get_head_manager_archived: {
-        Args: { p_end_date?: string; p_period?: string; p_start_date?: string }
-        Returns: {
-          division_id: string
-          entity_id: string
-          manager_id: string
-          manager_name: string
-          margin: number
-          project_count: number
-          revenue: number
-        }[]
-      }
-      get_manager_archived: {
-        Args: {
-          p_end_date?: string
-          p_manager_id: string
-          p_period?: string
-          p_start_date?: string
-        }
-        Returns: {
-          margin: number
-          project_count: number
-          revenue: number
         }[]
       }
       get_my_profile: {
@@ -832,6 +869,13 @@ export type Database = {
       }
       mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_notification_read: { Args: { p_id: string }; Returns: undefined }
+      mark_notifications_read_by_type: {
+        Args: {
+          p_org_role?: string
+          p_type: Database["public"]["Enums"]["notification_type_enum"]
+        }
+        Returns: undefined
+      }
       update_calendar: {
         Args: {
           p_beneficiary_id: string
@@ -858,15 +902,23 @@ export type Database = {
     }
     Enums: {
       beneficiary_enum: "pending" | "active" | "inactive" | "banned"
-      notification_type_enum: "alert" | "calendar" | "system"
+      notification_type_enum:
+        | "alert"
+        | "dm"
+        | "task"
+        | "calendar"
+        | "referral"
+        | "ref_decision"
+        | "system"
       org_type_enum: "government" | "ngo" | "faith_based"
       role_enum:
         | "admin"
         | "head"
         | "manager"
-        | "account_manager"
+        | "referrer"
+        | "branch_manager"
         | "staff"
-        | "sales"
+        | "volunteer"
         | "pending"
       user_status_enum: "active" | "inactive" | "suspended"
     }
@@ -1000,18 +1052,28 @@ export const Constants = {
   public: {
     Enums: {
       beneficiary_enum: ["pending", "active", "inactive", "banned"],
-      notification_type_enum: ["alert", "calendar", "system"],
+      notification_type_enum: [
+        "alert",
+        "dm",
+        "task",
+        "calendar",
+        "referral",
+        "ref_decision",
+        "system",
+      ],
       org_type_enum: ["government", "ngo", "faith_based"],
       role_enum: [
         "admin",
         "head",
         "manager",
-        "account_manager",
+        "referrer",
+        "branch_manager",
         "staff",
-        "sales",
+        "volunteer",
         "pending",
       ],
       user_status_enum: ["active", "inactive", "suspended"],
     },
   },
 } as const
+

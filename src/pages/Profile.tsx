@@ -70,10 +70,8 @@ export default function Profile() {
     }
   };
 
-  // Update form data when profile loads
   useEffect(() => {
     if (!profile) return;
-    /*  Only set if the values differ to avoid an unnecessary re‑render  */
     setFormData(prev => ({
       ...prev,
       full_name: profile.full_name ?? '',

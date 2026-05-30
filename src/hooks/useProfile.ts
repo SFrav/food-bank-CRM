@@ -8,7 +8,7 @@ export interface UserProfile {
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  role: 'pending' | 'account_manager' | 'staff' | 'manager' | 'head' | 'admin';
+  role: 'pending' | 'referrer' | 'volunteer' |  'staff' | 'branch_manager' | 'manager' | 'head' | 'admin';
   department?: string | null; // UI only, not persisted
   created_at: string;
   updated_at: string | null;
@@ -202,7 +202,7 @@ export const useProfile = () => {
   const isAdmin = () => profile?.role === 'admin';
   const isHead = () => profile?.role === 'head';
   const isManager = () => profile?.role === 'manager';
-  const isAccountManager = () => profile?.role === 'account_manager';
+  const isAccountManager = () => profile?.role === 'branch_manager';
   const isStaff = () => profile?.role === 'staff';
   const isPending = () => profile?.role === 'pending';
   const hasRole = (r: UserProfile['role']) => profile?.role === r;
@@ -217,7 +217,7 @@ export const useProfile = () => {
       admin: 'System Administrator',
       head: 'Level Head',
       manager: 'Level Manager',
-      account_manager: 'Account Manager',
+      branch_manager: 'Branch Manager',
       staff: 'Staff',
       pending: 'Pending Approval',
     };

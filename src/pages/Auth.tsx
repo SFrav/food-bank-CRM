@@ -17,22 +17,17 @@ const Auth = () => {
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [formData, setFormData] = useState({ email: '', password: '', fullName: '' });
 
-  // Track whether this session was a just-completed signup
-  // so we can suppress the auto-navigate and show the pending modal instead
   const justSignedIn = useRef(false);
   const justSignedUp = useRef(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
 
-  // Navigate away only for authenticated non-pending users,
-  // and only when we didn't just sign up (pending modal takes over in that case)
   useEffect(() => {
     if (!user || profileLoading) return;
-    if (justSignedUp.current) return; // stay on page — modal is showing
+    if (justSignedUp.current) return; 
     if (!profile) return;
 
     if (profile.role === 'pending') {
       if (justSignedIn.current || justSignedUp.current) {
-      // Returning pending user signed in again — show modal instead of redirecting
         setShowPendingModal(true);
       }
       return;
@@ -79,17 +74,7 @@ const Auth = () => {
     }
   };
 
-  // const handlePendingSignOut = async () => {
-  //   setShowPendingModal(false);
-  //   justSignedIn.current = false;
-  //   justSignedUp.current = false;
-  //   await signOut();
-  //   // Already on /auth — no navigate needed
-  // };
-
   const handlePendingDismiss = () => {
-    // Keep them on /auth, signed in but modal closed.
-    // If they navigate elsewhere ProtectedRoute will catch the pending role.
     setShowPendingModal(false);
     justSignedIn.current = false;
     justSignedUp.current = false;
@@ -97,11 +82,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 bg-background">
-      {/* Left hero pane */}
+      {/* Left pane */}
       <div className="relative hidden lg:flex flex-col justify-between bg-gray-900 p-8 text-white">
         <div className="absolute inset-0 z-0">
           <img
-            alt="CRM hero"
+            alt=""
             src="/auth-background.png"
             className="h-full w-full object-cover opacity-30"
           />
@@ -127,7 +112,7 @@ const Auth = () => {
             </div>
           ) : (
             <div>
-              <p className="text-3xl font-black tracking-tight">Create an Account</p>
+              <p className="text-xl font-black tracking-tight">Create an Account</p>
               <p className="text-base text-muted-foreground">Your account will be reviewed before activation</p>
             </div>
           )}
@@ -227,15 +212,6 @@ const Auth = () => {
               <li>Contact your administrator if you have any questions</li>
             </ul>
           </div>
-
-          {/* <div className="flex flex-col gap-2 pt-2">
-            <Button variant="outline" onClick={handlePendingSignOut} className="w-full">
-              <LogOut className="size-4 mr-2" />Sign out
-            </Button>
-            <Button variant="ghost" onClick={handlePendingDismiss} className="w-full text-muted-foreground">
-              Stay signed in
-            </Button>
-          </div> */}
         </DialogContent>
       </Dialog>
     </div>
