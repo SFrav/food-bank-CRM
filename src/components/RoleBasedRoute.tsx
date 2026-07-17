@@ -15,13 +15,13 @@ export const RoleBasedRoute = ({
 }: RoleBasedRouteProps) => {
   const { profile, loading } = useProfile();
 
-  console.log('=== ROLE BASED ROUTE DEBUG ===');
-  console.log('Loading:', loading);
-  console.log('Profile:', profile);
-  console.log('User role:', profile?.role);
-  console.log('Allowed roles:', allowedRoles);
-  console.log('Role check result:', profile && allowedRoles.includes(profile.role));
-  console.log('Will redirect to:', !profile || !allowedRoles.includes(profile.role) ? redirectTo : 'ALLOWED');
+  // console.log('=== ROLE BASED ROUTE DEBUG ===');
+  // console.log('Loading:', loading);
+  // console.log('Profile:', profile);
+  // console.log('User role:', profile?.role);
+  // console.log('Allowed roles:', allowedRoles);
+  // console.log('Role check result:', profile && allowedRoles.includes(profile.role));
+  // console.log('Will redirect to:', !profile || !allowedRoles.includes(profile.role) ? redirectTo : 'ALLOWED');
 
   if (loading) {
     return (

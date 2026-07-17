@@ -11,25 +11,31 @@ import { format } from 'date-fns';
 interface AddEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventAdded: () => void;
+  onAdd: () => void;
   selectedDate?: Date;
 }
 
-export const AddEventModal: React.FC<AddEventModalProps> = ({
+// export const AddEventModal: React.FC<AddEventModalProps> = ({
+//   isOpen,
+//   onClose,
+//   onAdd,
+//   selectedDate,
+// }) => {
+export default function AddEventBulkModal({
   isOpen,
   onClose,
-  onEventAdded,
+  onAdd,
   selectedDate,
-}) => {
+}: AddEventModalProps) {
   const { user } = useAuth();
 
   const {
     form,
     setForm,
-    submitAdd,
+    createEvent,
     isSubmitting,
   } = useCalendarForm({
-    onSuccess: onEventAdded,
+    onSuccess: onAdd,
   });
 
   useEffect(() => {
@@ -57,7 +63,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   const handleSave = async () => {
     if (!user) return;
 
-    await submitAdd();
+    await createEvent();
     onClose();
   };
 

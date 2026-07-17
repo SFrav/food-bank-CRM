@@ -16,65 +16,67 @@ export const useRegions = () => {
   const { isAdmin } = useProfile();
   const [regions, setRegions] = useState<Region[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined | null>(undefined);
 
   const fetchRegions = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(undefined);
 
-      const { data, error } = await supabase
-        .from('regions')
-        .select('*')
-        .order('name');
+        const { data, error: rpcErr } = await supabase.rpc('get_regions', { });
 
-      if (error) throw error;
-      setRegions(data || []);
-    } catch (err: any) {
-      console.error('Error fetching regions:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+        if (rpcErr) throw rpcErr;
+        setRegions(data ?? []);
+      } catch (err: any) {
+        console.error('Error fetching regions:', err);
+        setError(err.message);
+        setRegions([]);
+      } finally {
+        setLoading(false);
+      }  
   };
 
   const createRegion = async (name: string, code: string) => {
     if (!isAdmin()) {
       throw new Error('Only admins can create regions');
     }
-
     try {
-      const { data, error } = await supabase
-        .from('regions')
-        .insert({ name, code })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('create_region', {
+        p_name: name,
+        p_code: code
+      }).single();
 
       if (error) throw error;
-      await fetchRegions(); // Refresh list
+      await fetchRegions(); 
       return { data, error: null };
     } catch (err: any) {
+      console.error(err);
       return { data: null, error: err.message };
     }
   };
 
-  const updateRegion = async (id: string, updates: { name?: string; code?: string; is_active?: boolean }) => {
+  const updateRegion = async (
+    id: string,  
+    name?: string | null, 
+    code?: string | null, 
+    is_active?: boolean 
+  ) => {
     if (!isAdmin()) {
       throw new Error('Only admins can update regions');
     }
-
     try {
-      const { data, error } = await supabase
-        .from('regions')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('update_region', {
+        p_id: id,
+        p_name: name,
+        p_code: code,
+        p_is_active: is_active
+      });
 
       if (error) throw error;
-      await fetchRegions(); // Refresh list
-      return { data, error: null };
+      await fetchRegions(); 
+      return { data, error: undefined };
     } catch (err: any) {
+      console.error(err)
       return { data: null, error: err.message };
     }
   };
@@ -83,15 +85,12 @@ export const useRegions = () => {
     if (!isAdmin()) {
       throw new Error('Only admins can delete regions');
     }
-
     try {
-      const { error } = await supabase
-        .from('regions')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.rpc('delete_region', {
+        p_id: id
+      });
       if (error) throw error;
-      await fetchRegions(); // Refresh list
+      await fetchRegions(); 
       return { error: null };
     } catch (err: any) {
       return { error: err.message };
@@ -100,7 +99,7 @@ export const useRegions = () => {
 
   useEffect(() => {
     fetchRegions();
-  }, []);
+  }, []); 
 
   return {
     regions,

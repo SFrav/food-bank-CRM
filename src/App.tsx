@@ -1,32 +1,43 @@
+import { lazy, Suspense } from 'react';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { NotificationProvider } from '@/hooks/useNotificationsContext';
 import { CRMLayout } from "@/components/layout/CRMLayout";
 import Forbidden from "./pages/Forbidden";
 import Index from "./Index";
-import Tasks from "./pages/Tasks";
-import CalendarPage from "./pages/CalendarPage";
-import Beneficiaries from "./pages/Beneficiaries";
-import Services from "./pages/Services";
-import Referrals from "./pages/Referrals";
-import Settings from "./pages/Settings";
+import PendingApproval from "./pages/PendingApproval";
+import Auth from "./pages/Auth";
 import Notifications from "./pages/Notifications";
-import Profile from "./pages/Profile";
+import Beneficiaries from "./pages/Beneficiaries";
+// import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import Dashboard from "./pages/Dashboard";
-import PendingApproval from "./pages/PendingApproval";
-import AdminOther from "./pages/AdminOther";
-import AdminUsers from "./pages/AdminUsers";
-import AdminLogs from "./pages/AdminLogs";
-import Auth from "./pages/Auth";
+// import AdminUsers from "./pages/AdminUsers";
+// import AdminLogs from "./pages/AdminLogs";
+// import AdminOther from "./pages/AdminOther";
+// import Settings from "./pages/Settings";
+import Tasks from "./pages/Tasks";
+import Calendar from "./pages/Calendar";
+import Services from "./pages/Services";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { RoleBasedRoute } from "./components/RoleBasedRoute";
 
 const queryClient = new QueryClient(); // Force rebuild to clear cache
+
+export const lazyPages = {
+  Settings: lazy(() => import('./pages/Settings')),
+  Profile:   lazy(() => import('./pages/Profile')),
+  AdminUsers: lazy(() => import('./pages/AdminUsers')),
+  AdminLogs: lazy(() => import('./pages/AdminLogs')),
+  AdminOther: lazy(() => import('./pages/AdminOther')),
+  // Services: lazy(() => import('./pages/Services')),
+  // Calendar: lazy(() => import('./pages/Calendar')),
+  // Tasks: lazy(() => import('./pages/Tasks')),
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -56,7 +67,10 @@ const App = () => (
               <ProtectedRoute>
                 <RoleBasedRoute allowedRoles={['admin', 'head']}>
                   <CRMLayout>
-                    <AdminUsers />
+                    <Suspense fallback={<div className="p-4">Loading User Data &hellip;</div>}>
+                    <lazyPages.AdminUsers/>
+                  </Suspense>
+                    {/* <AdminUsers /> */}
                   </CRMLayout>
                 </RoleBasedRoute>
               </ProtectedRoute>
@@ -65,7 +79,10 @@ const App = () => (
               <ProtectedRoute>
                 <RoleBasedRoute allowedRoles={['admin']}>
                   <CRMLayout>
-                    <AdminLogs />
+                    <Suspense fallback={<div className="p-4">Loading Logs &hellip;</div>}>
+                    <lazyPages.AdminLogs/>
+                  </Suspense>
+                    {/* <AdminLogs /> */}
                   </CRMLayout>
                 </RoleBasedRoute>
               </ProtectedRoute>
@@ -74,7 +91,10 @@ const App = () => (
               <ProtectedRoute>
                 <RoleBasedRoute allowedRoles={['admin']}>
                   <CRMLayout>
-                    <AdminOther />
+                    <Suspense fallback={<div className="p-4">Loading Org. Management &hellip;</div>}>
+                    <lazyPages.AdminOther/>
+                  </Suspense>
+                    {/* <AdminOther /> */}
                   </CRMLayout>
                 </RoleBasedRoute>
               </ProtectedRoute>
@@ -82,7 +102,7 @@ const App = () => (
             {/* Dashboards */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <RoleBasedRoute allowedRoles={['staff', 'branch_manager', 'manager', 'head', 'admin']}>
+                <RoleBasedRoute allowedRoles={['referrer', 'volunteer', 'staff', 'branch_manager', 'manager', 'head', 'admin']}>
                   <CRMLayout>
                     <Dashboard />
                   </CRMLayout>
@@ -100,7 +120,7 @@ const App = () => (
             <Route path="/calendar" element={
               <ProtectedRoute>
                 <CRMLayout>
-                  <CalendarPage />
+                  <Calendar />
                 </CRMLayout>
               </ProtectedRoute>
             } />
@@ -128,21 +148,27 @@ const App = () => (
             <Route path="/referrals" element={
               <ProtectedRoute>
                 <CRMLayout>
-                  <Referrals />
+                  <Beneficiaries />
                 </CRMLayout>
               </ProtectedRoute>
             } />
             <Route path="/settings" element={
               <ProtectedRoute>
                 <CRMLayout>
-                  <Settings />
+                  <Suspense fallback={<div className="p-4">Loading Settings &hellip;</div>}>
+                    <lazyPages.Settings/>
+                  </Suspense>
+                  {/* <Settings /> */}
                 </CRMLayout>
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
               <ProtectedRoute>
                 <CRMLayout>
-                  <Profile />
+                  <Suspense fallback={<div className="p-4">Loading Profile &hellip;</div>}>
+                    <lazyPages.Profile/>
+                  </Suspense>
+                  {/* <Profile /> */}
                 </CRMLayout>
               </ProtectedRoute>
             } />

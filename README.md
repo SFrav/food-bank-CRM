@@ -6,36 +6,58 @@ Full stack infrastructure to support food banks, referrers, volunteers and benef
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This project is built with:
-- Postgresql
+- PostgreSQL
 - Vite
 - TypeScript
 - React
 - Shadcn-ui
 - Tailwind CSS
 
-Functionality:
-- Sign-up with approval process
-- Log-in page with full authorisation
-- User management
-- Role based routing for 'admin', 'head', 'manager', 'account manager' and 'staff'
-- Contact list management with multiple minimisable tabs and data edit preservation safeguards
-- Calendar management with option for bulk uploads via CSV upload
-- Task management
-- Notifications in realtime
-- Dashboards with data summary
-- Listings of support services / external organisations
-- Admin and head management role of entities, divisions and other organisation structure elements
-- Auth, Activities, contacts, entities, notifications, audit logs and profile: complex queries refactored to run on the back-end for security and efficiency with RLS and role specific policies - accessible through Remote Procedure Calls (RPCs)
-- Error handling with relevant info to users
-- UI and UX attention to detail, especially on role management, contact/beneficiary management, task management and calendar management
+Look and feel:
+<table>
+<tr>
+<td>
+<video controls width="200"><source src="assets/Admin-org-manage.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Admin organisation management
+</td>
+<td>
+<video controls width="200"><source src="assets/Admin-approve-user.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Admin user approval
+</td>
+<td>
+<video controls width="200"><source src="assets/Admin-logs.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Admin logs
+</td>
+</tr>
+<tr>
+<td>
+<video controls width="200"><source src="assets/Contact-new-refer.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Refer new contact
+</td>
+<td>
+<video controls width="200"><source src="assets/Contact-allotment.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Administring visits
+</td>
+<td>
+<video controls width="200"><source src="assets/Contact-current-refer.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Refer existing contact
+</td>
+</tr>
+<tr>
+<td>
+<video controls width="200"><source src="assets/Contact-merge.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Merge contacts
+</td>
+<td>
+<video controls width="200"><source src="assets/Other-tabs.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Other tabs
+</td>
+<td>
+<video controls width="200"><source src="assets/Other-settings.mp4" type="video/mp4">Not supported by your browser</video>
+<br>Settings
+</td>
+</tr>
+</table>
+(Videos have been altered to meet Github's file size requirements. This can make load time appear slower than it is)
 
-
-To do:
-- Add email notification for sign-up approvals
-- Add core business logic of referral process, including email notifications of decision
-- Add core business logic of beneficiary visits, with flexibility for discretionary provision of food
-- Various refinements to dashboards, contacts/beneficiaries, support services, tasks and calendar
-- Add user settings to remove warning alerts and silence notificatins
-- Add settings for alternations to business logic - duration of benefits etc.
-- Full refactor of remaining complex queries to RPC with RLS and role based policies
-- Tests
+Repo limitation: Core SQL logic of adding allotment for beneficiary after approval has been removed. Table policies also removed.

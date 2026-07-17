@@ -14,12 +14,6 @@ export interface EntityModeSettings {
   mode: 'single' | 'multi';
 }
 
-export interface CurrencyModeSettings {
-  mode: 'single' | 'dual';
-  home_currency: string;
-  local_currency?: string;
-}
-
 export interface DashboardDisplaySettings {
   showTitleAndRegion: boolean;
 }
@@ -28,19 +22,16 @@ export const useSystemSettings = () => {
   const { profile } = useProfile();
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined | null>(undefined);
 
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError(undefined);
 
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .order('setting_key');
+      const { data, error:rpcErr } = await supabase.rpc('get_system_settings');
 
-      if (error) throw error;
+      if (rpcErr) throw rpcErr;
       setSettings(data || []);
     } catch (err: any) {
       setError(err.message);
@@ -55,36 +46,15 @@ export const useSystemSettings = () => {
     }
 
     try {
-      // First try to update existing setting
-      const { data, error } = await supabase
-        .from('system_settings')
-        .update({
-          setting_value: value,
-          updated_by: profile.id
-        })
-        .eq('setting_key', key)
-        .select()
-        .maybeSingle();
+      const { error } = await supabase.rpc('upsert_system_setting', {
+        p_setting_key: key,
+        p_setting_value: value,
+      });
 
       if (error) throw error;
       
-      // If no rows were updated, insert new setting
-      if (!data) {
-        const { data: insertData, error: insertError } = await supabase
-          .from('system_settings')
-          .insert({
-            setting_key: key,
-            setting_value: value,
-            updated_by: profile.id
-          })
-          .select()
-          .single();
-          
-        if (insertError) throw insertError;
-      }
-      
       await fetchSettings();
-      return { data: data || null, error: null };
+      // return { data: data || null, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     }
@@ -99,9 +69,6 @@ export const useSystemSettings = () => {
     return getSetting('entity_mode') || { mode: 'single' };
   };
 
-  const getCurrencyMode = (): CurrencyModeSettings => {
-    return getSetting('currency_mode') || { mode: 'single', home_currency: 'IDR' };
-  };
 
   const getDashboardDisplay = (): DashboardDisplaySettings => {
     return getSetting('dashboard_display') || { showTitleAndRegion: false };
@@ -111,13 +78,6 @@ export const useSystemSettings = () => {
     return updateSetting('entity_mode', { mode });
   };
 
-  const setCurrencyMode = async (mode: 'single' | 'dual', home_currency: string, local_currency?: string) => {
-    const value: CurrencyModeSettings = { mode, home_currency };
-    if (mode === 'dual' && local_currency) {
-      value.local_currency = local_currency;
-    }
-    return updateSetting('currency_mode', value);
-  };
 
   const setDashboardDisplay = async (showTitleAndRegion: boolean) => {
     const value: DashboardDisplaySettings = { showTitleAndRegion };
@@ -134,10 +94,8 @@ export const useSystemSettings = () => {
     error,
     getSetting,
     getEntityMode,
-    getCurrencyMode,
     getDashboardDisplay,
     setEntityMode,
-    setCurrencyMode,
     setDashboardDisplay,
     updateSetting,
     refetch: fetchSettings,

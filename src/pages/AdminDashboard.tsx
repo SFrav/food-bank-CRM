@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RoleBadge } from '@/components/RoleBadge';
+// import { RoleBadge } from '@/components/RoleBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,30 +12,33 @@ const AdminDashboard: React.FC = () => {
   const { profile } = useProfile();
   const navigate = useNavigate();
 
-  const handleManageUserRoles = () => {
-    navigate('/admin/users');
-  };
+  const goTo = (path: string) => () => navigate(path);
+  const goToTab = (tab: string) => () => navigate(`/settings?tab=${tab}`);
 
-  const handleLogs = () => {
-    navigate('/admin/logs');
-  };
+  // const handleManageUserRoles = () => {
+  //   navigate('/admin/users');
+  // };
 
-  const handleOther = () => {
-    navigate('/admin');
-  };
+  // const handleLogs = () => {
+  //   navigate('/admin/logs');
+  // };
+
+  // const handleOther = () => {
+  //   navigate('/admin');
+  // };
 
 
-  const handleProfile = () => {
-    navigate('/settings?tab=profile');
-  };
+  // const handleProfile = () => {
+  //   navigate('/settings?tab=profile');
+  // };
 
-  const handlePreferences = () => {
-    navigate('/settings?tab=preferences');
-  };
+  // const handlePreferences = () => {
+  //   navigate('/settings?tab=preferences');
+  // };
 
-  const handleSecurity = () => {
-    navigate('/settings?tab=security');
-  };
+  // const handleSecurity = () => {
+  //   navigate('/settings?tab=security');
+  // };
 
   return (
     <div className="space-y-8">
@@ -81,7 +84,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Control access levels and permissions for all users in the system.
                 </p>
-                <Button className="w-full" onClick={handleManageUserRoles}>
+                <Button className="w-[250px]" onClick={goTo('/admin/users')}>
                   Manage User Roles
                 </Button>
               </CardContent>
@@ -101,7 +104,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Access information about system usage.
                 </p>
-                <Button variant="outline" className="w-full" onClick={handleLogs}>
+                <Button className="w-[250px]" onClick={goTo('/admin/logs')}>
                   View logs
                 </Button>
               </CardContent>
@@ -119,7 +122,7 @@ const AdminDashboard: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 View, add, remove or edit entities, divisions and regions
               </p>
-              <Button onClick={handleOther}>
+              <Button className="w-[250px]" onClick={goTo('/admin')}>
                 Review entities and divisions
               </Button>
             </CardContent>
@@ -142,7 +145,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Configure user account information and personal settings.
                 </p>
-                <Button variant="outline" className="w-full" onClick={handleProfile}>
+                <Button variant="outline" className="w-full" onClick={goToTab('profile')}>
                   Profile Settings
                 </Button>
               </CardContent>
@@ -162,7 +165,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Adjust application preferences and user interface settings.
                 </p>
-                <Button variant="outline" className="w-full" onClick={handlePreferences}>
+                <Button variant="outline" className="w-full" onClick={goToTab('preferences')}>
                   Preferences
                 </Button>
               </CardContent>
@@ -182,7 +185,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Configure authentication, authorization, and security policies.
                 </p>
-                <Button variant="outline" className="w-full" onClick={handleSecurity}>
+                <Button variant="outline" className="w-full" onClick={goToTab('security')}>
                   Security Settings
                 </Button>
               </CardContent>

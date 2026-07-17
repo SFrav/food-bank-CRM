@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,33 +6,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleBadge } from '@/components/RoleBadge';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
-import EditUserModal from '@/components/modals/EditUserModal';
-import { useProfile } from '@/hooks/useProfile';
+// import EditUserModal from '@/components/modals/EditUser';
+import { useProfile, UserProfile } from '@/hooks/useProfile';
 import { PermissionGuard } from '@/components/PermissionGuard';
-import { useTitles } from '@/hooks/useTitles';
+import { useRegions } from '@/hooks/useRegions';
 import { useEntities } from '@/hooks/useEntities';
 import { useDivisions } from '@/hooks/useDivisions';
 import { toast } from 'sonner';
 
-type RoleFilter = 'all' | 'branch_manager' | 'staff' | 'head' | 'manager' | 'admin' | 'pending';
+const EditUserModal = lazy(() =>
+  import('@/components/modals/EditUser')
+);
+
+type RoleFilter = 'all' | 'admin' | 'head' | 'manager' | 'referrer' | 'branch_manager' | 'staff' | 'volunteer' |  'pending';
 
 export default function AdminUsers() {
   const { profile } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const { users, loading: usersLoading, refetch, updateUserProfile, deleteUser } = useAdminUsers(searchQuery, roleFilter);
-  const { titles } = useTitles();
+  const { regions } = useRegions();
   const { entities, refetch: refetchEntities } = useEntities();
-  const { refetch: refetchTeams } = useDivisions();
+  const { refetch: refetchDivisions } = useDivisions();
 
   React.useEffect(() => {
     const handler = () => {
-      refetchTeams();
-      refetchEntities(); // Also refresh entities when entities change
+      refetchDivisions();
+      refetchEntities();
     };
     window.addEventListener('org-units-changed', handler);
     return () => window.removeEventListener('org-units-changed', handler);
-  }, [refetchTeams, refetchEntities]);
+  }, [refetchDivisions, refetchEntities]);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [savingUsers, setSavingUsers] = useState<Set<string>>(new Set());
 
@@ -44,9 +48,10 @@ export default function AdminUsers() {
     entityId: string | null,
     divisionId: string | null,
     managerId: string | null,
+    regionId: string | null
   ) => {
     setSavingUsers(prev => new Set(prev).add(userId));
-    const result = await updateUserProfile(userId, role, entityId, divisionId, managerId);
+    const result = await updateUserProfile(userId, role as UserProfile['role'], entityId, divisionId, managerId, regionId);
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
     if (result.success) {
       toast.success('User updated successfully');
@@ -64,7 +69,7 @@ export default function AdminUsers() {
     if (!result.success) {
       toast.error('Failed to delete user: ' + (result.error || 'Unknown error'));
     } else {
-      toast.success(result.message || 'User deleted successfully');
+      toast.success('User deleted successfully');
       refetch();
     }
     return result;
@@ -95,9 +100,12 @@ export default function AdminUsers() {
                 <SelectContent>
           <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="pending">Pending Assignment</SelectItem>
-          <SelectItem value="branch_manager">Field Sales Staff</SelectItem>
-          <SelectItem value="head">Level Head</SelectItem>
+          <SelectItem value="volunteer">Volunteer</SelectItem>
+          <SelectItem value="staff">Staff Member</SelectItem>
+          <SelectItem value="branch_manager">Food Bank Manager</SelectItem>
           <SelectItem value="manager">Level Manager</SelectItem>
+          <SelectItem value="head">Level Head</SelectItem>
+          <SelectItem value="referrer">Referrer</SelectItem>
           <SelectItem value="admin">System Administrator</SelectItem>
                 </SelectContent>
               </Select>
@@ -114,7 +122,7 @@ export default function AdminUsers() {
                     <TableHead className="min-w-[180px] hidden sm:table-cell">Email</TableHead>
                     <TableHead className="min-w-[140px]">Role</TableHead>
                     <TableHead className="min-w-[120px] text-right text-muted-foreground text-xs font-normal">
-                      Click row to edit
+                      Entity
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -165,17 +173,19 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
       </PermissionGuard>
-      <EditUserModal
-        user={selectedUser}
-        open={!!selectedUser}
-        onClose={() => setSelectedUser(null)}
-        onSave={saveUserRole}
-        onDelete={handleDeleteUser}
-        entities={entities}
-        titles={titles}
-        currentUserRole={profile?.role}
-        currentUserId={profile?.id}
-      />
+      <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}>
+        <EditUserModal
+          user={selectedUser}
+          open={!!selectedUser}
+          onClose={() => setSelectedUser(null)}
+          onSave={saveUserRole}
+          onDelete={handleDeleteUser}
+          entities={entities}
+          regions={regions}
+          currentUserRole={profile?.role}
+          currentUserId={profile?.id}
+        />
+      </Suspense>
     </div>
   );
 }

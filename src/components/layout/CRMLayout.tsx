@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu } from "lucide-react";
 import { RoleBasedSidebar } from "../RoleBasedSidebar";
 import { CRMHeader } from "./CRMHeader";
+import { useUserSettings } from "@/hooks/useUserSettings";
 
 interface CRMLayoutProps {
   children: React.ReactNode;
@@ -9,12 +10,14 @@ interface CRMLayoutProps {
 
 export function CRMLayout({ children }: CRMLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const { settings } = useUserSettings();
 
-  const toggleDarkMode = () => {
-    setDarkMode(prev => !prev);
-    document.documentElement.classList.toggle("dark");
-  };
+  useEffect(() => {
+    const isDark = settings.dark_mode === 'true';
+    const root = document.documentElement;
+    if (isDark) root.classList.add('dark');
+    else root.classList.remove('dark');
+  }, [settings.dark_mode]);
   
   return (
     <div className="w-screen h-screen flex overflow-hidden bg-background">
@@ -34,7 +37,7 @@ export function CRMLayout({ children }: CRMLayoutProps) {
         bg-card border-r border-border
         flex flex-col overflow-hidden
       `}>
-        <RoleBasedSidebar onClose={() => setSidebarOpen(false)} darkMode={darkMode} />
+        <RoleBasedSidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main content area */}
@@ -49,7 +52,7 @@ export function CRMLayout({ children }: CRMLayoutProps) {
               <Menu className="size-5" />
             </button>
             <div className="flex-1">
-              <CRMHeader darkMode={darkMode} onToggleDark={toggleDarkMode} />
+              <CRMHeader />
             </div>
           </div>
         </div>

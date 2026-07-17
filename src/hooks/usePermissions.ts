@@ -7,17 +7,15 @@ export interface PermissionSet {
   canDeleteRecords: boolean;
   canCreateOrganizations: boolean;
   canApproveOrganizations: boolean;
-  canApproveDealsOver1B: boolean;
-  canApproveDeals500MTo1B: boolean;
-  canApproveAllDeals: boolean;
+  canAssignBeneficiaries: boolean;
+  canApproveBeneficiaries: boolean;
   canSetManagerTargets: boolean;
   canSetAccountManagerTargets: boolean;
   canViewAllManagerReports: boolean;
   canViewAllAccountManagerReports: boolean;
   canProposeReassignments: boolean;
   canApproveReassignments: boolean;
-  canCrudCustomers: boolean;
-  canCrudDeals: boolean;
+  canCrudContacts: boolean;
   canCrudTasks: boolean;
 }
 
@@ -28,23 +26,20 @@ const NO_PERMISSIONS: PermissionSet = {
   canDeleteRecords: false,
   canCreateOrganizations: false,
   canApproveOrganizations: false,
-  canApproveDealsOver1B: false,
-  canApproveDeals500MTo1B: false,
-  canApproveAllDeals: false,
+  canAssignBeneficiaries: false,
+  canApproveBeneficiaries: false,
   canSetManagerTargets: false,
   canSetAccountManagerTargets: false,
   canViewAllManagerReports: false,
   canViewAllAccountManagerReports: false,
   canProposeReassignments: false,
   canApproveReassignments: false,
-  canCrudCustomers: false,
-  canCrudDeals: false,
+  canCrudContacts: false,
   canCrudTasks: false,
 };
 
 const BASE_CRUD: Partial<PermissionSet> = {
-  canCrudCustomers: true,
-  canCrudDeals: true,
+  canCrudContacts: true,
   canCrudTasks: true,
   canCreateOrganizations: true,
 };
@@ -62,6 +57,8 @@ export const usePermissions = (): PermissionSet => {
         canAccessAnalytics: true,
         canDeleteRecords: true,
         canApproveOrganizations: true,
+        canAssignBeneficiaries: true,
+        canApproveBeneficiaries: true,
         canViewAllManagerReports: true,
         canProposeReassignments: true,
         canApproveReassignments: true,
@@ -74,6 +71,8 @@ export const usePermissions = (): PermissionSet => {
         canAccessAnalytics: true,
         canDeleteRecords: false,
         canApproveOrganizations: false,
+        canAssignBeneficiaries: true,
+        canApproveBeneficiaries: true,
         canViewAllManagerReports: true,
         canProposeReassignments: false,
         canApproveReassignments: true,
@@ -85,7 +84,9 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: true,
         canAccessAnalytics: true,
         canDeleteRecords: false,
-        canApproveOrganizations: false,
+        canApproveOrganizations: true,
+        canApproveBeneficiaries: true,
+        canAssignBeneficiaries: true,
         canProposeReassignments: true,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -96,7 +97,9 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: false,
         canAccessAnalytics: false,
         canDeleteRecords: false,
-        canApproveOrganizations: false,
+        canApproveOrganizations: true,
+        canAssignBeneficiaries: true,
+        canApproveBeneficiaries: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -108,6 +111,21 @@ export const usePermissions = (): PermissionSet => {
         canAccessAnalytics: false,
         canDeleteRecords: false,
         canApproveOrganizations: false,
+        canAssignBeneficiaries: false,
+        canApproveBeneficiaries: false,
+        canProposeReassignments: false,
+        canApproveReassignments: false,
+      } as PermissionSet;
+
+    case 'referrer':
+      return {
+        ...BASE_CRUD,
+        canAccessUserManagement: false,
+        canAccessAnalytics: false,
+        canDeleteRecords: false,
+        canApproveOrganizations: false,
+        canAssignBeneficiaries: true,
+        canApproveBeneficiaries: false,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;

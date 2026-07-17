@@ -14,8 +14,10 @@ interface CalendarEvent {
   ends_at?: string | null;
   location?: string | null;
   description?: string | null;
+  beneficiary_name?: string | null;
   type?: string | null;
-  status?: string;
+  status?: "scheduled" | "done" | "cancelled";
+  created_by?: string;
   created_at: string;
 }
 
@@ -23,16 +25,16 @@ interface EditEventProps {
   isOpen: boolean;
   onClose: () => void;
   event: CalendarEvent | null;
-  onEventUpdated: () => void;
+  onUpdate: () => void;
 }
 
-export function EditEventModal({
+export default function EditEventModal({
   isOpen,
   onClose,
   event,
-  onEventUpdated,
+  onUpdate,
 }: EditEventProps) {
-  const { form, setForm, submitEdit, isSubmitting } = useCalendarForm({
+  const { form, setForm, updateEvent, isSubmitting } = useCalendarForm({
     initialCalendar: event
       ? {
           id: event.id,
@@ -43,9 +45,11 @@ export function EditEventModal({
           scheduled_at: format(new Date(event.starts_at), "yyyy-MM-dd'T'HH:mm"),
           status: event.status ?? 'scheduled',
           notes: event.description ?? '',
+          created_by: event.created_by ?? '',
+          created_at: event.created_at,
         }
       : undefined,
-    onSuccess: onEventUpdated,
+    onSuccess: onUpdate,
   });
 
   useEffect(() => {
@@ -55,6 +59,7 @@ export function EditEventModal({
       subject: event.subject,
       location: event.location ?? '',
       beneficiary_id: '',
+      beneficiary_name: '',
       scheduled_at: format(new Date(event.starts_at), "yyyy-MM-dd'T'HH:mm"),
       status: event.status ?? 'scheduled',
       notes: event.description ?? '',
@@ -63,7 +68,7 @@ export function EditEventModal({
     
   const handleSave = async () => {
     if (!event) return;
-    await submitEdit();
+    await updateEvent();
     onClose();
   };
 

@@ -6,7 +6,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 3000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -89,35 +89,18 @@ export const reducer = (state: State, action: Action): State => {
 
     case "DISMISS_TOAST": {
       const { toastId } = action
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
-      }
-
       return {
         ...state,
         toasts: state.toasts.map((t) =>
           t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
+            ? { ...t, open: false }
             : t
         ),
       }
     }
     case "REMOVE_TOAST":
       if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        }
+        return { ...state, toasts: [] }
       }
       return {
         ...state,
@@ -132,9 +115,15 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
+
+  if (action.type === "DISMISS_TOAST") {
+    if (action.toastId) {
+      addToRemoveQueue(action.toastId)
+    } else {
+      memoryState.toasts.forEach((toast) => addToRemoveQueue(toast.id))
+    }
+  }
+  listeners.forEach((listener) => listener(memoryState))
 }
 
 type Toast = Omit<ToasterToast, "id">
@@ -160,9 +149,8 @@ function toast({ ...props }: Toast) {
       },
     },
   })
-
-  return {
-    id: id,
+  return { //@ Type sensitive: `update` and `dismiss`. Also make sure `onOpenChange` handler is robust when used. Otherwise risk of stale closures
+    id,
     dismiss,
     update,
   }
@@ -179,7 +167,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,

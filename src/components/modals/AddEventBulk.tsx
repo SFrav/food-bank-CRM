@@ -9,17 +9,24 @@ import { useCalendarForm } from "@/hooks/useCalendarForm";
 interface AddEventBulkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventAdded: () => void;
+  onAdd: () => void;
 }
 
-export const AddEventBulkModal: React.FC<AddEventBulkModalProps> = ({
+
+// export const AddEventBulkModal: React.FC<AddEventBulkModalProps> = ({
+//   isOpen,
+//   onClose,
+//   onAdd,
+// }) => {
+
+export default function AddEventBulkModal({
   isOpen,
   onClose,
-  onEventAdded,
-}) => {
+  onAdd,
+}: AddEventBulkModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { submitAddBulk } = useCalendarForm({ onSuccess: onEventAdded });
+  const { createEventBulk } = useCalendarForm({ onSuccess: onAdd });
   const [isLoading, setIsLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -116,7 +123,7 @@ export const AddEventBulkModal: React.FC<AddEventBulkModalProps> = ({
     reader.readAsText(f);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     if (!user) {
@@ -139,7 +146,7 @@ export const AddEventBulkModal: React.FC<AddEventBulkModalProps> = ({
 
     setIsLoading(true);
     try {
-      await submitAddBulk(events);
+      await createEventBulk(events);
       setEvents([]);
       setFile(null);
       setFileName("");
@@ -168,10 +175,12 @@ export const AddEventBulkModal: React.FC<AddEventBulkModalProps> = ({
         <DialogHeader>
           <DialogTitle>Bulk Add Events</DialogTitle>
           <DialogDescription>
-            Upload a CSV file to add multiple events at once.
+            Upload a CSV file to add multiple events at once. 
+          </DialogDescription>
+          <DialogDescription>
+          Column names: title, location, date and time (separate) and description
           </DialogDescription>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <NativeFileUploader
             onFilesSelected={handleFileSelected}

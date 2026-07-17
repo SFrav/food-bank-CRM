@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import {useServices, Service} from "@/hooks/useServices"
+import { useRegions, Region } from '@/hooks/useRegions';
+// import { toast } from "sonner";
 
 interface ServiceFormData {
   name: string;
@@ -22,6 +23,7 @@ interface ServiceFormData {
     postcode: string;
     country: string;
   };
+  region_id: string;
 }
 
 interface AddServiceModalProps {
@@ -32,6 +34,8 @@ interface AddServiceModalProps {
 
 export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddServiceModalProps) {
   const [loading, setLoading] = useState(false);
+  const {createService} = useServices();
+  const { regions } = useRegions();
   
   const [formData, setFormData] = useState<ServiceFormData>({
     name: '',
@@ -46,46 +50,46 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
       state: '',
       postcode: '',
       country: 'Scotland'
-    }
+    },
+    region_id: ''
   });
 
   const handleSubmit = async () => {
-    if (!formData.name.trim()) {
-      toast.error('Service name is required');
-      return;
-    }
+    if (!formData.name.trim()) return;
 
     setLoading(true);
     try {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) {
-        toast.error('You must be logged in to create a service');
-        return;
-      }
+      const newService: Service = {
+        id: '', 
+        name: formData.name.trim(),
+        org_type: 'ngo', 
+        service: formData.service.trim() || null,
+        address: {
+          street: formData.address.street.trim(),
+          city: formData.address.city.trim(),
+          state: formData.address.state.trim(),
+          postcode: formData.address.postcode.trim(),
+          country: formData.address.country.trim(),
+        },
+        region_id: formData.region_id,
+        website: formData.website.trim() || null,
+        phone: formData.phone.trim() || null,
+        email: formData.email.trim() || null,
+        approval_status: null, 
+        is_active: true,      
+        notes: formData.notes.trim() || null,
+        created_by: null,     
+        created_at: '',     
+      };
 
-      const { error } = await supabase
-        .from('organizations')
-        .insert({
-          name: formData.name.trim(),
-          website: formData.website.trim() || null,
-          phone: formData.phone.trim() || null,
-          email: formData.email.trim() || null,
-          service: formData.service.trim() || null,
-          address: formData.address,
-          created_by: user.data.user.id,
-          approval_status: 'draft',
-          is_active: true
-        });
+      await createService(newService);
 
-      if (error) throw error;
-
-      toast.success('Support service created successfully');
-      onSuccess?.();
+      // Reset & close
       handleReset();
       onOpenChange(false);
-    } catch (error: any) {
-      console.error('Error creating service:', error);
-      toast.error(error.message || 'Failed to create service');
+      onSuccess?.();
+    } catch (err: any) {
+      console.error('Error creating service:', err);
     } finally {
       setLoading(false);
     }
@@ -105,7 +109,8 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
         state: '',
         postcode: '',
         country: 'Scotland'
-      }
+      },
+      region_id: ''
     });
   };
 
@@ -122,7 +127,7 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {'Add New Service'}
@@ -203,14 +208,14 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Location of service</h3>
             
-            {/* Billing Address */}
+            {/* Address */}
             <div className="space-y-3">
               {/* <h4 className="font-medium">Address</h4> */}
               
               <div className="space-y-2">
-                <Label htmlFor="billing_street">Street Address</Label>
+                <Label htmlFor="street">Street Address</Label>
                 <Input 
-                  id="billing_street"
+                  id="street"
                   value={formData.address.street}
                   onChange={(e) => setFormData(prev => ({
                     ...prev, 
@@ -221,10 +226,32 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="billing_city">City</Label>
+              <div className="max-w-[200px]">
+                <Label htmlFor="region">Region *</Label>
+                <Select
+                  required={true}
+                  value={formData.region_id || "none"}
+                  onValueChange={v => {
+                    setFormData({ ...formData, region_id: v });
+                    setFormData(prev => ({...prev, address: {...prev.address, city: regions.find(r=>r.id===v)?.name ?? prev.address.city}}))
+                  }}
+                >
+                  <SelectTrigger >
+                    <SelectValue placeholder="Select Region"/>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.filter((r) => r.is_active === true).map(re => (
+                      <SelectItem key={re.id} value={re.id}>
+                        {re.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+                {/* <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
                   <Input 
-                    id="billing_city"
+                    id="city"
                     value={formData.address.city}
                     onChange={(e) => setFormData(prev => ({
                       ...prev, 
@@ -232,11 +259,11 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
                     }))}
                     placeholder="City"
                   />
-                </div>
+                </div> */}
                 <div className="space-y-2">
-                  <Label htmlFor="billing_state">State/Province</Label>
+                  <Label htmlFor="state">State/Province</Label>
                   <Input 
-                    id="billing_state"
+                    id="state"
                     value={formData.address.state}
                     onChange={(e) => setFormData(prev => ({
                       ...prev, 
@@ -249,9 +276,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="billing_postcode">Postal Code</Label>
+                  <Label htmlFor="postcode">Postal Code</Label>
                   <Input 
-                    id="billing_postcode"
+                    id="postcode"
                     value={formData.address.postcode}
                     onChange={(e) => setFormData(prev => ({
                       ...prev, 
@@ -261,9 +288,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="billing_country">Country</Label>
+                  <Label htmlFor="country">Country</Label>
                   <Input 
-                    id="billing_country"
+                    id="country"
                     value={formData.address.country}
                     onChange={(e) => setFormData(prev => ({
                       ...prev, 

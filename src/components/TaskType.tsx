@@ -7,7 +7,7 @@ export function TaskType({
 }: {
   value: string;
   onChange: (v: string) => void;
-  width: string;
+  width?: string | '';
 }) {
   return (
       <Select value={value} onValueChange={v => onChange(v)}>
@@ -17,7 +17,7 @@ export function TaskType({
         <SelectContent>
           <SelectItem value="all">📣 All</SelectItem>
           <SelectItem value="referrer_request">📞 Referrer Request</SelectItem>
-          <SelectItem value="client_requests">👨‍👩‍👧‍👦 Beneficiary Requests</SelectItem>
+          <SelectItem value="beneficiary_request">👨‍👩‍👧‍👦 Beneficiary Request</SelectItem>
           <SelectItem value="staff_todo">🧭 Staff TODO</SelectItem>
           <SelectItem value="volunteer_todo">💎 Volunteer TODO</SelectItem>
         </SelectContent>

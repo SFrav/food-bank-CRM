@@ -1,41 +1,39 @@
-import { useEffect, useState, useReducer } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState, useReducer } from "react"; //, lazy, Suspense
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Search,  TrendingUp,  } from "lucide-react";
-import { AddTask } from "@/components/modals/AddTask";
-import { EditTask } from "@/components/modals/EditTask";
+import AddTaskModal from "@/components/modals/AddTask";
+import EditTaskModal from "@/components/modals/EditTask";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+// import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useCalendarForm } from "@/hooks/useCalendarForm";
-import TaskItem from "@/components/TaskItem";
+import { useContacts, Contact } from '@/hooks/useContacts';
+import { useTasks, Task, TaskStatus } from '@/hooks/useTasks';
+import TaskSelected from "@/components/TaskSelected";
 import { TaskType } from "@/components/TaskType";
 
-interface Task {
-  id: string;
-  task_type: "referrer_request" | "client_requests" | "staff_todo" | "volunteer_todo";
-  customer_id: string;
-  customer_name?: string;
-  pic_id?: string;
-  pic_name?: string;
-  scheduled_at: string;
-  status: "scheduled" | "done" | "cancelled";
-  notes?: string;
-  created_by: string;
-  created_at: string;
-}
+// const AddTaskModal = lazy(() =>
+//   import('@/components/modals/AddTask')
+// );
 
-interface Contact {
-  id: string; 
-  name: string;
-}
+// const EditTaskModal = lazy(() =>
+//   import('@/components/modals/EditTask')
+// );
+
+type UIState = {
+  isAddOpen: boolean;
+  isEditOpen: boolean;
+  selectedTask: Task | null;
+};
+
+const initialState: UIState = {
+  isAddOpen: false,
+  isEditOpen: false,
+  selectedTask: null,
+};
 
 type FilterState = {
   searchQuery: string;
@@ -44,184 +42,144 @@ type FilterState = {
   dateFilter: string;
 };
 
+type FilterAction =
+  | { type: 'SET_SEARCH'; payload: string }
+  | { type: 'SET_TYPE'; payload: string }
+  | { type: 'SET_STATUS'; payload: string }
+  | { type: 'SET_DATE'; payload: string };
+
 const filterReducer = (
   state: FilterState,
-  action: { type: string; payload?: any }
-) => {
+  action: FilterAction
+): FilterState => {
   switch (action.type) {
-    case "SET_SEARCH":
+    case 'SET_SEARCH':
       return { ...state, searchQuery: action.payload };
-    case "SET_TYPE":
+    case 'SET_TYPE':
       return { ...state, filterType: action.payload };
-    case "SET_STATUS":
+    case 'SET_STATUS':
       return { ...state, filterStatus: action.payload };
-    case "SET_DATE":
+    case 'SET_DATE':
       return { ...state, dateFilter: action.payload };
     default:
       return state;
   }
 };
 
+function stateReducer(state: UIState, action: any): UIState {
+  switch (action.type) {
+    case 'OPEN_ADD':
+      return { ...state, isAddOpen: true };
+    case 'CLOSE_ADD':
+      return { ...state, isAddOpen: false };
+    case 'OPEN_EDIT':
+      return { ...state, isEditOpen: true, selectedTask: action.payload };
+    case 'CLOSE_EDIT':
+      return { ...state, isEditOpen: false, selectedTask: null };
+    default:
+      return state;
+  }
+}
+
 export default function Tasks() {
-  const sb = supabase as any;
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uiState, dispatchUI] = useReducer(
-    (state: { isAddOpen: boolean; isEditOpen: boolean; editingTask: Task | null }, action: any) => {
-      switch (action.type) {
-        case 'OPEN_ADD':
-          return { ...state, isAddOpen: true };
-        case 'CLOSE_ADD':
-          return { ...state, isAddOpen: false };
-        case 'OPEN_EDIT':
-          return { ...state, isEditOpen: true, editingTask: action.payload };
-        case 'CLOSE_EDIT':
-          return { ...state, isEditOpen: false, editingTask: null };
-        default:
-          return state;
-      }
-    },
-    { isAddOpen: false, isEditOpen: false, editingTask: null }
-  );
-
-  const { toast } = useToast();
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const { profile } = useProfile();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { tasks, loading, fetch: loadTasks, updateStatus, deleteTask } = useTasks(); 
+  const { contacts, loading: contactsLoading } = useContacts();       
+  const [beneficiaries, setBeneficiaries] = useState<Contact[]>([]);
 
-  const [filter, dispatchFilter] = useReducer<React.Reducer<FilterState, any>>(
-    filterReducer,
-    {
-      searchQuery: "",
-      filterType: "all",
-      filterStatus: "all",
-      dateFilter: "all",
-    }
-  );
+  const [ui, dispatchUI] = useReducer(stateReducer, initialState);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get("quick") === "add-task") {
-      dispatchUI({ type: uiState.isAddOpen ? 'CLOSE_ADD' : 'CLOSE_EDIT' });
-      navigate("/tasks", { replace: true });
-    }
-  }, [navigate]);
+  
+  // const [uiState, dispatchUI] = useReducer<
+  //   { isAddOpen: boolean; isEditOpen: boolean; editingTask: Task | null },
+  //   any
+  // >(
+  //   (state, action) => {
+  //     switch (action.type) {
+  //       case 'OPEN_ADD':
+  //         return { ...state, isAddOpen: true };
+  //       case 'CLOSE_ADD':
+  //         return { ...state, isAddOpen: false };
+  //       case 'OPEN_EDIT':
+  //         return { ...state, isEditOpen: true, editingTask: action.payload };
+  //       case 'CLOSE_EDIT':
+  //         return { ...state, isEditOpen: false, editingTask: null };
+  //       default:
+  //         return state;
+  //     }
+  //   },
+  //   { isAddOpen: false, isEditOpen: false, editingTask: null }
+  // );
 
-  /* Load data */
-  useEffect(() => {
-    if (user && profile) {
-      loadTasks();
-      loadBeneficiaries();
-    }
-  }, [user, profile]);
+  const [filter, dispatchFilter] = useReducer(filterReducer, {
+    searchQuery: '',
+    filterType: 'all',
+    filterStatus: 'all',
+    dateFilter: 'all',
+  });
 
-  const loadTasks = async () => {
-    if (!user || !profile) return;
-    try {
-      const { data: tasksData, error } = await sb.rpc("get_tasks");
-      if (error) throw error;
-      if (!tasksData) return;
-      setTasks(tasksData as any);
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error",
-        description: "Failed to load tasks.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+useEffect(() => {
+  // if (!user || !profile) return;
+  if (!profile) return;
+  const active = contacts.filter((c) => c.status === "active");
+  setBeneficiaries(active);
+}, [profile, contacts]); //user, 
 
-  const loadBeneficiaries = async () => {
-    try {
-      const { data, error } = await sb
-        .from("contacts")
-        .select("id, name")
-        .eq("status", 'active')
-        .order("name");
-      if (error) throw error;
-      setContacts(data || []);
-    } catch (err) {
-      console.error(err);
-    }
+
+  const loadBeneficiaries = (): Contact[] => {
+    return beneficiaries;
   };
 
   const thisWeekStart = startOfWeek(new Date());
-  const thisWeekEnd = endOfWeek(new Date());
-  const thisWeekTasks = tasks.filter((a) =>
-    isWithinInterval(new Date(a.scheduled_at), {
+  const thisWeekEnd   = endOfWeek(new Date());
+
+  const thisWeekTasks = tasks.filter((t) =>
+    isWithinInterval(new Date(t.scheduled_at), {
       start: thisWeekStart,
-      end: thisWeekEnd,
+      end:   thisWeekEnd,
     })
   );
 
-  const filteredTasks = tasks.filter((task) => {
+  const filteredTasks = tasks.filter((t) => {
     const matchesSearch =
-      task.customer_name?.toLowerCase().includes(filter.searchQuery.toLowerCase()) ||
-      task.notes?.toLowerCase().includes(filter.searchQuery.toLowerCase()) ||
-      task.pic_name?.toLowerCase().includes(filter.searchQuery.toLowerCase());
-    const matchesType = filter.filterType === "all" || task.task_type === filter.filterType;
-    const matchesStatus = filter.filterStatus === "all" || task.status === filter.filterStatus;
+      t.beneficiary_name?.toLowerCase().includes(filter.searchQuery.toLowerCase()) ||
+      t.notes?.toLowerCase().includes(filter.searchQuery.toLowerCase()) ||
+      t.pic_name?.toLowerCase().includes(filter.searchQuery.toLowerCase());
+
+    const matchesType = filter.filterType === 'all' || t.entry_type === filter.filterType;
+    const matchesStatus = filter.filterStatus === 'all' || t.status === filter.filterStatus;
+
     let matchesDate = true;
-    if (filter.dateFilter === "today") {
+    if (filter.dateFilter === 'today') {
       matchesDate =
-        format(new Date(task.scheduled_at), "yyyy-MM-dd") ===
-        format(new Date(), "yyyy-MM-dd");
-    } else if (filter.dateFilter === "week") {
-      matchesDate = isWithinInterval(new Date(task.scheduled_at), {
+        format(new Date(t.scheduled_at), 'yyyy-MM-dd') ===
+        format(new Date(), 'yyyy-MM-dd');
+    } else if (filter.dateFilter === 'week') {
+      matchesDate = isWithinInterval(new Date(t.scheduled_at), {
         start: thisWeekStart,
-        end: thisWeekEnd,
+        end:   thisWeekEnd,
       });
     }
+
     return matchesSearch && matchesType && matchesStatus && matchesDate;
   });
 
-  const handleUpdateStatus = async (
-    id: string,
-    newStatus: "scheduled" | "done" | "cancelled"
-  ) => {
-    try {
-      const { error } = await sb.from("calendar").update({ status: newStatus }).eq("id", id);
-      if (error) throw error;
-      toast({
-        title: "Success",
-        description: `Task marked as ${newStatus}!`,
-      });
-      loadTasks();
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error",
-        description: "Failed to update status.",
-        variant: "destructive",
-      });
-    }
+  const handleUpdateStatus = async (id: string, newStatus: TaskStatus) => {
+    await updateStatus(id, newStatus);
+    await loadTasks();
   };
 
-  const { deleteCalendar } = useCalendarForm({ onSuccess: loadTasks });
   const handleDeleteTask = async (eventId: string) => {
     try {
-      await deleteCalendar(eventId);
-      toast({
-        title: "Success",
-        description: "Event deleted successfully!",
-      });
-      loadTasks();
+      await deleteTask(eventId);
+      await loadTasks();
     } catch (error) {
       console.error('Error deleting event:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete event.",
-        variant: "destructive",
-      });
     }
   };
 
-  if (loading) {
+  if (loading && tasks.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
         Loading tasks…
@@ -238,26 +196,10 @@ export default function Tasks() {
             {thisWeekTasks.length} this week
           </Badge>
         </div>
-
-        <Dialog open={uiState.isAddOpen} onOpenChange={() => dispatchUI({ type: uiState.isAddOpen ? 'CLOSE_ADD' : 'OPEN_ADD' })}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus className="size-4 mr-2" />
-              Add Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Task</DialogTitle>
-            </DialogHeader>
-            <AddTask
-              beneficiaries={contacts}
-              loadContacts={loadBeneficiaries}
-              onClose={() => dispatchUI({ type: uiState.isAddOpen ? 'CLOSE_ADD' : 'CLOSE_EDIT' })}
-              onAdd={loadTasks}
-            />
-          </DialogContent>
-        </Dialog>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => dispatchUI({ type: ui.isAddOpen ? 'CLOSE_ADD' : 'OPEN_ADD' })}>
+            <Plus className="size-4 mr-2" />
+            Add Task
+          </Button>
       </div>
 
       <Card className="bg-card border-border">
@@ -317,12 +259,12 @@ export default function Tasks() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border max-h-[calc(100vh-20rem)] overflow-hidden">
         <CardHeader>
           <CardTitle className="text-lg">Tasks ({filteredTasks.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="overflow-y-auto">
+          <div className="space-y-4 max-h-[calc(100vh-16rem)]">
             {filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No tasks found.{" "}
@@ -335,7 +277,7 @@ export default function Tasks() {
               </div>
             ) : (
               filteredTasks.map((task) => (
-                <TaskItem
+                <TaskSelected
                   key={task.id}
                   task={task}
                   onEdit={() => dispatchUI({ type: 'OPEN_EDIT', payload: task })}
@@ -348,25 +290,27 @@ export default function Tasks() {
         </CardContent>
       </Card>
 
-      <Dialog open={uiState.isEditOpen} onOpenChange={() => dispatchUI({ type: uiState.isEditOpen ? 'CLOSE_EDIT' : 'OPEN_EDIT' })}>
-        <DialogTrigger asChild>
-          <span className="sr-only" />
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-          </DialogHeader>
-          {uiState.editingTask && (
-            <EditTask
-              task={uiState.editingTask}
-              beneficiaries={contacts}
-              loadContacts={loadBeneficiaries}
-              onClose={() => dispatchUI({ type: "CLOSE_EDIT" })}
-              onUpdate={loadTasks}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
+        <AddTaskModal
+          isOpen={ui.isAddOpen}
+          beneficiaries={beneficiaries}
+          loadContacts={loadBeneficiaries}
+          onClose={() => dispatchUI({ type: ui.isAddOpen ? 'CLOSE_ADD' : 'CLOSE_EDIT' })}
+          onAdd={loadTasks}
+        />
+      {/* </Suspense> */}
+      {ui.selectedTask && (
+      // <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}>
+        <EditTaskModal
+          isOpen={ui.isEditOpen}
+          task={ui.selectedTask}
+          beneficiaries={beneficiaries}
+          loadContacts={loadBeneficiaries}
+          onClose={() => dispatchUI({ type: "CLOSE_EDIT" })}
+          onUpdate={loadTasks}
+        />
+      // </Suspense>
+      )}
     </div>
   );
 }

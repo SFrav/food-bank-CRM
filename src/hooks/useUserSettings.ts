@@ -8,6 +8,7 @@ export interface UserSettings {
   notification_email?: string;
   notification_tasks?: string;
   notification_calendar?: string;
+  two_FA?: string;
 }
 
 export const useUserSettings = () => {
@@ -22,19 +23,11 @@ export const useUserSettings = () => {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('setting_key, setting_value')
-        .eq('user_id', user.id)
-        .in('setting_key', [
-          'dark_mode',
-          'notification_email',
-          'notification_tasks',
-          'notification_calendar'
-        ]);
+      const { data, error } = await supabase.rpc('get_user_settings', {
+        p_user_id: user.id
+      });
 
       if (error) throw error;
 
@@ -47,15 +40,15 @@ export const useUserSettings = () => {
       setSettings(settingsMap);
     } catch (err: any) {
       console.error('Error fetching settings:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to load your settings.',
-        variant: 'destructive',
-      });
+      // toast({
+      //   title: 'Error',
+      //   description: 'Failed to load your settings.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]); //, toast
 
   const updateSetting = useCallback(async (key: string, value: string) => {
     if (!user) return;
@@ -80,21 +73,14 @@ export const useUserSettings = () => {
           }
         }
       }
-
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          setting_key: key,
-          setting_value: value
-        },
-        { onConflict: 'user_id, setting_key' }
-      )
-        .eq('user_id', user.id)
-        .eq('setting_key', key);
+      const { error } = await supabase.rpc('upsert_user_setting', {
+        p_user_id: user.id,
+        p_setting_key: key,
+        p_setting_value: value,
+      });
 
       if (error) throw error;
-
+      fetchSettings()
       setSettings(prev => ({ ...prev, [key]: value }));
 
     } catch (err) {

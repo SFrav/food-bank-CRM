@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Bell, AlertTriangle, Target, CheckSquare, Brain, Settings as SettingsIcon, Search, Filter, Clock } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bell, AlertTriangle, Target, CheckSquare, Brain, Settings as SettingsIcon, Search, Clock } from 'lucide-react';
 import { useNotifications, Notification } from '@/hooks/useNotificationsContext';
+// import { useCreateNotifications } from "@/hooks/useNotifications";
+import { useProfile } from "@/hooks/useProfile";
+import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 const getTypeIcon = (type: Notification['type']) => {
   switch (type) {
@@ -32,12 +38,19 @@ const getRelativeTime = (dateString: string) => {
 
 const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, createNotification } = useNotifications();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [filteredNotifications , setFilteredNotifications] = useState<Notification[]>([]);
+  // const {createNotification} = useCreateNotifications();
+  const { profile } = useProfile();
+  const { users: allUsers, loading: usersLoading } = useAdminUsers('', '');
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [targetUser, setTargetUser] = useState('');
+  const [targetRole, setTargetRole] = useState('');
+  const [type, setType] = useState<'dm' | 'alert'>('dm');
 
-  // Filter logic remains, but now relies on the unified 'notifications' state
   useEffect(() => {
     let filtered = notifications;
     if (searchTerm) {
@@ -70,6 +83,28 @@ const NotificationsPage: React.FC = () => {
     }
   };
 
+
+  const filteredUsers = useMemo(() => {
+    if (!profile) return [];   
+    return allUsers.filter((u: any) => u.id !== profile.user_id && u.entity_id === profile.entity_id);
+  }, [allUsers, profile]);
+
+  const handleSubmit = async () => {
+    const result = await createNotification(
+      title,
+      message,
+      '/notifications',
+      type,
+      type === 'dm' ? targetUser : null,
+      type === 'alert' ? targetRole : null
+    );
+    if (result.success) {
+      setTitle('');
+      setMessage('');
+      setTargetUser('');
+      setTargetRole('');
+    }
+  };  
   const getTypeBadgeVariant = (type: Notification['type']) => {
     switch (type) {
       case 'alert': return 'destructive';
@@ -176,6 +211,66 @@ const NotificationsPage: React.FC = () => {
           )}
         </TabsContent>
       </Tabs>
+      <PermissionGuard permission="canAccessAnalytics">
+        <Card>
+          <CardHeader>
+            <CardTitle>Post Notification</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={type} onValueChange={v => setType(v as any)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dm">Direct Message (DM)</SelectItem>
+                <SelectItem value="alert">Alert</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Input placeholder="Title" className="mt-4" value={title} onChange={e => setTitle(e.target.value)} />
+            <Textarea placeholder="Message" className="mt-4" value={message} onChange={e => setMessage(e.target.value)} />
+
+            {type === 'dm' && (
+              <Select
+                value={targetUser}
+                onValueChange={setTargetUser}
+                disabled={usersLoading}
+              >
+                <SelectTrigger className="mt-4 w-full">
+                  <SelectValue placeholder="Select a user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredUsers.map((user: any) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.full_name ?? user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {type === 'alert' && (
+              <Select value={targetRole} onValueChange={v => setTargetRole(v as any)}>
+                <SelectTrigger className="w-full mt-4"> 
+                  <SelectValue placeholder="Target role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="branch_manager">Branch Manager</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="volunteer">Volunteer</SelectItem>
+                  <SelectItem value="referrer">Referrer</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button variant="default" className="mt-4" onClick={handleSubmit}>
+              Post
+            </Button>   
+          </CardContent>
+        </Card>                    
+
+
+      </PermissionGuard>
     </div>
   );
 };

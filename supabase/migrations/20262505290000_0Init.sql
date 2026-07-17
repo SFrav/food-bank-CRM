@@ -1,6 +1,8 @@
 BEGIN;
 
--- A unified database initialisation file that can replace all migrations dated prior to May 2026
+-- A unified and complete database initialisation migration
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA pg_catalog;
 
 SET row_security = off;
 
@@ -11,7 +13,8 @@ CREATE TYPE "public"."beneficiary_enum" AS ENUM (
     'pending',
     'active',
     'inactive',
-    'banned'
+    'banned',
+    'merged'
 );
 
 CREATE TYPE "public"."notification_type_enum" AS ENUM (
@@ -41,12 +44,15 @@ CREATE TYPE "public"."role_enum" AS ENUM (
     'pending'
 );
 
-COMMENT ON TYPE "public"."role_enum" IS 'User roles: admin (global), head (team leader), manager, branch_manager/volunteer';
-
 CREATE TYPE "public"."user_status_enum" AS ENUM (
     'active',
     'inactive',
     'suspended'
+);
+
+CREATE TYPE "public"."allotment_type_enum" AS ENUM (
+    'referral',
+    'drop_in'
 );
 
 
@@ -79,11 +85,8 @@ CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
     "status" "public"."user_status_enum" DEFAULT 'active'::"public"."user_status_enum" NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "title_id" "uuid"
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
-
-COMMENT ON COLUMN "public"."user_profiles"."division_id" IS 'Team ID (formerly division_id). References divisions table which now represents teams.';
 
 
 CREATE TABLE IF NOT EXISTS "public"."contacts" (
@@ -91,15 +94,33 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "name" "text" NOT NULL,
     "email" "text",
     "phone" "text",
+    "street_address" "text",
     "postcode" "text",
+    "region_id" "uuid", 
+    "adults_count" numeric DEFAULT NULL,
+    "children_gt16" numeric DEFAULT NULL,
+    "children_lt16" numeric DEFAULT NULL,
+    "infant" boolean DEFAULT NULL,
+    "allergies" boolean DEFAULT NULL,
+    "vegetarian" boolean DEFAULT NULL,
+    "hallal" boolean DEFAULT NULL,
     "notes" "text",
     "owner_id" "uuid",
-    "user_id" "uuid",
+    "updated_by" "uuid",
     "status" "public"."beneficiary_enum" DEFAULT 'inactive'::"public"."beneficiary_enum" NOT NULL,
-    "approved_at" timestamp with time zone,
-    "approved_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
+    "created_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "public"."contacts_notes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "contact_id" "uuid" NOT NULL,
+    "note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "created_by" "uuid",
+    "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    "updated_by" "uuid"
 );
 
 CREATE TABLE IF NOT EXISTS "public"."divisions" (
@@ -112,20 +133,17 @@ CREATE TABLE IF NOT EXISTS "public"."divisions" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "head_id" "uuid",
-    "entity_id" "uuid"
+    "entity_id" "uuid", 
+    "region_id" "uuid"
 );
 
-COMMENT ON TABLE "public"."divisions" IS 'Teams within entities. Each team has one head (leader) and contains managers and volunteers. Formerly called divisions, now represents the Team concept in Entity → Team → Head → Manager → Volunteers hierarchy.';
-
-COMMENT ON COLUMN "public"."divisions"."head_id" IS 'Head (leader) of this team. One head per team.';
-
-COMMENT ON COLUMN "public"."divisions"."entity_id" IS 'Entity (company) this team belongs to.';
 
 CREATE TABLE IF NOT EXISTS "public"."entities" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
     "code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
+    "is_referrer" boolean DEFAULT false NOT NULL, 
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
@@ -150,10 +168,11 @@ CREATE TABLE IF NOT EXISTS "public"."calendar" (
 CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "calendar_id" "uuid",
+    "contact_id" "uuid",
     "org_role" "text",
     "type" "public"."notification_type_enum" NOT NULL,
     "title" "text",
-    "message" "text" NOT NULL,
+    "message" "text" DEFAULT '',
     "link" "text",
     "meta" "jsonb" DEFAULT '{}'::"jsonb",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
@@ -168,21 +187,22 @@ CREATE TABLE IF NOT EXISTS "public"."notifications_user" (
     "created_at" timestamptz DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "public"."organizations" (
+CREATE TABLE IF NOT EXISTS "public"."organisations" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
     "org_type" "public"."org_type_enum" DEFAULT 'ngo'::"public"."org_type_enum" NOT NULL,
     "service" "text",
-    "is_active" boolean DEFAULT true NOT NULL,
-    "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "address" "jsonb",
+    "region_id" "uuid",
     "website" "text",
     "phone" "text",
     "email" "text",
+    "notes" "text",
     "approval_status" "text" DEFAULT 'approved'::"text",
-    "notes" "text"
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."regions" (
@@ -198,7 +218,7 @@ CREATE TABLE IF NOT EXISTS "public"."regions" (
 CREATE TABLE IF NOT EXISTS "public"."system_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "setting_key" "text" NOT NULL,
-    "setting_value" "jsonb",
+    "setting_value" "text",
     "updated_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT "now"()
 );
@@ -208,17 +228,51 @@ CREATE TABLE IF NOT EXISTS "public"."user_settings" (
     "user_id" "uuid" NOT NULL,
     "setting_key" "text" NOT NULL,
     "setting_value" text, 
-    "updated_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT "now"()
 );
 
-CREATE TABLE IF NOT EXISTS "public"."titles" (
+CREATE TABLE IF NOT EXISTS "public"."entity_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "name" "text" NOT NULL,
-    "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "entity_id" "uuid" NOT NULL,
+    "division_id" "uuid",
+    "setting_key" "text" NOT NULL,
+    "setting_value" text, 
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+CREATE TABLE IF NOT EXISTS "public"."division_settings" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "division_id" "uuid" NOT NULL,
+    "setting_key" "text" NOT NULL,
+    "setting_value" text, 
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+CREATE TABLE IF NOT EXISTS "public"."contacts_referrer" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "contact_id" "uuid" NOT NULL,
+    "referrer_id" "uuid" NOT NULL,
+    "first_referred_by" "uuid", 
+    "approved_at" timestamp with time zone,
+    "approved_by" "uuid",
+    "message" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(), --set at create_contact
+    "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "public"."contacts_allotment" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "contact_id" "uuid" NOT NULL,
+    "date" timestamp with time zone NOT NULL,
+    "visit_num" "numeric", -- which of the total allotted weeks is this (e.g. first week receiving food = 1, second week = 2)
+    "attended" boolean NOT NULL DEFAULT false,
+    "serving" boolean NOT NULL DEFAULT false,
+    "served" boolean NOT NULL DEFAULT false, 
+    "type" "public"."allotment_type_enum" NOT NULL, -- referred or drop_in
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
+
+
 
 
 --
@@ -246,6 +300,59 @@ CREATE OR REPLACE VIEW "public"."v_audit_log_complete" with (security_invoker = 
      LEFT JOIN "public"."user_profiles" "up" ON (("up"."user_id" = "al"."user_id")))
   ORDER BY "al"."created_at" DESC;
 
+CREATE OR REPLACE VIEW public.contacts_queue with (security_invoker = on) AS
+SELECT
+  c.id,
+  c.name,
+  c.email,
+  c.phone,
+  c.street_address,
+  c.postcode,
+  c.region_id,
+  c.adults_count  AS adults,
+  c.children_gt16,
+  c.children_lt16,
+  c.infant,
+  c.allergies,
+  c.vegetarian,
+  c.hallal,
+  c.status,
+  c.updated_by   AS user_id,
+  c.owner_id,
+  c.notes,
+  c.created_at,
+  MAX(ca.updated_at) AS attended_at   
+FROM public.contacts          c
+JOIN public.contacts_allotment ca
+  ON ca.contact_id = c.id
+WHERE
+  c.status = 'active'              
+  AND ca.attended = TRUE          
+  AND ca.serving  = FALSE         
+  AND ca.served   = FALSE          
+  AND ca.updated_at IS NOT NULL  
+GROUP BY
+    c.id,
+    c.name,
+    c.email, 
+    c.phone,
+    c.street_address,
+    c.postcode,
+    c.region_id,
+    c.adults_count,
+    c.children_gt16,
+    c.children_lt16,
+    c.infant,
+    c.allergies,
+    c.vegetarian,
+    c.hallal,
+    c.status,
+    c.updated_by,
+    c.owner_id,
+    c.notes,
+    c.created_at
+;   
+
 -- CREATE VIEW "public"."user_notifications" with (security_invoker = on) AS
 -- SELECT n.id,
 --        n.org_role,
@@ -269,20 +376,62 @@ CREATE OR REPLACE VIEW "public"."v_audit_log_complete" with (security_invoker = 
 ALTER TABLE ONLY "public"."audit_logs"
     ADD CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."contacts"
-    ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_email_key" UNIQUE ("email");
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id"); 
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_user_id_key" UNIQUE ("user_id");
+
+ALTER TABLE ONLY "public"."entities"
+    ADD CONSTRAINT "entities_pkey" PRIMARY KEY ("id"); 
 
 ALTER TABLE ONLY "public"."divisions"
     ADD CONSTRAINT "divisions_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."entities"
-    ADD CONSTRAINT "entities_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."division_settings"
+    ADD CONSTRAINT "division_settins_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."contacts"
+    ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
+
+CREATE UNIQUE INDEX "uq_contacts_email"
+    ON "public"."contacts"("email")
+    WHERE "email" IS NOT NULL;
+
+CREATE UNIQUE INDEX "uq_contacts_phone"
+    ON "public"."contacts"("phone")
+    WHERE "phone" IS NOT NULL;
+
+CREATE UNIQUE INDEX "uq_contacts_name_address_postcode"    
+  ON "public"."contacts"("name", "street_address", "postcode")   
+  WHERE "street_address" IS NOT NULL AND "postcode" IS NOT NULL;
+
+-- ALTER TABLE "public"."contacts" 
+--   ADD CONSTRAINT "uq_contacts" UNIQUE ("name", "phone");
+
+ALTER TABLE ONLY "public"."contacts_notes"
+    ADD CONSTRAINT "contacts_notes_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."contacts_referrer"
+    ADD CONSTRAINT "contacts_referrer_pkey" PRIMARY KEY ("id");    
+
+ALTER TABLE ONLY "public"."contacts_allotment"
+    ADD CONSTRAINT "allotment_pkey" PRIMARY KEY ("id");   
+
+ALTER TABLE "public"."contacts_allotment"
+  ADD CONSTRAINT "uq_contacts_allotment" UNIQUE ("contact_id", "date");
 
 ALTER TABLE ONLY "public"."notifications"
     ADD CONSTRAINT "notifications_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."organizations"
-    ADD CONSTRAINT "organizations_pkey" PRIMARY KEY ("id");
+-- ALTER TABLE ONLY "public"."notifications_user"
+--     ADD CONSTRAINT "notifications_user_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."organisations"
+    ADD CONSTRAINT "organisations_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."regions"
     ADD CONSTRAINT "regions_pkey" PRIMARY KEY ("id");
@@ -294,23 +443,19 @@ ALTER TABLE ONLY "public"."system_settings"
     ADD CONSTRAINT "system_settings_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."system_settings"
-    ADD CONSTRAINT "system_settings_setting_key_key" UNIQUE ("setting_key");
+    ADD CONSTRAINT "system_settings_setting_pkey" UNIQUE ("setting_key");
 
-ALTER TABLE ONLY "public"."titles"
-    ADD CONSTRAINT "titles_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."entity_settings"
+  ADD CONSTRAINT "entity_settins_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_email_key" UNIQUE ("email");
+ALTER TABLE "public"."entity_settings"
+  ADD CONSTRAINT "uq_entity_setting" UNIQUE ("entity_id", "setting_key");
 
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_user_id_key" UNIQUE ("user_id");
+ALTER TABLE "public"."division_settings"
+  ADD CONSTRAINT "uq_division_setting" UNIQUE ("division_id", "setting_key");
 
 ALTER TABLE "public"."user_settings"
   ADD CONSTRAINT "uq_user_setting" UNIQUE ("user_id", "setting_key");
-
 
 --
 --Tables with cascades (req. primary keys)
@@ -325,9 +470,97 @@ ALTER TABLE "public"."user_settings"
 --     "created_at" timestamptz DEFAULT now() NOT NULL
 -- );
 
+
+--
+-- Foreign keys
+--
+
+ALTER TABLE ONLY "public"."audit_logs"
+    ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id");
+
+ALTER TABLE ONLY "public"."user_settings"
+    ADD CONSTRAINT "settings_user_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."contacts"
+    ADD CONSTRAINT "contacts_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."contacts"
+    ADD CONSTRAINT "contacts_user_id_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."divisions"
+    ADD CONSTRAINT "divisions_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."divisions"
+    ADD CONSTRAINT "divisions_head_id_fkey" FOREIGN KEY ("head_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."divisions"
+    ADD CONSTRAINT "divisions_manager_id_fkey" FOREIGN KEY ("manager_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."divisions"
+    ADD CONSTRAINT "divisions_region_id_fkey" FOREIGN KEY ("region_id") REFERENCES "public"."regions"("id") ON DELETE SET NULL;
+
+-- ALTER TABLE ONLY "public"."notifications"
+--     ADD CONSTRAINT "notifications_user_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."organisations"
+    ADD CONSTRAINT "organisations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_beneficiary_id_fkey" FOREIGN KEY ("beneficiary_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."calendar"
+    ADD CONSTRAINT "calendar_pic_id_fkey" FOREIGN KEY ("pic_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
+
+ALTER TABLE "public"."notifications"
+  ADD CONSTRAINT "notifications_calendar_fkey" FOREIGN KEY ("calendar_id") REFERENCES "public"."calendar"("id") ON DELETE SET NULL;
+
+ALTER TABLE "public"."notifications"
+  ADD CONSTRAINT "notifications_conctacts_fkey" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."notifications_user"
+    ADD CONSTRAINT "notifications_user_notify_id_fkey" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."notifications_user"
+    ADD CONSTRAINT "notifications_user_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_division_id_fkey" FOREIGN KEY ("division_id") REFERENCES "public"."divisions"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_manager_id_fkey" FOREIGN KEY ("manager_id") REFERENCES "public"."user_profiles"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_region_id_fkey" FOREIGN KEY ("region_id") REFERENCES "public"."regions"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."user_profiles"
+    ADD CONSTRAINT "user_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."contacts_referrer"
+    ADD CONSTRAINT "referrer_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."contacts_referrer"
+    ADD CONSTRAINT "referrer_user_id_fkey" FOREIGN KEY ("referrer_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
 --
 --Indexes
 --
+CREATE INDEX "idx_contacts_status" ON "public"."contacts"(status);
+
+CREATE INDEX IF NOT EXISTS idx_contacts_name_trgm ON public.contacts USING gin (name gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_contacts_phone ON public.contacts (phone);
+
+CREATE INDEX IF NOT EXISTS idx_contacts_postcode ON public.contacts (postcode);
+
+CREATE INDEX "idx_allotment_contact_attended"
+  ON public.contacts_allotment(contact_id, attended, serving, served, updated_at)
+  WHERE attended IS NOT NULL;
 
 CREATE INDEX "idx_divisions_entity_id" ON "public"."divisions" USING "btree" ("entity_id");
 
@@ -364,80 +597,140 @@ CREATE INDEX "calendar_pic_id_idx" ON "public"."calendar" USING "btree" ("pic_id
 CREATE INDEX "calendar_scheduled_at_idx" ON "public"."calendar" USING "btree" ("scheduled_at");
 
 --
--- Foreign keys
---
-
-ALTER TABLE ONLY "public"."audit_logs"
-    ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id");
-
-ALTER TABLE ONLY "public"."contacts"
-    ADD CONSTRAINT "contacts_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."contacts"
-    ADD CONSTRAINT "contacts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."divisions"
-    ADD CONSTRAINT "divisions_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."divisions"
-    ADD CONSTRAINT "divisions_head_id_fkey" FOREIGN KEY ("head_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
-
--- ALTER TABLE ONLY "public"."notifications"
---     ADD CONSTRAINT "notifications_user_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
-
-
-ALTER TABLE ONLY "public"."organizations"
-    ADD CONSTRAINT "organizations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."calendar"
-    ADD CONSTRAINT "calendar_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."calendar"
-    ADD CONSTRAINT "calendar_beneficiary_id_fkey" FOREIGN KEY ("beneficiary_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."calendar"
-    ADD CONSTRAINT "calendar_pic_id_fkey" FOREIGN KEY ("pic_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
-
-ALTER TABLE "public"."notifications"
-  ADD CONSTRAINT "notifications_calendar_fkey" FOREIGN KEY ("calendar_id") REFERENCES "public"."calendar"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."notifications_user"
-    ADD CONSTRAINT "notifications_user_notify_id_fkey" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."notifications_user"
-    ADD CONSTRAINT "notifications_user_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_division_id_fkey" FOREIGN KEY ("division_id") REFERENCES "public"."divisions"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_manager_id_fkey" FOREIGN KEY ("manager_id") REFERENCES "public"."user_profiles"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_region_id_fkey" FOREIGN KEY ("region_id") REFERENCES "public"."regions"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_title_id_fkey" FOREIGN KEY ("title_id") REFERENCES "public"."titles"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
---
 --Functions
 --
 
+-------------
+-- Audit logs
+CREATE OR REPLACE FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_changes" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+  v_id uuid := gen_random_uuid();
+BEGIN
+  INSERT INTO public.audit_logs(id, user_id, action, table_name, record_id, changes)
+  VALUES (v_id, auth.uid(), p_action, p_table_name, p_record_id, COALESCE(p_changes, '{}'::jsonb));
+  RETURN v_id;
+END;
+$$;
 
+CREATE OR REPLACE FUNCTION "public"."get_audit_logs"(
+  p_filters   jsonb,
+  p_page      numeric DEFAULT 1,
+  p_page_size numeric DEFAULT 5
+)
+RETURNS TABLE (
+  id                uuid,
+  entity_id         uuid,
+  user_id           uuid,
+  action_type       text,
+  table_name        text,
+  record_id         uuid,
+  old_values        jsonb,
+  new_values        jsonb,
+  metadata          jsonb,
+  ip_address        text,
+  user_agent        text,
+  created_at        timestamptz,
+  session_id        text,
+  user_name         text,
+  user_role         text,
+  entity_name       text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'auth'
+AS $$
+DECLARE
+  v_sql text :=
+    'SELECT
+        id,
+        entity_id,
+        user_id,
+        action_type,
+        table_name,
+        record_id,
+        old_values,
+        new_values,
+        metadata,
+        ip_address,
+        user_agent,
+        created_at,
+        session_id,
+        user_name,
+        user_role,
+        entity_name
+      FROM public.v_audit_log_complete WHERE TRUE';
+BEGIN
+  IF p_filters ? 'actionType' THEN
+    v_sql := v_sql || ' AND action_type = ' || quote_literal(p_filters->>'actionType');
+  END IF;
+  IF p_filters ? 'tableName' THEN
+    v_sql := v_sql || ' AND table_name = ' || quote_literal(p_filters->>'tableName');
+  END IF;
+  IF p_filters ? 'userId' THEN
+    v_sql := v_sql || ' AND user_id = ' || quote_literal(p_filters->>'userId');
+  END IF;
+  IF p_filters ? 'dateRange' THEN
+    -- “from” – inclusive start of the day
+    IF (p_filters->'dateRange') ? 'from' THEN
+      v_sql := v_sql || ' AND created_at >= (' ||
+        quote_literal(p_filters->'dateRange'->>'from') || '::date)::timestamptz';
+    END IF;
+    IF (p_filters->'dateRange') ? 'to' THEN
+      v_sql := v_sql || ' AND created_at < (' ||
+        quote_literal(p_filters->'dateRange'->>'to') || '::date + interval ''1 day'' )::timestamptz';
+    END IF;
+  END IF;
+  v_sql := v_sql ||
+    ' ORDER BY created_at DESC' ||
+    ' LIMIT ' || quote_literal(p_page_size) ||
+    ' OFFSET ' || quote_literal((p_page - 1) * p_page_size);
+  RETURN QUERY EXECUTE v_sql;
+END;
+$$;
 
+CREATE OR REPLACE FUNCTION "public"."admin_clear_audit_logs"(
+    p_filters jsonb
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'auth'
+AS $$
+DECLARE
+    v_sql text := 'DELETE FROM public.audit_logs WHERE TRUE';
+    v_cnt integer;
+BEGIN
+  IF p_filters ? 'actionType' THEN
+    v_sql := v_sql || ' AND action = ' || quote_literal(p_filters->>'actionType');
+  END IF;
+  IF p_filters ? 'tableName' THEN
+    v_sql := v_sql || ' AND table_name = ' || quote_literal(p_filters->>'tableName');
+  END IF;
+  IF p_filters ? 'userId' THEN
+    v_sql := v_sql || ' AND user_id = ' || quote_literal(p_filters->>'userId');
+  END IF;
+  IF p_filters ? 'dateRange' THEN
+    IF (p_filters->'dateRange') ? 'from' THEN
+      v_sql := v_sql || ' AND created_at >= (' ||
+        quote_literal(p_filters->'dateRange'->>'from') || '::date)::timestamptz';
+    END IF;
+    IF (p_filters->'dateRange') ? 'to' THEN
+      v_sql := v_sql || ' AND created_at < (' ||
+        quote_literal(p_filters->'dateRange'->>'to') || '::date + interval ''1 day'' )::timestamptz';
+    END IF;
+  END IF;
+  EXECUTE v_sql;
+  GET DIAGNOSTICS v_cnt = ROW_COUNT;
+  RETURN v_cnt;
+END;
+$$;
 
 --------------------------
---
---
---
-CREATE OR REPLACE FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text" DEFAULT NULL::"text") RETURNS "uuid"
+-- Entity management
+CREATE OR REPLACE FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text" DEFAULT NULL::"text", p_referrer boolean DEFAULT NULL::boolean) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -446,14 +739,76 @@ DECLARE
   v_uid uuid;
   v_entity_id uuid;
 BEGIN
-  -- Check if current user is admin (bypassing RLS)
   v_uid := auth.uid();
-  
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
-  
-  -- Check admin status (this query runs as postgres user, bypassing RLS)
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles
+    WHERE user_id = v_uid
+      AND role = 'admin'
+    LIMIT 1
+  ) INTO v_is_admin;
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION 'Only admin can create entities';
+  END IF;
+  INSERT INTO public.entities (name, code, is_active, is_referrer, created_by)
+  VALUES (p_name, p_code, true, p_referrer, v_uid)
+  RETURNING id INTO v_entity_id;
+
+  INSERT INTO public.entity_settings (
+    entity_id,
+    division_id,
+    setting_key,
+    setting_value
+  )
+  SELECT
+    v_entity_id,
+    NULL,
+    unnest(array['referrer_request', 'contact_notify', 'contact_approve', 'contact_ban']),
+    unnest(array['manager', 'manager', 'manager', 'manager'])
+  ON CONFLICT DO NOTHING;
+
+  RETURN v_entity_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_entities"()
+RETURNS TABLE (
+  id uuid,
+  name text,
+  code text,
+  is_active boolean,
+  is_referrer boolean,
+  created_by uuid,
+  created_at timestamp with time zone,
+  updated_at timestamp with time zone
+)
+LANGUAGE sql
+SET "search_path" TO 'public'
+SECURITY INVOKER
+AS $$
+  SELECT
+    id, name, code, is_active, is_referrer, created_by, created_at, updated_at
+  FROM entities
+  WHERE is_active = true
+  ORDER BY name ASC;
+$$;
+
+--!Disallow entity type from being changed after created
+CREATE OR REPLACE FUNCTION "public"."admin_update_entity"("p_entity_id" "uuid", "p_name" "text" DEFAULT NULL::"text", "p_code" "text" DEFAULT NULL::"text", "p_is_active" boolean DEFAULT NULL::boolean) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_is_admin boolean;
+  v_uid uuid;
+BEGIN
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
   SELECT EXISTS (
     SELECT 1 
     FROM public.user_profiles 
@@ -461,42 +816,19 @@ BEGIN
       AND role = 'admin'
     LIMIT 1
   ) INTO v_is_admin;
-  
   IF NOT v_is_admin THEN
-    RAISE EXCEPTION 'Only admin can create entities';
+    RAISE EXCEPTION 'Only admin can update entities';
   END IF;
-  
-  -- Insert the entity (bypassing RLS because we're SECURITY DEFINER)
-  INSERT INTO public.entities (name, code, is_active, created_by)
-  VALUES (p_name, p_code, true, v_uid)
-  RETURNING id INTO v_entity_id;
-  
-  RETURN v_entity_id;
+  UPDATE public.entities
+  SET 
+    name = COALESCE(p_name, name),
+    code = COALESCE(p_code, code),
+    is_active = COALESCE(p_is_active, is_active),
+    updated_at = now()
+  WHERE id = p_entity_id;
+  RETURN FOUND;
 END;
 $$;
-
-
-CREATE OR REPLACE FUNCTION "public"."admin_delete_contact"("p_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-DECLARE
-  r jsonb;
-BEGIN
-  IF NOT can_manage_contact(p_id) THEN
-    RAISE EXCEPTION 'Permission denied';
-  END IF;
-
-  DELETE FROM public.contacts
-  WHERE id = p_id
-  RETURNING jsonb_build_object('success', TRUE) INTO r;
-
-  RETURN r;
-EXCEPTION WHEN OTHERS THEN
-  RAISE EXCEPTION 'Delete failed';
-END;
-$$;
-
 
 CREATE OR REPLACE FUNCTION "public"."admin_delete_entity"("p_entity_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -506,14 +838,12 @@ DECLARE
   v_is_admin boolean;
   v_uid uuid;
 BEGIN
-  -- Check if current user is admin (bypassing RLS)
   v_uid := auth.uid();
   
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
   
-  -- Check admin status
   SELECT EXISTS (
     SELECT 1 
     FROM public.user_profiles 
@@ -525,8 +855,7 @@ BEGIN
   IF NOT v_is_admin THEN
     RAISE EXCEPTION 'Only admin can delete entities';
   END IF;
-  
-  -- Delete the entity (bypassing RLS because we're SECURITY DEFINER)
+
   DELETE FROM public.entities
   WHERE id = p_entity_id;
   
@@ -534,6 +863,274 @@ BEGIN
 END;
 $$;
 
+
+-- Settings - system, entity & division
+CREATE OR REPLACE FUNCTION "public"."get_system_settings"() RETURNS TABLE(
+id uuid,
+setting_key text,
+setting_value text,
+updated_by uuid,
+updated_at timestamp with time zone
+)
+LANGUAGE "sql" STABLE SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+  SELECT id, setting_key, setting_value, updated_by, updated_at 
+  FROM public.system_settings 
+  ORDER BY setting_key ASC
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."upsert_system_setting"(
+    p_setting_key text,
+    p_setting_value text
+) RETURNS void 
+LANGUAGE plpgsql SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+    INSERT INTO system_settings (setting_key, setting_value)
+    VALUES (p_setting_key, p_setting_value)
+    ON CONFLICT (setting_key) DO UPDATE
+    SET setting_value = EXCLUDED.setting_value;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_entity_settings"("p_entity_id" "uuid") RETURNS TABLE(
+id uuid,
+entity_id uuid,
+division_id text,
+setting_key text,
+setting_value text,
+updated_at timestamp with time zone
+)
+LANGUAGE "sql" STABLE SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+  SELECT id, entity_id, division_id, setting_key, setting_value, updated_at 
+  FROM public.entity_settings 
+  WHERE entity_id = p_entity_id
+  AND setting_key IN ('referrer_request', 'contact_notify', 'contact_approve', 'contact_ban')
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."upsert_entity_setting"(
+    p_entity_id uuid,
+    p_setting_key text,
+    p_setting_value text
+) RETURNS void 
+LANGUAGE plpgsql SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+    INSERT INTO entity_settings (entity_id, setting_key, setting_value)
+    VALUES (p_entity_id, p_setting_key, p_setting_value)
+    ON CONFLICT (entity_id, setting_key) DO UPDATE
+    SET setting_value = EXCLUDED.setting_value;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_division_settings"("p_division_id" "uuid") RETURNS TABLE(
+id uuid,
+division_id text,
+setting_key text,
+setting_value text,
+updated_at timestamp with time zone
+)
+LANGUAGE "sql" STABLE SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+  SELECT id, division_id, setting_key, setting_value, updated_at 
+  FROM public.division_settings 
+  WHERE division_id = p_division_id
+  AND setting_key IN ('allotment_weeks', 'day_offset', 'hour_offset')
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."upsert_division_setting"(
+    p_division_id uuid,
+    p_setting_key text,
+    p_setting_value text
+) RETURNS void 
+LANGUAGE plpgsql SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+    INSERT INTO division_settings (division_id, setting_key, setting_value)
+    VALUES (p_division_id, p_setting_key, p_setting_value)
+    ON CONFLICT (division_id, setting_key) DO UPDATE
+    SET setting_value = EXCLUDED.setting_value;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_user_settings"(
+  "p_user_id" "uuid"
+  ) RETURNS TABLE(
+  id uuid,
+  user_id uuid,
+  setting_key text, 
+  setting_value text,
+  updated_at timestamp with time zone
+)
+LANGUAGE "sql" STABLE SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+  SELECT id, user_id, setting_key, setting_value, updated_at 
+  FROM public.user_settings
+  WHERE user_id = p_user_id
+  AND setting_key IN ('dark_mode', 'notification_email', 'notification_tasks', 'notification_calendar', 'two_FA')
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."upsert_user_setting"(
+    p_user_id uuid,
+    p_setting_key text,
+    p_setting_value text
+) RETURNS void 
+LANGUAGE plpgsql SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+    INSERT INTO user_settings (user_id, setting_key, setting_value)
+    VALUES (p_user_id, p_setting_key, p_setting_value)
+    ON CONFLICT (user_id, setting_key) DO UPDATE
+    SET setting_value = EXCLUDED.setting_value;
+END;
+$$;
+
+
+-- Prevent infinite recurrsion for admin CRUD on users. For use within the DB
+CREATE OR REPLACE FUNCTION "public"."get_my_profile"() RETURNS TABLE("role" "text", "entity_id" "uuid", "division_id" "uuid")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+  SELECT role, entity_id, division_id 
+  FROM public.user_profiles 
+  WHERE user_id = auth.uid();
+$$;
+
+-- RPC in useAdminUsers hook
+CREATE OR REPLACE FUNCTION "public"."get_users_with_profiles"("p_query" "text" DEFAULT NULL::"text", "p_role" "text" DEFAULT NULL::"text") 
+RETURNS TABLE(
+  "id" "uuid", 
+  "email" "text", 
+  "full_name" "text", 
+  "role" "text", 
+  "entity_id" "uuid", 
+  "division_id" "uuid", 
+  "region_id" "uuid", 
+  "status" "text"
+  )
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+  SELECT 
+    up.user_id AS id,
+    au.email,
+    up.full_name,
+    up.role::text AS role,
+    up.entity_id,
+    up.division_id,
+    up.region_id,
+    CASE WHEN up.is_active THEN 'active' ELSE 'inactive' END AS status
+  FROM public.user_profiles up
+  LEFT JOIN auth.users au ON au.id = up.user_id
+  WHERE (p_query IS NULL OR up.full_name ILIKE '%' || p_query || '%' OR au.email ILIKE '%' || p_query || '%')
+    AND (p_role IS NULL OR up.role::text = p_role)
+  ORDER BY up.full_name;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."preserve_non_admin_fields"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'auth', 'pg_catalog'
+    AS $$
+DECLARE
+v_role text;
+BEGIN
+    SELECT role::text INTO v_role
+    FROM "public"."user_profiles"
+    WHERE "user_id" = auth.uid();
+
+  IF TG_OP = 'UPDATE'
+     AND auth.uid() IS NOT NULL
+     AND v_role <> 'admin' THEN
+
+    NEW.role        := OLD.role;
+    NEW.entity_id   := OLD.entity_id;
+    NEW.division_id := OLD.division_id;
+    NEW.manager_id  := OLD.manager_id;
+    NEW.status      := OLD.status;
+    NEW.is_active   := OLD.is_active;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+
+-- User management
+-- CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
+--     LANGUAGE "plpgsql" SECURITY DEFINER
+--     SET "search_path" TO 'public', 'auth'
+--     AS $$
+
+
+-- CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
+--     LANGUAGE "plpgsql"
+--     SET "search_path" TO 'public'
+--     AS $$
+
+
+CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
+  "p_profile_id" "uuid", 
+  "p_role" "public"."role_enum" DEFAULT NULL,
+  "p_entity_id" "uuid" DEFAULT NULL, 
+  "p_division_id" "uuid" DEFAULT NULL, 
+  "p_manager_id" "uuid" DEFAULT NULL, 
+  "p_region_id" "uuid" DEFAULT NULL
+  ) 
+  RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_is_admin boolean;
+  v_uid uuid;
+  v_target_profile_id uuid;
+BEGIN
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles
+    WHERE user_id = v_uid
+      AND role = 'admin'
+    LIMIT 1
+  ) INTO v_is_admin;
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION 'Only admin can use this function';
+  END IF;
+  SELECT id
+  INTO v_target_profile_id
+  FROM public.user_profiles
+  WHERE id = p_profile_id
+     OR user_id = p_profile_id
+  LIMIT 1;
+  IF v_target_profile_id IS NULL THEN
+    RAISE NOTICE 'Profile not found for identifier %', p_profile_id;
+    RETURN FALSE;
+  END IF;
+  UPDATE public.user_profiles
+  SET
+    role = COALESCE(p_role, role),
+    entity_id = COALESCE(p_entity_id, entity_id),
+    division_id = COALESCE(p_division_id, division_id),
+    manager_id = COALESCE(p_manager_id, manager_id),
+    region_id = COALESCE(p_region_id, region_id),
+    updated_at = now()
+  WHERE id = v_target_profile_id;
+  RETURN FOUND;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION "public"."admin_delete_user"("p_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -547,60 +1144,46 @@ BEGIN
   SELECT role INTO v_role
   FROM user_profiles
   WHERE user_id = auth.uid();
-
   IF v_role != 'admin' THEN
     RAISE EXCEPTION 'Only admins can delete users';
   END IF;
-
   SELECT id, user_id INTO v_profile_id, v_user_id
   FROM user_profiles
   WHERE id = p_id;
-
   IF v_profile_id IS NULL THEN
     SELECT id, user_id INTO v_profile_id, v_user_id
     FROM user_profiles
     WHERE user_id = p_id;
   END IF;
-
   IF v_profile_id IS NULL THEN
     RETURN jsonb_build_object(
       'success', false,
       'error', 'User not found'
     );
   END IF;
-
   SELECT role INTO v_role
   FROM user_profiles
   WHERE id = v_profile_id;
-
   IF v_role = 'admin' THEN
     RETURN jsonb_build_object(
       'success', false,
       'error', 'Cannot delete admin users'
     );
   END IF;
-
   IF v_user_id = auth.uid() THEN
     RETURN jsonb_build_object(
       'success', false,
       'error', 'Cannot delete your own account'
     );
   END IF;
-
-  -- DELETE FROM manager_team_members
-  -- WHERE manager_id = v_profile_id OR branch_manager_id = v_profile_id;
-
   DELETE FROM calendar
   WHERE created_by = v_user_id;
-
   DELETE FROM user_profiles
   WHERE id = v_profile_id;
-
   RETURN jsonb_build_object(
     'success', true,
     'message', 'User profile deleted successfully. Auth user still exists in auth.users'
   );
-
 EXCEPTION
   WHEN OTHERS THEN
     RETURN jsonb_build_object(
@@ -610,277 +1193,740 @@ EXCEPTION
 END;
 $$;
 
+-- User profile access for user RPCs
+CREATE OR REPLACE FUNCTION "public"."user_get_profile"()
+RETURNS record
+LANGUAGE sql STABLE
+SECURITY INVOKER
+AS $$
+  SELECT
+    up.id,
+    up.user_id,
+    up.full_name,
+    up.email,
+    up.phone,
+    up.role::text AS role,
+    up.entity_id,
+    e.name      AS entity,
+    up.division_id,
+    d.name      AS division,
+    up.region_id,
+    r.name      AS region,
+    up.manager_id,
+    up.status,
+    up.is_active,
+    up.created_at,
+    up.updated_at       
+  FROM public.user_profiles up
+  LEFT JOIN public.entities e   ON e.id = up.entity_id
+  LEFT JOIN public.divisions d   ON d.id = up.division_id
+  LEFT JOIN public.regions r ON r.id = up.region_id
+  WHERE up.user_id = auth.uid()
+  LIMIT 1;                   
+$$;
 
-CREATE OR REPLACE FUNCTION "public"."admin_update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_phone" "text", "p_company" "text", "p_notes" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
-    AS $$
+CREATE OR REPLACE FUNCTION "public"."user_update_profile"(
+  p_user_id uuid, 
+  p_full_name text, 
+  p_phone text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET "search_path" TO 'public', 'auth'
+AS $$
+BEGIN
+  UPDATE public.user_profiles
+  SET full_name = coalesce(p_full_name, full_name),
+      phone = coalesce(p_phone, phone),
+      updated_at = now()
+  WHERE user_id = p_user_id;
+END;
+$$;
+
+
+-- Region management
+CREATE OR REPLACE FUNCTION "public"."get_regions"()
+RETURNS TABLE (
+  id uuid,
+  name text,
+  code text,
+  is_active boolean
+)
+LANGUAGE sql
+SET "search_path" TO 'public'
+SECURITY DEFINER
+AS $$
+  SELECT
+    id, name, code, is_active
+  FROM regions
+  -- WHERE is_active = true
+  ORDER BY name ASC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.create_region(
+    p_name text,
+    p_code text
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    new_id uuid;
+BEGIN
+    INSERT INTO public.regions (name, code, is_active)
+    VALUES (p_name, p_code, true)
+    RETURNING id INTO new_id;
+    RETURN new_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_region(
+  p_id uuid,
+  p_name text,
+  p_code text,
+  p_is_active boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path TO 'public'
+AS $$
+BEGIN
+
+  UPDATE public.regions
+  SET    name = COALESCE(p_name, name),
+         code = COALESCE(p_code, code),
+         is_active = COALESCE(p_is_active, is_active)
+  WHERE  id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_region(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'auth'
+AS $$
+BEGIN
+  DELETE FROM public.regions
+  WHERE id = p_id;
+END;
+$$;
+
+
+-- Contact management
+CREATE OR REPLACE FUNCTION "public"."create_contact"(
+  p_name        text DEFAULT '',
+  p_email       text DEFAULT '',
+  p_phone       text DEFAULT '',
+  p_address     text DEFAULT '',
+  p_postcode    text DEFAULT '',
+  p_region_id   uuid DEFAULT NULL,
+  p_adults  numeric DEFAULT 1,
+  p_children_gt16 numeric DEFAULT 0,
+  p_children_lt16 numeric DEFAULT 0,
+  p_notes       text DEFAULT '',
+  p_status      "public"."beneficiary_enum" DEFAULT 'inactive',
+  p_user_id     uuid DEFAULT NULL,
+  p_owner_id    uuid DEFAULT NULL
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER 
+SET "search_path" TO 'public'
+AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  INSERT INTO "public"."contacts"
+    (name, email, phone, street_address, postcode, region_id, adults_count, children_gt16, children_lt16, notes, status, updated_by, owner_id, created_by)
+  VALUES
+    (p_name, p_email, p_phone, p_address, p_postcode, p_region_id, p_adults, p_children_gt16, p_children_lt16, p_notes, p_status, p_user_id, p_owner_id, p_user_id)
+  RETURNING "id" INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."get_contacts"(p_order_desc boolean DEFAULT false)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  email text,
+  phone text,
+  street_address text,
+  postcode text,
+  region_id uuid,
+  adults numeric,
+  children_gt16 numeric,
+  children_lt16 numeric,
+  infant boolean,
+  allergies boolean,
+  vegetarian boolean,
+  hallal boolean,
+  status text,
+  user_id uuid,
+  owner_id uuid,
+  notes text,
+  created_at timestamp with time zone
+)
+LANGUAGE sql
+SET "search_path" TO 'public'
+SECURITY INVOKER
+AS $$
+  SELECT
+    id, name, email, phone, street_address, postcode, region_id, 
+    adults_count AS adults, children_gt16, children_lt16, infant, 
+    allergies, vegetarian, hallal, 
+    status, updated_by AS user_id, owner_id, notes, created_at
+  FROM public.contacts
+  ORDER BY name ASC, email ASC
+  OFFSET 0
+  LIMIT ALL
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_contacts_queue(p_order_desc boolean DEFAULT true)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  email text,
+  phone text,
+  street_address text,
+  postcode text,
+  region_id uuid,
+  adults numeric,
+  children_gt16 numeric,
+  children_lt16 numeric,
+  infant boolean,
+  allergies boolean,
+  vegetarian boolean,
+  hallal boolean,
+  status text,
+  user_id uuid,
+  owner_id uuid,
+  notes text,
+  created_at timestamp with time zone,
+  attended_at timestamp with time zone
+)
+LANGUAGE sql
+SET "search_path" TO 'public'
+SECURITY INVOKER
+AS $$
+  SELECT
+    id,
+    name,
+    email,
+    phone,
+    street_address,
+    postcode,
+    region_id,
+    adults,
+    children_gt16,
+    children_lt16,
+    infant,
+    allergies,
+    vegetarian,
+    hallal,
+    status,
+    user_id,
+    owner_id,
+    notes,
+    created_at,
+    attended_at
+  FROM public.contacts_queue
+  ORDER BY attended_at ASC;  
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.get_contact_duplicates(
+    p_exact            boolean,
+    p_email            text,
+    p_phone            text,
+    p_name             text,
+    p_street_address   text,
+    p_postcode         text
+)
+RETURNS TABLE (
+    id              uuid,
+    name            text,
+    email           text,
+    phone           text,
+    street_address  text,
+    postcode        text,
+    region_id       uuid,
+    status          text,
+    user_id         uuid,
+    owner_id        uuid,
+    notes           text,
+    created_at      timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+    IF p_exact THEN
+        RETURN QUERY
+        SELECT
+            c.id,
+            c.name,
+            c.email,
+            c.phone,
+            c.street_address,
+            c.postcode,
+            c.region_id,
+            c.status::text,
+            c.updated_by AS user_id,
+            c.owner_id,
+            c.notes,
+            c.created_at
+        FROM public.contacts AS c
+        WHERE
+            (p_email IS NOT NULL AND c.email = p_email) OR
+            (p_phone IS NOT NULL AND c.phone = p_phone) OR
+            (
+                p_name IS NOT NULL
+                AND p_street_address IS NOT NULL
+                AND p_postcode IS NOT NULL
+                AND c.name = p_name
+                AND c.street_address = p_street_address
+                AND c.postcode = p_postcode
+            )
+            AND c.status::text <> 'merged';
+    END IF;
+    IF p_exact AND p_postcode IS NULL THEN
+        RETURN QUERY
+        SELECT
+            c.id,
+            c.name,
+            c.email,
+            c.phone,
+            c.street_address,
+            c.postcode,
+            c.region_id,
+            c.status::text,
+            c.updated_by AS user_id,
+            c.owner_id,
+            c.notes,
+            c.created_at
+        FROM public.contacts AS c
+        WHERE
+            (
+                    c.name ILIKE p_name || '%'
+                    OR similarity(c.name, p_name) > 0.3   
+            )
+            AND c.status::text <> 'merged';
+    ELSE
+        RETURN QUERY
+        SELECT
+            c.id,
+            c.name,
+            c.email,
+            c.phone,
+            c.street_address,
+            c.postcode,
+            c.region_id,
+            c.status::text,
+            c.updated_by AS user_id,
+            c.owner_id,
+            c.notes,
+            c.created_at
+        FROM public.contacts AS c
+        WHERE
+            p_postcode IS NOT NULL
+            AND c.postcode = p_postcode
+            AND (
+                    c.name ILIKE p_name || '%'
+                    OR similarity(c.name, p_name) > 0.3         
+            )
+            AND c.status::text <> 'merged';
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."update_contact"( 
+  p_id    uuid DEFAULT NULL,
+  p_name  text DEFAULT '',
+  p_email text DEFAULT '',
+  p_phone text DEFAULT '',
+  p_address text DEFAULT '',
+  p_postcode text DEFAULT '',
+  p_region_id uuid DEFAULT NULL,
+  p_adults numeric DEFAULT NULL,
+  p_children_gt16 numeric DEFAULT NULL,
+  p_children_lt16 numeric DEFAULT NULL,
+  p_infant boolean DEFAULT NULL,
+  p_allergies boolean DEFAULT NULL,
+  p_vegetarian boolean DEFAULT NULL,
+  p_hallal boolean DEFAULT NULL,
+  p_status "public"."beneficiary_enum" DEFAULT 'inactive',
+  p_user_id uuid DEFAULT NULL,
+  p_owner_id uuid DEFAULT NULL,
+  p_notes text DEFAULT ''
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER 
+SET "search_path" TO 'public'
+AS $$
 DECLARE
   r jsonb;
 BEGIN
-  IF NOT can_manage_contact(p_id) THEN
-    RAISE EXCEPTION 'Permission denied';
-  END IF;
-
-  UPDATE public.contacts
-  SET name   = p_name,
-      email  = p_email,
-      phone  = p_phone,
-      company= p_company,
-      notes  = p_notes,
-      updated_at = now() 
+  UPDATE "public"."contacts"
+  SET name      = p_name,
+      email     = p_email,
+      phone     = p_phone,
+      street_address = p_address,
+      postcode  = p_postcode,
+      region_id = p_region_id,
+      adults_count = p_adults,
+      children_gt16 = p_children_gt16,
+      children_lt16 = p_children_lt16,
+      infant = p_infant,
+      allergies = p_allergies,
+      vegetarian = p_vegetarian,
+      hallal    = p_hallal,
+      notes     = p_notes,
+      status    = p_status,
+      updated_by= p_user_id,
+      owner_id  = p_owner_id,
+      updated_at = now()
   WHERE id = p_id
-  RETURNING jsonb_build_object('success', TRUE) INTO r;
-
+  RETURNING jsonb_build_object('success', true) INTO r;
+  IF r IS NULL THEN
+    RAISE EXCEPTION 'No contact found with id %', p_id;
+  END IF;
   RETURN r;
-EXCEPTION WHEN OTHERS THEN
+EXCEPTION WHEN others THEN
   RAISE EXCEPTION 'Update failed';
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."admin_update_entity"("p_entity_id" "uuid", "p_name" "text" DEFAULT NULL::"text", "p_code" "text" DEFAULT NULL::"text", "p_is_active" boolean DEFAULT NULL::boolean) RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
+CREATE OR REPLACE FUNCTION "public"."merge_contacts"(
+    p_primary   uuid,
+    p_secondary uuid
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET "search_path" = 'public'
+AS $$
 DECLARE
-  v_is_admin boolean;
-  v_uid uuid;
+    v_primary_status   beneficiary_enum;
+    v_secondary_status beneficiary_enum;
+    v_final_status     beneficiary_enum;
 BEGIN
-  -- Check if current user is admin (bypassing RLS)
-  v_uid := auth.uid();
-  
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
-  
-  -- Check admin status
-  SELECT EXISTS (
-    SELECT 1 
-    FROM public.user_profiles 
-    WHERE user_id = v_uid 
-      AND role = 'admin'
-    LIMIT 1
-  ) INTO v_is_admin;
-  
-  IF NOT v_is_admin THEN
-    RAISE EXCEPTION 'Only admin can update entities';
-  END IF;
-  
-  -- Update the entity (bypassing RLS because we're SECURITY DEFINER)
-  UPDATE public.entities
-  SET 
-    name = COALESCE(p_name, name),
-    code = COALESCE(p_code, code),
-    is_active = COALESCE(p_is_active, is_active),
-    updated_at = now()
-  WHERE id = p_entity_id;
-  
-  RETURN FOUND;
+    SELECT status INTO v_primary_status
+      FROM contacts WHERE id = p_primary
+      FOR UPDATE;          -- lock the rows
+
+    SELECT status INTO v_secondary_status
+      FROM contacts WHERE id = p_secondary
+      FOR UPDATE;
+
+    v_final_status := CASE
+        WHEN v_primary_status = 'active'::beneficiary_enum
+          OR v_secondary_status = 'active'::beneficiary_enum
+          THEN 'active'::beneficiary_enum
+        WHEN v_primary_status = 'pending'::beneficiary_enum
+          OR v_secondary_status = 'pending'::beneficiary_enum
+          THEN 'pending'::beneficiary_enum
+        WHEN v_primary_status = 'inactive'::beneficiary_enum
+          OR v_secondary_status = 'inactive'::beneficiary_enum
+          THEN 'inactive'::beneficiary_enum
+        WHEN v_primary_status = 'banned'::beneficiary_enum
+          OR v_secondary_status = 'banned'::beneficiary_enum
+          THEN 'banned'::beneficiary_enum
+        ELSE 'merged'::beneficiary_enum  
+    END;
+
+    UPDATE contacts_referrer SET contact_id = p_primary
+      WHERE contact_id = p_secondary;
+
+    UPDATE contacts_allotment SET contact_id = p_primary
+      WHERE contact_id = p_secondary;
+
+    UPDATE calendar SET beneficiary_id = p_primary
+      WHERE beneficiary_id = p_secondary;
+
+    UPDATE calendar SET pic_id = p_primary
+      WHERE pic_id = p_secondary;
+
+    UPDATE notifications SET contact_id = p_primary
+      WHERE contact_id = p_secondary;
+
+    UPDATE contacts_notes SET contact_id = p_primary
+      WHERE contact_id = p_secondary;
+
+    IF v_final_status <> v_primary_status THEN
+        UPDATE contacts
+           SET status = v_final_status
+         WHERE id = p_primary;
+    END IF;
+    UPDATE contacts
+       SET status = 'merged'::beneficiary_enum
+     WHERE id = p_secondary;
+    RETURN;
 END;
 $$;
 
-
-CREATE OR REPLACE FUNCTION "public"."admin_update_profile"("p_id" "uuid", "p_role" "public"."role_enum", "p_division" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
+CREATE OR REPLACE FUNCTION "public"."delete_contact"(p_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
 DECLARE
-  v_profile_id uuid;
+  r jsonb;
 BEGIN
-  -- Try resolve by profile primary key
-  SELECT id INTO v_profile_id
-  FROM public.user_profiles
+  DELETE FROM "public"."contacts"
   WHERE id = p_id
-  LIMIT 1;
+  RETURNING jsonb_build_object('success', true) INTO r;
 
-  -- If not found, resolve by user_id (auth.users id)
-  IF v_profile_id IS NULL THEN
-    SELECT id INTO v_profile_id
-    FROM public.user_profiles
-    WHERE user_id = p_id
-    LIMIT 1;
-  END IF;
-
-  IF v_profile_id IS NULL THEN
-    RETURN FALSE;
-  END IF;
-
-  UPDATE public.user_profiles
-  SET 
-    role = p_role,
-    division_id = p_division,
-    updated_at = now()
-  WHERE id = v_profile_id;
-
-  RETURN TRUE;
+  RETURN r;
+EXCEPTION WHEN others THEN
+  RAISE EXCEPTION 'Delete failed: %', SQLERRM;
 END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"("p_profile_id" "uuid", "p_role" "public"."role_enum" DEFAULT NULL::"public"."role_enum", "p_entity_id" "uuid" DEFAULT NULL::"uuid", "p_division_id" "uuid" DEFAULT NULL::"uuid", "p_manager_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  v_is_admin boolean;
-  v_uid uuid;
-  v_target_profile_id uuid;
-BEGIN
-  v_uid := auth.uid();
+-- Core referral system logic - notifications, allotment and clean-up
+--
+--
+----
+------
+------
+--------
+--------
+-- CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
+-- LANGUAGE "plpgsql" SECURITY INVOKER
+-- SET "search_path" TO 'public'
+-- AS $$
 
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
+--------
+--------
+------
+----
+--
+--
+
+-- Contact notes
+CREATE OR REPLACE FUNCTION "public"."handle_contact_note"() RETURNS "trigger"
+LANGUAGE "plpgsql" SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+  IF (NEW."notes" IS DISTINCT FROM OLD."notes" AND NEW."notes" IS NOT NULL) THEN
+    INSERT INTO "public"."contacts_notes" (
+      "contact_id",
+      "note",
+      "created_by",
+      "updated_by"
+    ) VALUES (
+      NEW."id",
+      NEW."notes",
+      NEW."updated_by",
+      NEW."updated_by"
+    );
   END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Contact notes and allotment
+CREATE OR REPLACE FUNCTION "public"."get_profile_names"() RETURNS TABLE("user_id" "uuid", "full_name" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+  SELECT user_id, full_name
+  FROM public.user_profiles;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_contact_notes"(p_contact_id uuid)
+RETURNS TABLE (
+  note_id uuid,
+  note_text text,
+  created_by uuid,
+  creator_name text,
+  created_at timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    cn.id,
+    cn.note,
+    cn.created_by,
+    up.full_name,
+    cn.created_at
+  FROM public.contacts_notes cn
+  LEFT JOIN public.get_profile_names() up 
+    ON cn.created_by = up.user_id
+  WHERE cn.contact_id = p_contact_id
+  ORDER BY cn.created_at DESC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_contact_note(p_note_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+DECLARE
+  v_deleted boolean;
+BEGIN
+  DELETE FROM public.contacts_notes
+  WHERE id = p_note_id
+  RETURNING true INTO v_deleted;
+
+  RETURN COALESCE(v_deleted, false);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_allotment"(p_contact_id uuid)
+RETURNS TABLE (
+  allotment_id uuid,
+  "date" timestamp with time zone,
+  visit_num numeric,
+  attended boolean,
+  serving boolean,
+  served boolean,
+  visit_type public.allotment_type_enum,
+  updated_at timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    ca.id,
+    ca.date,
+    ca.visit_num,
+    ca.attended,
+    ca.serving,
+    ca.served,
+    ca.type,
+    ca.updated_at
+  FROM public.contacts_allotment ca
+  WHERE ca.contact_id = p_contact_id
+  ORDER BY ca.date ASC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."insert_allotment_discretionary"(
+  "p_contact_id" uuid DEFAULT NULL, 
+  "p_user_id" uuid DEFAULT NULL,
+  "p_date" timestamp with time zone DEFAULT now(), 
+  "p_type" allotment_type_enum DEFAULT 'drop_in'::allotment_type_enum,
+  "p_note" text DEFAULT ''
+  ) RETURNS uuid
+LANGUAGE "plpgsql" SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  INSERT INTO public.contacts_allotment
+      (contact_id, date, visit_num, attended, serving, served, type) 
+  VALUES
+      (p_contact_id, p_date, 1, true, false, false, p_type)
+      RETURNING id INTO v_id;
+  INSERT INTO public.contacts_notes
+      (contact_id, note, created_by, updated_by)
+  VALUES
+      (p_contact_id, p_note, p_user_id, p_user_id);
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") RETURNS "void"
+  LANGUAGE "plpgsql" SECURITY INVOKER
+  SET "search_path" TO 'public'
+  AS $$
+BEGIN
+    UPDATE public.contacts_allotment
+       SET attended = TRUE
+     WHERE id = p_id
+       AND attended = FALSE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."toggle_allotment_serving"("p_id" "uuid") RETURNS "void"
+  LANGUAGE "plpgsql" SECURITY INVOKER
+  SET "search_path" TO 'public'
+  AS $$
+BEGIN
+    UPDATE public.contacts_allotment
+       SET serving = NOT serving
+     WHERE id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_allotment_served(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_contact_id uuid;
+  v_has_future boolean;
+BEGIN
+  UPDATE public.contacts_allotment
+     SET served = TRUE
+   WHERE id = p_id
+     AND served = FALSE;
+
+  SELECT contact_id
+  INTO v_contact_id
+  FROM public.contacts_allotment
+  WHERE id = p_id;
 
   SELECT EXISTS (
     SELECT 1
-    FROM public.user_profiles
-    WHERE user_id = v_uid
-      AND role = 'admin'
-    LIMIT 1
-  ) INTO v_is_admin;
-
-  IF NOT v_is_admin THEN
-    RAISE EXCEPTION 'Only admin can use this function';
+    FROM public.contacts_allotment ca
+    WHERE ca.contact_id = v_contact_id
+      AND ca.date > now() + interval '1 day'
+      AND ca.served = FALSE
+  )
+  INTO v_has_future;
+  IF NOT v_has_future THEN
+    UPDATE public.contacts
+       SET status = 'inactive'::beneficiary_enum
+     WHERE id = v_contact_id
+       AND status = 'active'::beneficiary_enum;
   END IF;
-
-  SELECT id
-  INTO v_target_profile_id
-  FROM public.user_profiles
-  WHERE id = p_profile_id
-     OR user_id = p_profile_id
-  LIMIT 1;
-
-  IF v_target_profile_id IS NULL THEN
-    RAISE NOTICE 'Profile not found for identifier %', p_profile_id;
-    RETURN FALSE;
-  END IF;
-
-  UPDATE public.user_profiles
-  SET
-    role = COALESCE(p_role, role),
-    entity_id = COALESCE(p_entity_id, entity_id),
-    division_id = COALESCE(p_division_id, division_id),
-    manager_id = COALESCE(p_manager_id, manager_id),
-    updated_at = now()
-  WHERE id = v_target_profile_id;
-
-  RETURN FOUND;
 END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."can_manage_contact"("target_owner_id" "uuid") RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  viewer_role text;
-  viewer_entity uuid;
-  viewer_division uuid;
-  target_entity uuid;
-  target_division uuid;
+CREATE OR REPLACE FUNCTION public.handle_allotment_complete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
 BEGIN
-  -- 1. Get current user's profile
-  SELECT role, entity_id, division_id INTO viewer_role, viewer_entity, viewer_division
-  FROM public.user_profiles WHERE user_id = auth.uid();
-
-  -- 2. If same user, immediate true
-  IF auth.uid() = target_owner_id THEN RETURN TRUE; END IF;
-
-  -- 3. Admins can do anything
-  IF viewer_role = 'admin' THEN RETURN TRUE; END IF;
-
-  -- 4. Get target owner's profile details
-  SELECT entity_id, division_id INTO target_entity, target_division
-  FROM public.user_profiles WHERE user_id = target_owner_id;
-
-  -- 5. Hierarchy Logic
-  IF viewer_role = 'head' THEN
-    RETURN viewer_entity = target_entity;
-  ELSIF viewer_role IN ('manager', 'branch_manager') THEN
-    RETURN viewer_entity = target_entity AND viewer_division = target_division;
-  END IF;
-
-  RETURN FALSE;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."ensure_admin_profile"() RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  _uid uuid;
-  _email text;
-  _full_name text;
-BEGIN
-  _uid := auth.uid();
-  IF _uid IS NULL THEN
-    RETURN;
-  END IF;
-
-  SELECT u.email, COALESCE(u.raw_user_meta_data->>'full_name', u.email)
-    INTO _email, _full_name
-  FROM auth.users u
-  WHERE u.id = _uid;
-
-  IF _email IS NULL THEN
-    RETURN;
-  END IF;
-
-  IF LOWER(_email) IN (
-    'admin@gmail.com',
-    'hidayat.suli@gmail.com',
-    'admin@company.com'
-  ) THEN
-    INSERT INTO public.user_profiles (id, user_id, full_name, role, is_active)
-    VALUES (_uid, _uid, _full_name, 'admin', true)
-    ON CONFLICT (user_id)
-    DO UPDATE SET
-      role = 'admin',
-      full_name = EXCLUDED.full_name,
-      is_active = true,
-      updated_at = now();
-  END IF;
+  UPDATE public.contacts c
+     SET status = 'inactive'::beneficiary_enum
+   WHERE c.status = 'active'::beneficiary_enum
+     AND NOT EXISTS (
+        SELECT 1
+          FROM public.contacts_allotment ca
+         WHERE ca.contact_id = c.id
+           AND ca.date > now() + interval '1 day'
+     );
+  RETURN NULL;
 END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."get_current_profile"() RETURNS TABLE("id" "uuid", "user_id" "uuid", "role" "public"."role_enum", "entity_id" "uuid", "division_id" "uuid")
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT up.id,
-         up.user_id,
-         up.role,
-         up.entity_id,
-         up.division_id
-  FROM public.user_profiles up
-  WHERE up.user_id = auth.uid()
-  LIMIT 1;
-$$;
 
-
-CREATE OR REPLACE FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("user_id" "uuid", "profile_id" "uuid", "role" "public"."role_enum", "entity_id" "uuid", "division_id" "uuid")
-    LANGUAGE "sql"
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-  SELECT 
-    up.user_id,
-    up.id AS profile_id,
-    up.role,
-    up.entity_id,
-    up.division_id 
-  FROM public.user_profiles up
-  WHERE up.user_id = COALESCE(p_user_id, auth.uid())
-  LIMIT 1;
-$$;
-
-
-COMMENT ON FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid") IS 'Returns user profile info including entity_id and team (division_id). Used by entity-scoped RPCs.';
-
-
+-- Dashboard
 CREATE OR REPLACE FUNCTION public.get_division_summary(
   p_entity_id uuid DEFAULT NULL
 )
@@ -902,7 +1948,7 @@ AS $$
     p.cnt AS pending_beneficiaries,
     -- COALESCE(p.cnt,0) AS pending_beneficiaries,
     COALESCE(a.cnt,0) AS beneficiaries,
-    0 AS referrers,
+    COALESCE(r.cnt,0) AS referrers,
     COALESCE(w.cnt,0) AS workforce
   FROM public.divisions d
 
@@ -917,7 +1963,7 @@ AS $$
       SELECT COUNT(*) AS cnt
       FROM public.contacts c
       -- JOIN public.user_profiles up2
-      --   ON up2.user_id = c.user_id
+      --   ON up2.user_id = c.owner_id
       -- WHERE up2.division_id = d.id
       --   AND c.status = 'pending'
       WHERE  c.status = 'pending'
@@ -927,10 +1973,18 @@ AS $$
       SELECT COUNT(*) AS cnt
       FROM public.contacts c
       JOIN public.user_profiles up2
-        ON up2.user_id = c.user_id
+        ON up2.user_id = c.owner_id
       WHERE up2.division_id = d.id
         AND c.status = 'active'
   ) a ON true
+
+  LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS cnt
+      FROM public.user_profiles up2
+      WHERE up2.division_id = d.id
+        AND up2.role = 'referrer'
+        AND up2.is_active = true
+  ) r ON true
 
   LEFT JOIN LATERAL (
       SELECT COUNT(*) AS cnt
@@ -941,197 +1995,15 @@ AS $$
   ) w ON true
 
   WHERE (p_entity_id IS NOT NULL AND d.entity_id = p_entity_id)
-     OR (p_entity_id IS NULL AND up_user.user_id IS NOT NULL);
-$$;
-
-
-CREATE OR REPLACE FUNCTION "public"."get_my_profile"() RETURNS TABLE("role" "text", "entity_id" "uuid", "division_id" "uuid")
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-  SELECT role, entity_id, division_id 
-  FROM public.user_profiles 
-  WHERE user_id = auth.uid();
-$$;
-
-
-CREATE OR REPLACE FUNCTION "public"."get_my_role"() RETURNS "text"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT role::text FROM user_profiles WHERE user_id = auth.uid() LIMIT 1;
-$$;
-
-
-CREATE OR REPLACE FUNCTION "public"."get_users_with_profiles"("p_query" "text" DEFAULT NULL::"text", "p_role" "text" DEFAULT NULL::"text") RETURNS TABLE("id" "uuid", "email" "text", "full_name" "text", "role" "text", "entity_id" "uuid", "division_id" "uuid", "title_id" "uuid", "status" "text")
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-  SELECT 
-    up.user_id AS id,
-    au.email,
-    up.full_name,
-    up.role::text AS role,
-    up.entity_id,
-    up.division_id,
-    up.title_id,
-    CASE WHEN up.is_active THEN 'active' ELSE 'inactive' END AS status
-  FROM public.user_profiles up
-  LEFT JOIN auth.users au ON au.id = up.user_id
-  WHERE (p_query IS NULL OR up.full_name ILIKE '%' || p_query || '%' OR au.email ILIKE '%' || p_query || '%')
-    AND (p_role IS NULL OR up.role::text = p_role)
-  ORDER BY up.full_name;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-DECLARE
-  v_full_name text;
-  v_role public.role_enum;
-BEGIN
-  v_full_name := COALESCE(
-    NEW.raw_user_meta_data->>'full_name',
-    NEW.raw_user_meta_data->>'name',
-    split_part(NEW.email, '@', 1)
-  );
-
-  IF LOWER(NEW.email) IN ('admin@company.com') THEN
-    v_role := 'admin';
-  ELSE
-    v_role := 'pending';
-  END IF;
-
-  INSERT INTO public.user_profiles (
-    user_id, full_name, role, is_active
-  ) VALUES (
-    NEW.id, v_full_name, v_role, true
-  )
-  ON CONFLICT (user_id) DO NOTHING;
-
-  -- insert default settings
-  INSERT INTO public.user_settings (
-    user_id, setting_key, setting_value
-  )
-  SELECT
-    NEW.id,
-    unnest(array['notification_email','notification_tasks','notification_calendar','dark_mode']),
-    unnest(array['false','true','false','false'])
-  ON CONFLICT (user_id, setting_key) DO NOTHING;
-
-  RETURN NEW;
-END;
+     OR (p_entity_id IS NULL AND up_user.user_id IS NOT NULL) 
+     OR (up_user.role = 'referrer'); 
 $$;
 
 
 
-
-CREATE OR REPLACE FUNCTION "public"."is_admin_or_head"() RETURNS boolean
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT (SELECT role FROM public.get_current_profile()) IN ('admin','head');
-$$;
-
-
-
-CREATE OR REPLACE FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_changes" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-DECLARE
-  v_id uuid := gen_random_uuid();
-BEGIN
-  INSERT INTO public.audit_logs(id, user_id, action, table_name, record_id, changes)
-  VALUES (v_id, auth.uid(), p_action, p_table_name, p_record_id, COALESCE(p_changes, '{}'::jsonb));
-  RETURN v_id;
-END;
-$$;
-
-
-
-CREATE OR REPLACE FUNCTION "public"."preserve_non_admin_fields"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public', 'auth', 'pg_catalog'
-    AS $$
-BEGIN
-  -- Only run for updates, and only when the user is not an admin
-  IF TG_OP = 'UPDATE'
-     AND auth.uid() IS NOT NULL
-     AND get_my_role() <> 'admin' THEN
-
-    NEW.role        := OLD.role;
-    NEW.entity_id   := OLD.entity_id;
-    NEW.division_id := OLD.division_id;
-    NEW.manager_id  := OLD.manager_id;
-    NEW.title_id    := OLD.title_id;
-    NEW.status      := OLD.status;
-    NEW.is_active   := OLD.is_active;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
-CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public', 'auth'
-    AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  -- Admin should have no entity/team
-  IF NEW.role = 'admin' AND (NEW.entity_id IS NOT NULL OR NEW.division_id IS NOT NULL) THEN
-    RAISE WARNING 'Admin role should not have entity_id or team (division_id) assigned. Auto-clearing.';
-    NEW.entity_id := NULL;
-    NEW.division_id := NULL;
-    NEW.manager_id := NULL;
-  END IF;
-  
-  -- Head should have entity but ideally no division_id (assigned via divisions.head_id)
-  IF NEW.role = 'head' AND NEW.entity_id IS NULL THEN
-    RAISE EXCEPTION 'Head role must have entity_id assigned';
-  END IF;
-  
-  -- Manager should have entity and team
-  IF NEW.role = 'manager' THEN
-    IF NEW.entity_id IS NULL THEN
-      RAISE EXCEPTION 'Manager role must have entity_id assigned';
-    END IF;
-    IF NEW.division_id IS NULL THEN
-      RAISE EXCEPTION 'Manager role must have team (division_id) assigned';
-    END IF;
-  END IF;
-  
-  -- Volunteers/Branch Manager should have entity, team, and manager
-  IF NEW.role IN ('volunteer', 'branch_manager') THEN
-    IF NEW.entity_id IS NULL THEN
-      RAISE EXCEPTION 'Volunteer role must have entity_id assigned';
-    END IF;
-    IF NEW.division_id IS NULL THEN
-      RAISE EXCEPTION 'Volunteer role must have team (division_id) assigned';
-    END IF;
-    IF NEW.manager_id IS NULL THEN
-      RAISE WARNING 'Volunteer role should have manager_id assigned';
-    END IF;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---used in admin's role management 
-CREATE OR REPLACE FUNCTION public.get_divisions_by_entity(
+-- Division management
+--used in admin's role management and pending beneficiary assignment
+CREATE OR REPLACE FUNCTION "public"."get_divisions_by_entity"(
   p_entity_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
@@ -1139,6 +2011,8 @@ RETURNS TABLE (
   name text,
   entity_id uuid,
   head_id uuid,
+  manager_id uuid,
+  region_id uuid,
   created_at timestamp with time zone
 )
 LANGUAGE sql
@@ -1150,6 +2024,8 @@ AS $$
     d.name,
     d.entity_id,
     d.head_id,
+    d.manager_id,
+    d.region_id,
     d.created_at
   FROM public.divisions d
   WHERE (p_entity_id IS NULL OR d.entity_id = p_entity_id)
@@ -1168,6 +2044,7 @@ SET search_path TO 'public', 'auth'
 AS $$
 DECLARE
     new_id uuid;
+    new_row public.divisions; --for audit log
 BEGIN
     IF p_head_id IS NULL THEN
         SELECT head_id
@@ -1186,9 +2063,22 @@ BEGIN
 
     INSERT INTO public.divisions (name, entity_id, head_id, created_at, is_active)
     VALUES (p_name, p_entity_id, p_head_id, now(), true)
-    RETURNING id INTO new_id;
+     RETURNING * INTO new_row;
+     new_id := new_row.id;
 
-    RETURN new_id;
+  INSERT INTO public.division_settings (
+    division_id,
+    setting_key,
+    setting_value
+  )
+  SELECT
+    new_id,
+    unnest(array['allotment_weeks', 'exclusion_weeks', 'day_offset', 'hour_offset']),
+    unnest(array['6', '12', '1', '10.5']) --days start on Monday (i.e. Monday = 0). Hours start at midnight 
+  ON CONFLICT DO NOTHING;
+
+  PERFORM log_audit_event('CREATE', 'divisions', new_id, row_to_json(new_row)::jsonb);
+  RETURN new_id;
 END;
 $$;
 
@@ -1204,7 +2094,14 @@ SET search_path TO 'public'
 AS $$
 DECLARE
   v_head_id uuid;
+  old_row jsonb; --for audit log
+   new_row  public.divisions; --for audit log
 BEGIN
+  SELECT row_to_json(d)
+  INTO old_row
+  FROM public.divisions d
+  WHERE d.id = p_id;
+
   IF p_head_id IS NULL THEN
     SELECT head_id
       INTO v_head_id
@@ -1221,7 +2118,9 @@ BEGIN
   SET    name      = p_name,
          entity_id = p_entity_id,
          head_id   = v_head_id  
-  WHERE  id = p_id;
+  WHERE  id = p_id
+  RETURNING * INTO new_row;
+  PERFORM log_audit_event('UPDATE', 'divisions', p_id, row_to_json(new_row)::jsonb);
 END;
 $$;
 
@@ -1231,9 +2130,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public', 'auth'
 AS $$
+DECLARE
+  old_row jsonb; --for audit_log
 BEGIN
+  SELECT row_to_json(d)::jsonb
+  INTO old_row
+  FROM public.divisions d
+  WHERE d.id = p_id;
+
   DELETE FROM public.divisions
   WHERE id = p_id;
+  PERFORM log_audit_event('DELETE', 'divisions', p_id, old_row);
 END;
 $$;
 
@@ -1253,7 +2160,6 @@ BEGIN
      WHERE id = NEW.division_id;
     RETURN NEW;
   END IF;
-
   --Manager removed / deactivated / moved out of division
   IF OLD.role = 'manager' AND OLD.is_active AND OLD.division_id IS NOT NULL THEN
     IF TG_OP = 'DELETE' OR
@@ -1272,59 +2178,18 @@ BEGIN
       END IF;
     END IF;
   END IF;
-
   RETURN NEW;
 END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."get_user_notifications"(
-  p_include_read boolean DEFAULT true
-)
-RETURNS TABLE(
-  id uuid,
-  org_role text,
-  type public.notification_type_enum,
-  title text,
-  message text,
-  link text,
-  meta jsonb,
-  is_read boolean,
-  created_at timestamptz
-)
-LANGUAGE sql SECURITY DEFINER 
-SET search_path TO 'public', 'auth'
-AS $$
-  SELECT n.id,
-         n.org_role,
-         n.type,
-         n.title,
-         n.message,
-         n.link,
-         n.meta,
-         nu.is_read,
-         nu.created_at
-  FROM notifications_user nu
-  JOIN notifications n ON nu.notification_id = n.id
-  LEFT JOIN user_settings us
-    ON us.user_id = auth.uid()
-   AND us.setting_key = CASE
-        WHEN n.type = 'task'     THEN 'notification_tasks'
-        WHEN n.type = 'calendar' THEN 'notification_calendar'
-        ELSE NULL
-      END
-  WHERE nu.user_id = auth.uid()
-    AND (p_include_read OR NOT nu.is_read)
-    AND (us.setting_key IS NULL OR us.setting_value = 'true')
-  ORDER BY nu.created_at DESC;
-$$;
-
-
-
+-- Calendar CRUD
 CREATE OR REPLACE FUNCTION public.get_tasks()
 RETURNS TABLE (
   id uuid,
   entry_type text,
+  beneficiary_id uuid,
+  beneficiary_name text,
   pic_id uuid,
   pic_name text,
   scheduled_at timestamptz,
@@ -1342,16 +2207,20 @@ BEGIN
     SELECT
       ta.id,
       ta.entry_type,
+      ta.beneficiary_id,
+      co_b.name      AS beneficiary_name,
       ta.pic_id,
-      co.name    AS pic_name,
+      co_pic.name    AS pic_name,
       ta.scheduled_at,
       ta.status,
       ta.notes,
       ta.created_by,
       ta.created_at
     FROM public.calendar ta
-    LEFT JOIN public.contacts co
-      ON ta.pic_id = co.id
+    LEFT JOIN public.contacts co_b
+      ON ta.beneficiary_id = co_b.id
+    LEFT JOIN public.contacts co_pic
+      ON ta.pic_id = co_pic.id
     WHERE ta.entry_type <> 'event'
     ORDER BY ta.scheduled_at DESC;
 END;
@@ -1373,7 +2242,7 @@ RETURNS TABLE (
     created_at    timestamptz
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 DECLARE
@@ -1396,7 +2265,7 @@ BEGIN
         IF v_entity_id IS NOT NULL THEN
             v_where := format(' AND up_creator.entity_id = %L', v_entity_id);
         END IF;
-    ELSIF v_role = 'staff' THEN
+    ELSIF v_role = 'staff' OR v_role = 'volunteer' THEN
         IF v_division_id IS NOT NULL THEN
             v_where := format(' AND up_creator.division_id = %L', v_division_id);
         END IF;
@@ -1436,7 +2305,7 @@ CREATE OR REPLACE FUNCTION public.create_calendar(
     p_created_by  uuid
 ) RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 BEGIN
@@ -1455,7 +2324,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.create_calendar_bulk(events jsonb)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 DECLARE
@@ -1496,7 +2365,7 @@ CREATE OR REPLACE FUNCTION public.update_calendar(
     p_notes       text
 ) RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 BEGIN
@@ -1514,11 +2383,27 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.update_calendar_status(
+    p_id          uuid,
+    p_status      text
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'public'
+AS $$
+BEGIN
+    UPDATE public.calendar SET
+        status        = p_status,
+        updated_at    = NOW()
+    WHERE id = p_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.delete_calendar(
     p_id uuid
 ) RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET "search_path" TO "public"
 AS $$
 BEGIN
@@ -1526,7 +2411,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.calendar_notify_insert()
+-- Calendar-notifications
+--
+--
+--
+CREATE OR REPLACE FUNCTION "public"."calendar_notify_insert"()
 RETURNS trigger
 LANGUAGE plpgsql
 SET "search_path" TO "public"
@@ -1536,14 +2425,25 @@ DECLARE
     v_type text := 'calendar';
     v_link text := '/calendar';
     v_message text := 'A new calendar item has been added';
+    v_entity_id uuid;
+    v_dynamic_role text;
 BEGIN
+    SELECT u.entity_id INTO v_entity_id
+    FROM public.user_profiles u
+    WHERE u.user_id = NEW.created_by;
+
     CASE NEW.entry_type
         WHEN 'referrer_request' THEN
-	          v_role := 'branch_manager';
+            SELECT setting_value INTO v_dynamic_role
+            FROM public.entity_settings
+            WHERE entity_id = v_entity_id
+              AND setting_key = 'referrer_request';
+
+            v_role := COALESCE(v_dynamic_role, 'branch_manager');
             v_type := 'task';
             v_link := '/tasks';
             v_message := 'You have a new referrer request';
-        WHEN 'client_requests' THEN
+        WHEN 'beneficiary_request' THEN
             v_role := 'staff';
             v_type := 'task';
             v_link := '/tasks';
@@ -1566,12 +2466,13 @@ BEGIN
         ELSE
             NULL;
     END CASE;
+
     INSERT INTO public.notifications (
-        org_role,  
-        type,      
-        title,    
+        org_role,
+        type,
+        title,
         message,
-        link,      
+        link,
         meta,
         created_at,
         calendar_id
@@ -1589,7 +2490,6 @@ BEGIN
 END;
 $$;
 
-
 CREATE OR REPLACE FUNCTION "public"."populate_notifications_user"()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1598,6 +2498,8 @@ AS $$
 DECLARE
     v_creator_entity uuid;
     v_user_ids       uuid[];
+    v_referrer_id    uuid;
+    v_target_role    text;
 BEGIN
     IF NEW.calendar_id IS NOT NULL THEN
         SELECT u.entity_id
@@ -1612,6 +2514,7 @@ BEGIN
           FROM public.user_profiles u
          WHERE u.user_id = auth.uid();
     END IF;
+
     IF NEW.type = 'dm' THEN
         v_user_ids := ARRAY[]::uuid[];
 
@@ -1619,7 +2522,7 @@ BEGIN
         SELECT array_agg(user_id)
           INTO v_user_ids
           FROM public.user_profiles
-         WHERE role = NEW.org_role::role_enum 
+         WHERE role = NEW.org_role::role_enum
            AND entity_id = v_creator_entity
            AND is_active;
 
@@ -1669,6 +2572,36 @@ BEGIN
            AND entity_id = v_creator_entity
            AND is_active;
 
+    ELSIF NEW.type IN ('ref_decision', 'referral') THEN
+        SELECT cr.referrer_id INTO v_referrer_id
+        FROM public.contacts_referrer cr
+        JOIN public.notifications n ON n.contact_id = cr.contact_id
+        WHERE n.id = NEW.id
+        ORDER BY cr.created_at DESC
+        LIMIT 1;
+
+        IF NEW.type = 'ref_decision' AND v_referrer_id IS NOT NULL THEN
+            v_user_ids := ARRAY[v_referrer_id];
+        END IF;
+
+        IF NEW.type = 'referral' AND v_referrer_id IS NOT NULL THEN
+            SELECT array_agg(up.user_id) INTO v_user_ids
+            FROM public.user_profiles up
+            JOIN public.contacts c ON c.owner_id = up.user_id
+            JOIN public.notifications n ON n.contact_id = c.id
+            WHERE n.id = NEW.id
+              AND up.entity_id = (SELECT entity_id FROM public.user_profiles WHERE user_id = c.owner_id)
+              AND up.is_active
+              AND up.role::text = NEW.org_role;
+              --(
+              --   CASE
+              --       WHEN (SELECT division_id FROM public.user_profiles WHERE user_id = c.owner_id) IS NULL
+              --       THEN 'head'
+              --       ELSE (SELECT setting_value FROM public.entity_settings WHERE entity_id = (SELECT entity_id FROM public.user_profiles WHERE user_id = c.owner_id) AND setting_key = 'contact_notify')
+              --   END
+              -- );
+        END IF;
+
     ELSE
         v_user_ids := ARRAY[]::uuid[];
     END IF;
@@ -1681,6 +2614,53 @@ BEGIN
 
     RETURN NEW;
 END;
+$$;
+--
+--
+--
+
+
+
+CREATE OR REPLACE FUNCTION "public"."get_user_notifications"(
+  p_include_read boolean DEFAULT true
+)
+RETURNS TABLE(
+  id uuid,
+  org_role text,
+  type public.notification_type_enum,
+  title text,
+  message text,
+  link text,
+  meta jsonb,
+  is_read boolean,
+  created_at timestamptz
+)
+LANGUAGE sql 
+SECURITY INVOKER
+SET search_path TO 'public', 'auth'
+AS $$
+  SELECT n.id,
+         n.org_role,
+         n.type,
+         n.title,
+         n.message,
+         n.link,
+         n.meta,
+         nu.is_read,
+         nu.created_at
+  FROM notifications_user nu
+  JOIN notifications n ON nu.notification_id = n.id
+  LEFT JOIN user_settings us
+    ON us.user_id = auth.uid()
+   AND us.setting_key = CASE
+        WHEN n.type = 'task'     THEN 'notification_tasks'
+        WHEN n.type = 'calendar' THEN 'notification_calendar'
+        ELSE NULL
+      END
+  WHERE nu.user_id = auth.uid()
+    AND (p_include_read OR NOT nu.is_read)
+    AND (us.setting_key IS NULL OR us.setting_value = 'true')
+  ORDER BY nu.created_at DESC;
 $$;
 
 CREATE OR REPLACE FUNCTION public.calendar_notify_delete()
@@ -1695,12 +2675,6 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_calendar_notify_delete
-AFTER DELETE ON public.calendar
-FOR EACH ROW
-EXECUTE FUNCTION public.calendar_notify_delete();
-
-
 CREATE OR REPLACE FUNCTION public."create_notification"(
     p_title        text,
     p_message      text,
@@ -1712,7 +2686,7 @@ CREATE OR REPLACE FUNCTION public."create_notification"(
 )
 RETURNS uuid
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 DECLARE
@@ -1736,7 +2710,7 @@ END;
 $$;
 
 
-
+-- Notification read and timed delete
 CREATE OR REPLACE FUNCTION "public"."mark_notification_read"("p_id" "uuid") RETURNS "void"
   LANGUAGE "plpgsql" SECURITY DEFINER
   SET "search_path" TO 'public'
@@ -1794,17 +2768,65 @@ BEGIN
 END;
 $$;
 
--- trigger to delete user_settings when a user_profile is removed
-CREATE OR REPLACE FUNCTION public.delete_user_settings() RETURNS trigger
-LANGUAGE plpgsql
-SET search_path TO 'public'
+-- Organisation CRUD
+CREATE OR REPLACE FUNCTION "public"."get_organisations"("p_region_id" "uuid")
+RETURNS TABLE (
+  id uuid,
+  name text,
+  org_type org_type_enum,
+  service text,
+  address jsonb,
+  region_id uuid,
+  website text,
+  phone text,
+  email text,
+  approval_status text,
+  is_active boolean,
+  notes text,
+  created_by uuid
+)
+LANGUAGE sql
+SET "search_path" TO 'public'
+SECURITY INVOKER
 AS $$
-BEGIN
-  DELETE FROM public.user_settings WHERE user_id = OLD.user_id;
-  RETURN NULL;
-END;
+  SELECT
+    id, name, org_type, service, address, region_id, website, phone, email, approval_status, is_active, notes, created_by
+  FROM organisations
+  WHERE is_active = true AND approval_status = 'approved' 
+  AND (
+      p_region_id IS NULL
+      OR region_id = p_region_id
+    )
+  ORDER BY name ASC;
 $$;
 
+CREATE OR REPLACE FUNCTION "public"."create_organisation"(
+  p_name text,
+  p_org_type org_type_enum,
+  p_service text,
+  p_address jsonb,
+  p_region_id uuid,
+  p_website text,
+  p_phone text,
+  p_email text,
+  p_approval_status text,
+  p_is_active boolean,
+  p_notes text,
+  p_created_by uuid
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    new_id uuid;
+BEGIN
+    INSERT INTO public.organisations (name, org_type, service, address, region_id, website, phone, email, approval_status, is_active, notes, created_by, created_at, updated_at)
+    VALUES (p_name, p_org_type, p_service, COALESCE(p_address, '{}'::jsonb), p_region_id, p_website, p_phone, p_email, p_approval_status, p_is_active, p_notes, p_created_by, now(), now())
+    RETURNING id INTO new_id;
+    RETURN new_id;
+END;
+$$;
 
 
 ---
@@ -1820,13 +2842,36 @@ CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EA
 
 -- CREATE OR REPLACE TRIGGER "calendar_update_trigger" BEFORE UPDATE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_update_trigger"();
 
-CREATE OR REPLACE TRIGGER "trigger_preserve_non_admin_fields" BEFORE UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."preserve_non_admin_fields"();
+CREATE OR REPLACE TRIGGER "preserve_non_admin_fields_trigger" BEFORE UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."preserve_non_admin_fields"();
 
-CREATE OR REPLACE TRIGGER "trigger_update_updated_at" BEFORE UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "validate_user_profile_trigger" BEFORE INSERT OR UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."validate_user_profile_assignment"();
 
-CREATE OR REPLACE TRIGGER "trigger_validate_user_profile" BEFORE INSERT OR UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."validate_user_profile_assignment"();
+CREATE TRIGGER "contact_status_insert_trigger"
+AFTER INSERT ON "public"."contacts"
+FOR EACH ROW
+EXECUTE FUNCTION "public"."handle_contact_status"();
 
-CREATE OR REPLACE TRIGGER "update_organizations_updated_at" BEFORE UPDATE ON "public"."organizations" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE TRIGGER "contact_status_update_trigger"
+AFTER UPDATE ON "public"."contacts"
+FOR EACH ROW
+WHEN (OLD.status IS DISTINCT FROM NEW.status)
+EXECUTE FUNCTION "public"."handle_contact_status"();
+
+CREATE TRIGGER allotment_complete_trigger --@ consider changing to a cron job. This is not ideal
+AFTER INSERT OR UPDATE ON public.contacts_allotment
+FOR EACH STATEMENT
+EXECUTE FUNCTION public.handle_allotment_complete();
+
+CREATE TRIGGER "contacts_note_insert_trigger"
+AFTER INSERT ON "public"."contacts"
+FOR EACH ROW
+EXECUTE FUNCTION "public"."handle_contact_note"();
+
+CREATE TRIGGER "contacts_note_update_trigger"
+AFTER UPDATE ON "public"."contacts"
+FOR EACH ROW
+WHEN (OLD.notes IS DISTINCT FROM NEW.notes)
+EXECUTE FUNCTION "public"."handle_contact_note"();
 
 CREATE OR REPLACE TRIGGER divisionManager_update_trigger
 AFTER INSERT OR UPDATE OF role, division_id, is_active
@@ -1840,20 +2885,21 @@ ON public.user_profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.update_division_manager();
 
-CREATE TRIGGER trg_delete_old_notifications
+CREATE TRIGGER calendar_notify_delete_trigger
+AFTER DELETE ON public.calendar
+FOR EACH ROW
+EXECUTE FUNCTION public.calendar_notify_delete();
+
+CREATE TRIGGER delete_old_notifications_trigger --@ consider changing to a cron job. This is not ideal
 AFTER INSERT ON public.notifications
 FOR EACH STATEMENT EXECUTE FUNCTION public.delete_old_notifications();
 
-CREATE TRIGGER trg_delete_user_settings
-AFTER DELETE ON public.user_profiles
-FOR EACH ROW EXECUTE FUNCTION public.delete_user_settings();
-
-CREATE TRIGGER trg_populate_notifications_user
+CREATE TRIGGER populate_notifications_user_trigger
 AFTER INSERT ON public.notifications
 FOR EACH ROW
 EXECUTE FUNCTION public.populate_notifications_user();
 
-CREATE TRIGGER trg_calendar_notify_insert
+CREATE TRIGGER calendar_notify_insert_trigger
 AFTER INSERT ON public.calendar
 FOR EACH ROW
 EXECUTE FUNCTION public.calendar_notify_insert();
@@ -1865,366 +2911,327 @@ EXECUTE FUNCTION public.calendar_notify_insert();
 
 ALTER TABLE "public"."audit_logs" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "audit_logs_insert" ON "public"."audit_logs" FOR INSERT TO "authenticated" WITH CHECK (("user_id" = (select auth.uid())));
-
-CREATE POLICY "audit_logs_select" ON "public"."audit_logs" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum"]))))));
-
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "contacts_delete" ON "public"."contacts" FOR DELETE TO "authenticated" USING ("public"."can_manage_contact"("owner_id"));
+ALTER TABLE "public"."contacts_referrer" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "contacts_insert" ON "public"."contacts" FOR INSERT TO "authenticated" WITH CHECK (("owner_id" = (select auth.uid())));
+ALTER TABLE "public"."contacts_allotment" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "contacts_select" ON "public"."contacts" FOR SELECT TO "authenticated" USING ((("owner_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
-   FROM ("public"."get_my_profile"() "me"("role", "entity_id", "division_id")
-     LEFT JOIN "public"."user_profiles" "owner_prof" ON (("owner_prof"."user_id" = "contacts"."owner_id")))
-  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("owner_prof"."entity_id" = "me"."entity_id")) OR (("me"."role" = ANY (ARRAY['manager'::"text", 'branch_manager'::"text"])) AND ("owner_prof"."entity_id" = "me"."entity_id") AND ("owner_prof"."division_id" = "me"."division_id")))))));
-
-CREATE POLICY "contacts_update" ON "public"."contacts" FOR UPDATE TO "authenticated" USING ("public"."can_manage_contact"("owner_id")) WITH CHECK ("public"."can_manage_contact"("owner_id"));
+ALTER TABLE "public"."contacts_notes" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."divisions" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "divisions_delete" ON "public"."divisions" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
-
-CREATE POLICY "divisions_insert" ON "public"."divisions" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
-
-CREATE POLICY "divisions_select" ON "public"."divisions" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))) OR ("head_id" IN ( SELECT "user_profiles"."id"
-   FROM "public"."user_profiles"
-  WHERE ("user_profiles"."user_id" = (select auth.uid())))) OR ("entity_id" IN ( SELECT "user_profiles"."entity_id"
-   FROM "public"."user_profiles"
-  WHERE (("user_profiles"."user_id" = (select auth.uid())) AND ("user_profiles"."role" = 'head'::"public"."role_enum")))) OR ("id" IN ( SELECT "user_profiles"."division_id"
-   FROM "public"."user_profiles"
-  WHERE ("user_profiles"."user_id" = (select auth.uid()))))));
-
-CREATE POLICY "divisions_update" ON "public"."divisions" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
-
 ALTER TABLE "public"."entities" ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "entities_select" ON "public"."entities" FOR SELECT TO "authenticated" USING (true);
-
-CREATE POLICY "entities_insert" ON "public"."entities" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
-
-CREATE POLICY "entities_update" ON "public"."entities" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
-
-CREATE POLICY "entities_delete" ON "public"."entities" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
 
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 
--- CREATE POLICY "notifications_select" ON public.notifications
--- FOR SELECT TO authenticated
--- USING (
---    EXISTS (
---      SELECT 1
---      FROM public.user_profiles up
---      WHERE up.user_id = auth.uid()
---        AND up.role = 'admin'
---    )
---    OR
---    EXISTS (
---      SELECT 1
---      FROM public.notifications_user nu
---      WHERE nu.notification_id = id
---        AND nu.user_id = auth.uid()
---    )
--- );
-
-CREATE POLICY "notifications_select" ON public.notifications
-FOR SELECT TO authenticated
-USING (TRUE);
-
-CREATE POLICY "notifications_insert" ON public.notifications
-FOR INSERT TO authenticated
-WITH CHECK (false);
-
-CREATE POLICY "notifications_update" ON public.notifications
-FOR UPDATE TO authenticated
-USING (false);
-
-CREATE POLICY "notifications_delete" ON public.notifications
-FOR DELETE TO authenticated
-USING (false);
-
--- CREATE POLICY "notifications_insert" ON public.notifications
--- FOR INSERT TO authenticated
--- WITH CHECK (
---   (user_id = auth.uid() AND type = 'dm')
---   OR (org_role IS NOT NULL AND type = 'alert')
--- );
-
--- CREATE POLICY "notifications_update" ON public.notifications
--- FOR UPDATE TO authenticated
--- USING (
---   (user_id = auth.uid() AND type = 'dm')
---   OR (org_role IS NOT NULL AND type = 'alert')
--- )
--- WITH CHECK (
---   (user_id = auth.uid() AND type = 'dm')
---   OR (org_role IS NOT NULL AND type = 'alert')
--- );
-
 ALTER TABLE "public"."notifications_user" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY notifications_user_select ON public.notifications_user
-FOR SELECT TO authenticated
-USING (user_id = (select auth.uid()));
-
-CREATE POLICY notifications_user_insert ON public.notifications_user
-FOR INSERT TO authenticated
-WITH CHECK (user_id = (select auth.uid()));
-
-CREATE POLICY notifications_user_update ON public.notifications_user
-FOR UPDATE TO authenticated
-USING (user_id = (select auth.uid()));
-
-
-ALTER TABLE "public"."organizations" ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "organizations_select" ON "public"."organizations" FOR SELECT TO "authenticated" USING (true);
-
-CREATE POLICY "organizations_insert" ON "public"."organizations" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum"]))))));
-
-CREATE POLICY "organizations_update" ON "public"."organizations" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum"])))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum"]))))));
-
-CREATE POLICY "organizations_delete" ON "public"."organizations" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."user_profiles" "up"
-  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum"]))))));
-
-ALTER TABLE "public"."regions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."organisations" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."calendar" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY calendar_select ON public.calendar FOR SELECT TO authenticated USING ( EXISTS (
-      SELECT 1
-      FROM public.user_profiles up
-      WHERE up.user_id = (select auth.uid())
-        AND up.role = ANY(
-          ARRAY['admin','head','manager','branch_manager','staff']::public.role_enum[]
-        )
-    )
-  );
-
-CREATE POLICY calendar_insert ON public.calendar FOR INSERT TO authenticated WITH CHECK (created_by = (select auth.uid()));
-
-CREATE POLICY calendar_update ON public.calendar FOR UPDATE TO authenticated USING ( EXISTS (
-      SELECT 1
-      FROM public.user_profiles up_user
-      LEFT JOIN public.user_profiles up_creator 
-        ON up_creator.user_id = calendar.created_by
-      WHERE up_user.user_id = auth.uid()
-      AND (
-        up_user.role IN ('admin', 'head')
-        OR (
-          up_user.role IN ('manager', 'branch_manager', 'staff')
-          AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
-        )
-        OR calendar.created_by = (select auth.uid())
-      )
-    )
-  )
-  WITH CHECK ( EXISTS (
-      SELECT 1
-      FROM public.user_profiles up_user
-      LEFT JOIN public.user_profiles up_creator 
-        ON up_creator.user_id = calendar.created_by
-      WHERE up_user.user_id = auth.uid()
-      AND (
-        up_user.role IN ('admin', 'head')
-        OR (
-          up_user.role IN ('manager', 'branch_manager', 'staff')
-          AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
-        )
-        OR calendar.created_by = (select auth.uid())
-      )
-    )
-  );
-
-CREATE POLICY calendar_delete ON public.calendar FOR DELETE TO authenticated USING ( EXISTS (
-      SELECT 1
-      FROM public.user_profiles up_user
-      LEFT JOIN public.user_profiles up_creator 
-        ON up_creator.user_id = calendar.created_by
-      WHERE up_user.user_id = auth.uid()
-      AND (
-        -- Admin & Head: Can delete anything
-        up_user.role IN ('admin', 'head')
-        OR (
-          up_user.role IN ('manager', 'branch_manager', 'staff')
-          AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
-        )
-        OR calendar.created_by = (select auth.uid())
-      )
-    )
-  );
-
-
 ALTER TABLE "public"."system_settings" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "system_settings_select" ON "public"."system_settings" FOR SELECT TO "authenticated" USING (true);
+ALTER TABLE "public"."entity_settings" ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE "public"."user_settings" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."division_settings" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "select_user_settings" ON "public"."user_settings" FOR SELECT USING (((select auth.uid()) = "user_id"));
-
-CREATE POLICY "update_user_settings" ON "public"."user_settings" FOR UPDATE USING (((select auth.uid()) = "user_id"));
-
-CREATE POLICY "insert_user_settings" ON "public"."user_settings" FOR INSERT WITH CHECK (("user_id" = (select auth.uid())));
-
-ALTER TABLE "public"."titles" ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE "public"."regions" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "update_own_safe_fields" ON "public"."user_profiles" FOR UPDATE USING (((select auth.uid()) = "user_id")) WITH CHECK (((select auth.uid()) = "user_id"));
-
-CREATE POLICY "admin_all" ON "public"."user_profiles" USING (("public"."get_my_role"() = 'admin'::"text")) WITH CHECK (("public"."get_my_role"() = 'admin'::"text"));
-
--- CREATE POLICY "insert_own_profile" ON "public"."user_profiles" FOR INSERT WITH CHECK (((select auth.uid()) = "user_id"));
-
-
--- -- -- CREATE POLICY "read_own_profile" ON "public"."user_profiles" FOR SELECT USING (((select auth.uid()) = "user_id"));
-
-CREATE POLICY "select_own_profile" ON "public"."user_profiles" FOR SELECT USING (((select auth.uid()) = "user_id"));
-
-CREATE POLICY "user_profiles_select" ON "public"."user_profiles" FOR SELECT TO "authenticated" USING ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
-   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
-  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("me"."entity_id" = "user_profiles"."entity_id")) OR (("me"."role" = ANY (ARRAY['manager'::"text", 'branch_manager'::"text"])) AND ("me"."entity_id" = "user_profiles"."entity_id") AND ("me"."division_id" = "user_profiles"."division_id")))))));
-
-CREATE POLICY "user_profiles_update" ON "public"."user_profiles" FOR UPDATE TO "authenticated" USING ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
-   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
-  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("me"."entity_id" = "user_profiles"."entity_id"))))))) WITH CHECK ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
-   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
-  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("me"."entity_id" = "user_profiles"."entity_id")))))));
-
 --
---Grants and other
+--Grants 
 --
 
-GRANT EXECUTE ON FUNCTION "public"."_get_effective_user_profile"("p_user_id" "uuid") TO "authenticated";
+REVOKE EXECUTE ON FUNCTION "public"."handle_new_auth_user"() FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION public.create_calendar(text, text, text, uuid, uuid, timestamptz, text, text, uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_changes" "jsonb") FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION public.update_calendar(uuid, text, text, text, uuid, uuid, timestamptz, text, text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION "public"."get_audit_logs"("p_filters" "jsonb", "p_page" "numeric", "p_page_size" "numeric") FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION public.delete_calendar(uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION "public"."admin_clear_audit_logs"("p_filters" "jsonb") FROM PUBLIC;
 
--- GRANT EXECUTE ON FUNCTION "public"."calendar_delete_trigger"() TO "authenticated";
+-- REVOKE EXECUTE ON FUNCTION "public"."ensure_admin_profile"() FROM PUBLIC;
 
--- GRANT EXECUTE ON FUNCTION "public"."calendar_insert_trigger"() TO "authenticated";
+REVOKE EXECUTE ON FUNCTION "public"."user_get_profile"() FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text") TO "authenticated";
+REVOKE EXECUTE ON FUNCTION "public"."get_profile_names"() FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION "public"."admin_delete_contact"("p_id" "uuid") TO "authenticated";
+REVOKE EXECUTE ON FUNCTION "public"."user_update_profile"("p_user_id" "uuid", "p_full_name" "text", "p_phone" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_my_profile"() FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_users_with_profiles"("p_query" "text", "p_role" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_system_settings"() FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."upsert_system_setting"("p_setting_key" "text", "p_setting_value" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_entity_settings"("p_entity_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."upsert_entity_setting"("p_entity_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_division_settings"("p_division_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."upsert_division_setting"("p_division_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_user_settings"("p_user_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text", "p_referrer" boolean) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."admin_delete_entity"("p_entity_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."admin_delete_user"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."admin_update_entity"("p_entity_id" "uuid", "p_name" "text", "p_code" "text", "p_is_active" boolean) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."create_division"("p_name" "text", "p_entity_id" "uuid", "p_head_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."update_division"("p_id" "uuid", "p_name" "text", "p_entity_id" "uuid", "p_head_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."delete_division"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_name text, p_code text, p_is_active boolean) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "uuid", "p_role" "public"."role_enum", 
+"p_entity_id" "uuid", "p_division_id" "uuid", "p_manager_id" "uuid", "p_region_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_regions"() FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_phone" "text", "p_address" "text", 
+"p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", 
+"p_notes" "text", "p_status" "public"."beneficiary_enum", "p_user_id" "uuid", "p_owner_id" "uuid") FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_phone" "text", 
+"p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
+"p_allergies" boolean, "p_vegetarian" boolean, "p_hallal" boolean, "p_status" "public"."beneficiary_enum", "p_user_id" "uuid", "p_owner_id" "uuid","p_notes" "text") 
+FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."delete_contact"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_allotment"("p_contact_id" "uuid") FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."insert_allotment_discretionary"("p_contact_id" "uuid", "p_user_id" "uuid", 
+"p_date" "timestamptz", "p_type" "public"."allotment_type_enum", "p_note" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."toggle_allotment_serving"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_served"("p_id" "uuid") FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."create_calendar"(text, text, text, uuid, uuid, timestamptz, text, text, uuid) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."update_calendar"(uuid, text, text, text, uuid, uuid, timestamptz, text, text) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."update_calendar_status"(uuid, text) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."delete_calendar"("uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."mark_all_notifications_read"() FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."mark_notification_read"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."delete_old_notifications"() FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."preserve_non_admin_fields"() FROM PUBLIC;
+
+
+GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_changes" "jsonb") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_audit_logs"("p_filters" "jsonb", "p_page" "numeric", "p_page_size" "numeric") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."admin_clear_audit_logs"("p_filters" "jsonb") TO authenticated;
+
+-- GRANT EXECUTE ON FUNCTION "public"."ensure_admin_profile"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."user_get_profile"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_profile_names"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."user_update_profile"("p_user_id" "uuid", "p_full_name" "text", "p_phone" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_my_profile"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_users_with_profiles"("p_query" "text", "p_role" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_system_settings"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."upsert_system_setting"("p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_entity_settings"("p_entity_id" "uuid") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."upsert_entity_setting"("p_entity_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_division_settings"("p_division_id" "uuid") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."upsert_division_setting"("p_division_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_user_settings"("p_user_id" "uuid") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text", "p_referrer" boolean) TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."admin_delete_entity"("p_entity_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."admin_delete_user"("p_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."admin_update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_phone" "text", "p_company" "text", "p_notes" "text") TO "authenticated";
-
 GRANT EXECUTE ON FUNCTION "public"."admin_update_entity"("p_entity_id" "uuid", "p_name" "text", "p_code" "text", "p_is_active" boolean) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."admin_update_profile"("p_id" "uuid", "p_role" "public"."role_enum", "p_division" "uuid") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."create_division"("p_name" "text", "p_entity_id" "uuid", "p_head_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "uuid", "p_role" "public"."role_enum", "p_entity_id" "uuid", "p_division_id" "uuid", "p_manager_id" "uuid") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."update_division"("p_id" "uuid", "p_name" "text", "p_entity_id" "uuid", "p_head_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."can_manage_contact"("target_owner_id" "uuid") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."delete_division"("p_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."ensure_admin_profile"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."get_current_profile"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_name text, p_code text, p_is_active boolean) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."get_my_profile"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "uuid", "p_role" "public"."role_enum", "p_entity_id" "uuid", "p_division_id" "uuid", "p_manager_id" "uuid", "p_region_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."get_my_role"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."get_regions"() TO "authenticated"; 
 
-GRANT EXECUTE ON FUNCTION "public"."get_users_with_profiles"("p_query" "text", "p_role" "text") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_phone" "text", "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_notes" "text", "p_status" "public"."beneficiary_enum", "p_user_id" "uuid", "p_owner_id" "uuid") TO "authenticated"; 
 
-GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_phone" "text", 
+"p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
+"p_allergies" boolean, "p_vegetarian" boolean, "p_hallal" boolean, "p_status" "public"."beneficiary_enum", "p_user_id" "uuid", "p_owner_id" "uuid","p_notes" "text") 
+TO "authenticated"; 
 
-GRANT EXECUTE ON FUNCTION "public"."is_admin_or_head"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."delete_contact"("p_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_changes" "jsonb") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."get_allotment"("p_contact_id" "uuid") TO "authenticated"; 
 
--- GRANT EXECUTE ON FUNCTION "public"."get_user_notifications"() TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."insert_allotment_discretionary"("p_contact_id" "uuid", "p_user_id" "uuid", "p_date" "timestamptz", "p_type" "public"."allotment_type_enum", "p_note" "text") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."toggle_allotment_serving"("p_id" "uuid") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."mark_allotment_served"("p_id" "uuid") TO "authenticated"; 
+
+GRANT EXECUTE ON FUNCTION "public"."create_calendar"(text, text, text, uuid, uuid, timestamptz, text, text, uuid) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION "public"."update_calendar"(uuid, text, text, text, uuid, uuid, timestamptz, text, text) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION "public"."update_calendar_status"(uuid, text) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION "public"."delete_calendar"("uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."mark_all_notifications_read"() TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."mark_notification_read"("p_id" "uuid") TO "authenticated";
 
--- GRANT EXECUTE ON FUNCTION "public"."create_notification"() TO "authenticated";
-
--- GRANT EXECUTE ON FUNCTION "public"."populate_notifications_user"() TO "authenticated"; 
-
 GRANT EXECUTE ON FUNCTION "public"."delete_old_notifications"() TO "authenticated";
-
-GRANT EXECUTE ON FUNCTION "public"."delete_user_settings"() TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."preserve_non_admin_fields"() TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated";
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."audit_logs" FROM PUBLIC;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" TO "authenticated";
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_audit_log_complete" FROM PUBLIC;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" TO "authenticated";
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_profiles" FROM PUBLIC; 
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."regions" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."system_settings" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_notes" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_referrer" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_allotment" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entities" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entity_settings" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."divisions" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."division_settings" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications_user" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."organisations" FROM PUBLIC;
+
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_settings" FROM PUBLIC;
+
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."audit_logs" TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts" TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_audit_log_complete" TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."divisions" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entities" TO "authenticated";
-
--- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."manager_team_members" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications_user" TO "authenticated";
-
--- GRANT SELECT ON TABLE "public"."user_notifications" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."organizations" TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_profiles" TO "authenticated"; 
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."regions" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."system_settings" TO "authenticated";
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_notes" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_referrer" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_allotment" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entities" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entity_settings" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."divisions" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."division_settings" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."calendar" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."notifications_user" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."organisations" TO "authenticated";
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_settings" TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."titles" TO "authenticated";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_profiles" TO "authenticated";
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_audit_log_complete" TO "authenticated";
+--
+-- Realtime and RLS activated
+--
 
 SET row_security = on;
+
+ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+--For real-time notification receipt
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."notifications";
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."notifications_user";
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."user_settings";
 
 COMMIT;

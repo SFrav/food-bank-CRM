@@ -126,6 +126,7 @@ export function NativeFileUploader({
         backgroundColor: isDragging ? '#e3f2fd' : '#fafafa',
         transition: 'all 0.2s ease',
         cursor: 'pointer',
+        minHeight: '140px',
       }}
     >
       <input

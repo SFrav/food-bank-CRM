@@ -1,25 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AddContactModal } from '@/components/modals/AddContactModal';
-import { useContacts } from '@/hooks/useContacts';
+import { AddContactModal } from '@/components/modals/AddContact';
+import { MergeContactModal } from '@/components/modals/MergeContact';
+import { useContacts, Contact } from '@/hooks/useContacts';
 import { useToast } from '@/hooks/use-toast';
 
-export interface Contact {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  status: string | null;
-  notes: string | null;
-  created_at: string;
-}
-
 interface ContactsTableProps {
+  filterQueue: boolean;
+  setFilterQueue: (value: boolean) => void;
+  onDuplicateAdd: (dup: Contact) => void;
   onEditContact: (contact: Contact) => void;
 }
 
@@ -66,34 +63,81 @@ export const StatusBadge = ({ role, className = "" }: BadgeProps) => {
 );
 };
 
-export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) => {
-  const [orderDesc] = React.useState(false);
-  const { contacts, loading, refetch} = useContacts(orderDesc);
+export const ContactsTable: React.FC<ContactsTableProps> = ({
+  filterQueue,
+  setFilterQueue, 
+  onDuplicateAdd,
+  onEditContact 
+}) => {
+  const [orderDesc] = useState(false);
+  // const [filterQueue, setFilterQueue] = useState(false);
+  const { contacts, loading, refetch} = useContacts(orderDesc); //orderDesc, filterQueue
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterTerm, setFilterTerm] = useState('all');
+  // const [filterTermStore, setFilterTermStore] = useState('active');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [primaryMerge, setPrimaryMerge] = useState<Contact | null>(null);
+  const [secondaryMerge, setSecondaryMerge] = useState<Contact | null>(null);
 
+  useEffect(() => {
+    if (selected.size !== 2) return;
+    const ids = Array.from(selected);
+    const primary = contacts.find(c => c.id === ids[0]) ?? null;
+    const secondary = contacts.find(c => c.id === ids[1]) ?? null;
+    if (primary && secondary) {
+      setPrimaryMerge(primary);
+      setSecondaryMerge(secondary);
+      setMergeDialogOpen(true);
+      // setSelected(new Set());
+    }
+  }, [selected, contacts, refetch]);
 
+  const toggleSelection = (id: string, checked: boolean) => {
+    setSelected(prev => {
+      const newSet = new Set(prev);
+      if (checked) newSet.add(id);
+      else newSet.delete(id);
+      return newSet;
+    });
+  };
 
-  const filteredContacts = useMemo(() => {
-    if (!searchTerm) return contacts;
+  const filteredContacts = useMemo(() => { //@ consider refactor to DB
     const q = searchTerm.toLowerCase();
-    return contacts.filter(
+    if (!searchTerm && filterTerm !== "all") {
+      return contacts.filter((c) => c.status?.toLowerCase() === filterTerm && c.status?.toLowerCase() !== 'merged')
+    };
+    if (searchTerm && filterTerm === "all") {
+      return contacts.filter(
       (c) =>
-        c.name.toLowerCase().includes(q) ||
+        (c.name.toLowerCase().includes(q) ||
         c.email?.toLowerCase().includes(q) ||
-        c.phone?.toLowerCase().includes(q) ||
-        c.status?.toLowerCase().includes(q)
+        c.phone?.toLowerCase().includes(q)) &&
+        c.status?.toLowerCase() !== 'merged'
     );
-  }, [searchTerm, contacts]);
+    };
+    if (searchTerm && filterTerm !== "all") {
+      return contacts.filter(
+      (c) =>
+        (c.name.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.phone?.toLowerCase().includes(q)) &&
+        c.status?.toLowerCase() === filterTerm && 
+        c.status?.toLowerCase() !== 'merged'
+      );
+    };
+    if (!searchTerm && filterTerm === "all") {return contacts.filter((c) => c.status?.toLowerCase() !== 'merged')};
+  }, [searchTerm, filterTerm, contacts]);
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Company', 'Notes', 'Created At'];
+    const headers = ['Name', 'Email', 'Phone', 'Notes', 'Created At'];
     const rows = filteredContacts.map((c) => [
       `"${c.name}"`,
       `"${c.email ?? ''}"`,
       `"${c.phone ?? ''}"`,
-      `"${c.status ?? ''}"`,
+      //`"${c.status ?? ''}"`,
       `"${c.notes ?? ''}"`,
       `"${new Date(c.created_at).toLocaleDateString()}"`,
     ].join(','));
@@ -106,7 +150,30 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
     URL.revokeObjectURL(url);
     toast({ title: 'Success', description: 'Contacts exported to CSV!' });
   };
-    
+
+  const handleQueueRefetch = useMemo(() => {
+    refetch(filterQueue)
+  }, [refetch, filterQueue]);
+
+  // const handleNameInit = (searchTerm: string) => {
+  //   if (searchTerm.length > 6) return searchTerm; 
+  //   return '';
+  // };
+  const handleNameInit = useMemo(() => {
+    if (searchTerm.length > 6) return searchTerm; 
+    return '';
+  }, [searchTerm]);
+
+  const handleAddRefetch = () => {
+    refetch(filterQueue);
+    setSearchTerm('');
+  }
+
+  const handleMerged = () => {
+    refetch(filterQueue);
+    setSelected(new Set());
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -115,22 +182,60 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
           <CardDescription> </CardDescription>
         </CardHeader>
         <CardContent> */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6 items-center justify-between">
+            <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground " />
               <Input
-                placeholder="Search by name or email …"
+                placeholder="Search by name, email or status …"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-[300px]"
               />
             </div>
+            <div className="relative flex-1">
+              <Select
+                value={filterTerm} 
+                onValueChange={(e) => {setFilterTerm(e); }} //setFilterTermStore(e);
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Status filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="relative flex-1">
+              <div className="flex flex-col items-end">
+                <label className="text-sm">Queue:</label>
+                <Switch
+                  id="queue"
+                  onCheckedChange={checked => {
+                                    setFilterQueue(checked);
+                                    handleQueueRefetch;
+                                    // if (checked) {
+                                    //   setFilterTerm('active');
+                                      
+                                    // }
+                                    // else{setFilterTerm(filterTermStore);}
+                                  }}
+
+                />
+              </div>
+            </div>
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={exportToCSV} disabled={filteredContacts.length === 0}>
-                <Download className="size-4 mr-2" />Export CSV
-              </Button>
+              {filterTerm === 'all' && searchTerm.length > 2 && (
               <Button onClick={() => setIsAddModalOpen(true)}>
                 <Plus className="size-4 mr-2" />Add Beneficiary
+              </Button>
+              )}
+              <Button variant="outline" onClick={exportToCSV} disabled={filteredContacts.length === 0}>
+                <Download className="size-4 mr-2" />Export CSV
               </Button>
             </div>
           </div>
@@ -142,70 +247,87 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? 'No contacts match your search.' : 'No contacts yet.'}
+              {/* {searchTerm ? '' : 'No contacts yet.'}
               {!searchTerm && (
                 <div className="mt-4">
                   <Button onClick={() => setIsAddModalOpen(true)}>
                     <Plus className="size-4 mr-2" />Add Your First Beneficiary
                   </Button>
                 </div>
-              )}
+              )} */}
             </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden sm:table-cell">Email</TableHead>
-                    <TableHead className="hidden md:table-cell">Phone</TableHead>
-                    <TableHead className="hidden lg:table-cell">Status</TableHead>
-                    <TableHead className="text-right text-xs font-normal text-muted-foreground">
-                      Note
+                    <TableHead> </TableHead>
+                    <TableHead className="max-w-[150px]">Name</TableHead>
+                    <TableHead className="hidden sm:table-cell max-w-[180px]">Email</TableHead>
+                    <TableHead className="hidden md:table-cell max-w-[80px]">Phone</TableHead>
+                    <TableHead className="hidden lg:table-cell max-w-[80px]">Status</TableHead>
+                    <TableHead className="text-right hidden lg:table-cell max-w-[200px] ">
+                      Latest Note
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredContacts.map((c) => (
+                  {filteredContacts.map((c, index) => (
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEditContact(c)}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                        {!filterQueue && filteredContacts.length >1 ? ( 
+                      <TableCell className="font-medium">
+                        <div onClick={e => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selected.has(c.id)}
+                          onCheckedChange={(checked) => {
+                            if (!checked && selected.has(c.id)) toggleSelection(c.id, false);
+                            else if (checked && selected.size < 2) toggleSelection(c.id, true);}}
+                        />
+                        </div>
+                      </TableCell>
+                        ) : (
+                      <TableCell className="font-medium size-4">
+                        {index + 1}
+                      </TableCell>
+                       )}
+                      <TableCell className="font-medium max-w-[150px] line-clamp-2">{c.name}</TableCell>
+                      <TableCell className="hidden sm:table-cell max-w-[180px] line-clamp-2">
                         {c.email ? (
-                          <a
-                            href={`mailto:${c.email}`}
-                            className="text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {c.email}
-                          </a>
+                          // <a
+                          //   href={`mailto:${c.email}`}
+                          //   className="text-primary hover:underline"
+                          //   onClick={(e) => e.stopPropagation()}
+                          // >
+                            <span>{c.email}</span>
+                          // </a>
                         ) : (
                           <span className="text-muted-foreground">&hellip;</span>
                         )}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden md:table-cell max-w-[80px]">
                         {c.phone ? (
-                          <a
-                            href={`tel:${c.phone}`}
-                            className="text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {c.phone}
-                          </a>
+                          // <a
+                          //   href={`tel:${c.phone}`}
+                          //   className="text-primary hover:underline"
+                          //   onClick={(e) => e.stopPropagation()}
+                          // >
+                            <span>{c.phone}</span>
+                          // </a>
                         ) : (
                           <span className="text-muted-foreground">&hellip;</span>
                         )}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className="hidden lg:table-cell max-w-[80px]">
                         {c.status ? <StatusBadge role={c.status}>
                           {c.status} </StatusBadge> : <span className="text-muted-foreground">&hellip;</span>}
                       </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground pl-1 pr-0">
+                        <TableCell className="text-xs text-muted-foreground pl-3 pr-3 max-w-[200px]">
                           {c.notes ? (
-                            <span className="max-w-[150px] line-clamp-2" title={c.notes}>
+                            <span className=" line-clamp-2" title={c.notes}>
                               {c.notes}
                             </span>
                           ) : (
-                            '&hellip;'
+                            <span className="line-clamp-2" > &hellip; </span>
                           )}
                         </TableCell>
                     </TableRow>
@@ -214,22 +336,45 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) =
               </Table>
             </div>
           )}
-
-          {filteredContacts.length > 0 && (
+          
+          {filteredContacts.length > 0 ? (
             <div className="flex justify-between items-center mt-4 text-sm text-muted-foreground">
               <span>
                 Showing {filteredContacts.length} of {contacts.length} beneficiaries
               </span>
-              {searchTerm && <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')}>Clear search</Button>}
+              {selected.size === 2 ? (
+                <Button 
+                  onClick={() => setMergeDialogOpen(true)}>Merge selected</Button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => {setSearchTerm(''); setFilterTerm('all')}}>Clear search</Button>
+              )
+              }              
+              
             </div>
-          )}
+          ) : (
+          <div className="flex justify-between items-center mt-4 text-sm text-muted-foreground">
+            <span>
+              No contacts match your search
+            </span>
+          {searchTerm && selected.size !==2  && <Button variant="ghost" size="sm" onClick={() => {setSearchTerm(''); setFilterTerm('all')}}>Clear search</Button>} 
+            </div>
+        )}
         </CardContent>
       </Card>
 
       <AddContactModal
         isOpen={isAddModalOpen}
+        nameInit={handleNameInit}
+        onDuplicateFound={onDuplicateAdd}
         onClose={() => setIsAddModalOpen(false)}
-        onContactAdded={refetch}
+        onContactAdded={handleAddRefetch}
+      />
+      <MergeContactModal
+        isOpen={mergeDialogOpen}
+        onClose={() => setMergeDialogOpen(false)}
+        onMerged={handleMerged}
+        primary={primaryMerge ?? ({} as Contact)}
+        secondary={secondaryMerge ?? ({} as Contact)}
       />
     </div>
   );

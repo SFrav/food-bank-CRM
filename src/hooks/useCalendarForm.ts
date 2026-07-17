@@ -11,14 +11,15 @@ type Beneficiary = {
 
 type Calendar = {
   id: string;
-  entry_type: "referrer_request" | "client_requests" | "staff_todo" | "volunteer_todo" | "event";
+  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
   subject?: string;
   location?: string
   beneficiary_id: string;
+  beneficiary_name?: string;
   scheduled_at: string;
   status: "scheduled" | "done" | "cancelled";
   notes?: string;
-  created_by: string;
+  created_by?: string;
   created_at: string;
 };
 
@@ -29,7 +30,12 @@ type useCalendarFormProps = {
   onSuccess: () => void;
 };
 
-export type TaskT = "referrer_request" | "client_requests" | "staff_todo" | "volunteer_todo" | "event";
+const roundToNearestQuarter = (date: Date) => {
+  const ms = 15 * 60 * 1000;          // 15 minutes in ms
+  return new Date(Math.round(date.getTime() / ms) * ms);
+};
+
+export type TaskT = "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
 export type TaskStatusT = "scheduled" | "done" | "cancelled";
 
 export function useCalendarForm({
@@ -37,7 +43,6 @@ export function useCalendarForm({
   loadContacts,
   onSuccess,
 }: useCalendarFormProps) {
-  const sb = supabase as any;
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -46,16 +51,17 @@ export function useCalendarForm({
     subject: initialCalendar?.subject ?? "",
     location: initialCalendar?.location ?? "",
     beneficiary_id: initialCalendar?.beneficiary_id ?? "",
+    beneficiary_name: initialCalendar?.beneficiary_name ?? "",
     scheduled_at: initialCalendar
       ? format(new Date(initialCalendar.scheduled_at), "yyyy-MM-dd'T'HH:mm")
-      : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+      : format(roundToNearestQuarter(new Date()), "yyyy-MM-dd'T'HH:mm"),
     status: initialCalendar?.status ?? "scheduled",
     notes: initialCalendar?.notes ?? "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submitAdd = async () => {
+  const createEvent = async () => {
     if (!form.entry_type || !form.scheduled_at) {
       toast({
         title: "Error",
@@ -69,10 +75,10 @@ export function useCalendarForm({
     try {
       const scheduledAtISO = new Date(form.scheduled_at).toISOString();
 
-      const { error } = await sb.rpc("create_calendar", {
+      const { error } = await supabase.rpc("create_calendar", {
         p_entry_type: form.entry_type,
         p_subject: form.subject || null,
-        p_location: form.subject || null,
+        p_location: form.location || null,
         p_beneficiary_id: form.beneficiary_id || null,
         p_pic_id: form.beneficiary_id || null,
         p_scheduled_at: scheduledAtISO,
@@ -97,11 +103,11 @@ export function useCalendarForm({
     }
   };
 
-  const submitAddBulk = async (events: any[]) => {
+  const createEventBulk = async (events: any[]) => {
     if (!user) throw new Error("User not authenticated");
     setIsSubmitting(true);
     try {
-      const { error } = await sb.rpc("create_calendar_bulk", {
+      const { error } = await supabase.rpc("create_calendar_bulk", {
         events,
       });
       if (error) throw error;
@@ -119,7 +125,7 @@ export function useCalendarForm({
     }
   };
 
-  const submitEdit = async () => {
+  const updateEvent = async () => {
     if (!form.entry_type || !form.scheduled_at) {
       toast({
         title: "Error",
@@ -135,11 +141,11 @@ export function useCalendarForm({
     try {
       const scheduledAtISO = new Date(form.scheduled_at).toISOString();
 
-      const { error } = await sb.rpc("update_calendar", {
+      const { error } = await supabase.rpc("update_calendar", {
         p_id: initialCalendar.id,
         p_entry_type: form.entry_type,
         p_subject: form.subject || null,
-        p_location: form.subject || null,
+        p_location: form.location || null,
         p_beneficiary_id: form.beneficiary_id || null,
         p_pic_id: form.beneficiary_id || null,
         p_scheduled_at: scheduledAtISO,
@@ -163,24 +169,24 @@ export function useCalendarForm({
     }
   };
 
-  const deleteCalendar = async (calendarId: string) => {
-    setIsSubmitting(true);
-    try {
-      const { error } = await sb.rpc("delete_calendar", { p_id: calendarId });
-      if (error) throw error;
-      toast({ title: "Deleted", description: "Calendar entry removed." });
-      onSuccess();
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error",
-        description: "Failed to delete calendar entry.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // const deleteEvent = async (calendarId: string) => {
+  //   setIsSubmitting(true);
+  //   try {
+  //     const { error } = await supabase.rpc("delete_calendar", { p_id: calendarId });
+  //     if (error) throw error;
+  //     toast({ title: "Deleted", description: "Calendar entry removed." });
+  //     onSuccess();
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to delete calendar entry.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   useEffect(() => {
     if (initialCalendar?.beneficiary_id && loadContacts) {
@@ -191,10 +197,10 @@ export function useCalendarForm({
   return {
     form,
     setForm,
-    submitAdd,
-    submitAddBulk,
-    submitEdit,
-    deleteCalendar,
+    createEvent,
+    createEventBulk,
+    updateEvent,
+    // deleteEvent,
     isSubmitting,
   };
 }

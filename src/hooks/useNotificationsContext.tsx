@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
+// import { useUserSettings } from './useUserSettings';
 
 export interface Notification {
   id: string;
@@ -21,6 +22,7 @@ interface NotificationsContextType {
   bellNotifications: Notification[];
   unreadBellCount: number;
   loading: boolean;
+  createNotification: (p_title: string, p_message: string, p_link: string, p_type: 'alert' | 'dm') => Promise<{ success: boolean; error?: any }>; 
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refetch: () => Promise<void>;
@@ -32,6 +34,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  // const { settings } = useUserSettings();
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
@@ -44,11 +47,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications(n);
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Failed to load notifications.', variant: 'destructive' });
+      // toast({ title: 'Error', description: 'Failed to load notifications.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]); //, toast
 
   const markAsRead = useCallback(async (id: string) => {
     try {
@@ -72,6 +75,38 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [toast]);
 
+  const createNotification = async (
+    p_title: string,
+    p_message: string,
+    p_link: string,
+    p_type: 'alert' | 'dm',
+    p_target_user: string | null = null,
+    p_org_role: 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null = null,
+    p_calendar_id: string | null = null
+  ) => {
+    try {
+      const { error } = await supabase.rpc('create_notification', {
+        p_title,
+        p_message,
+        p_link,
+        p_type,
+        p_target_user,
+        p_org_role,
+        p_calendar_id,
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('create_notification error', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to post notification.',
+        variant: 'destructive',
+      });
+      return { success: false, error: err };
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -81,14 +116,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     fetchNotifications();
 
-    // Subscribe to Notification Status Changes (New or Read)
     let channel: any = null;
     channel = supabase
       .channel('notifications_user')
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT and UPDATE
+          event: '*',
           schema: 'public',
           table: 'notifications_user',
           filter: `user_id=eq.${user.id}`,
@@ -109,18 +143,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             };
             setNotifications(prev => [notif, ...prev.slice(0, 9)]);
           }
+          await fetchNotifications();
         }
       )
       .subscribe();
 
-    // Subscribe to User Settings Changes to re-fetch and apply filters
     let settingsChannel: any = null;
     settingsChannel = supabase
-      .channel('user_settings')
+      .channel('user_settings_notifications')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'user_settings',
           filter: `user_id=eq.${user.id}`,
@@ -148,6 +182,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       bellNotifications,
       unreadBellCount,
       loading,
+      createNotification,
       markAsRead,
       markAllAsRead,
       refetch: fetchNotifications,

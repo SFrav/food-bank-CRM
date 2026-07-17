@@ -1,53 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DivisionSummary } from "@/components/dashboard/DivisionSummary";
 import { DivisionChart } from "@/components/dashboard/DivisionBeneficiaryChart";
 import { CalendarDays } from "lucide-react";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useProfile } from "@/hooks/useProfile";
-import { useAdminUsers } from '@/hooks/useAdminUsers';
-import { useCreateNotifications } from "@/hooks/useNotifications";
+
 import { PermissionGuard } from '@/components/PermissionGuard';
 
-type AllowedRoles = "branch_manager" | "staff" | "manager" | "head" | "admin";
+type AllowedRoles = "branch_manager" | "volunteer" | "staff" | "referrer" | "manager" | "head" | "admin";
 
 export default function Dashboard() {
   const { profile } = useProfile();
-  const { users: allUsers, loading: usersLoading } = useAdminUsers('', '');
-  const {createNotification} = useCreateNotifications();
   const [dateRange, setDateRange] = useState<string>("month");
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [targetUser, setTargetUser] = useState('');
-  const [targetRole, setTargetRole] = useState('');
-  const [type, setType] = useState<'dm' | 'alert'>('dm');
-
-  const filteredUsers = useMemo(() => {
-    if (!profile) return [];   
-    return allUsers.filter((u: any) => u.entity_id === profile.entity_id);
-  }, [allUsers, profile]);
-
-  const handleSubmit = async () => {
-    const result = await createNotification(
-      title,
-      message,
-      '/notifications',
-      type,
-      type === 'dm' ? targetUser : null,
-      type === 'alert' ? targetRole : null
-    );
-    if (result.success) {
-      setTitle('');
-      setMessage('');
-      setTargetUser('');
-      setTargetRole('');
-    }
-  };
 
   const role = profile?.role as AllowedRoles;
 
@@ -113,62 +80,7 @@ export default function Dashboard() {
 
           {/* Right Column - Secondary Content */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Post Notification</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select value={type} onValueChange={v => setType(v as any)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dm">Direct Message (DM)</SelectItem>
-                    <SelectItem value="alert">Alert</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Input placeholder="Title" className="mt-4" value={title} onChange={e => setTitle(e.target.value)} />
-                <Textarea placeholder="Message" className="mt-4" value={message} onChange={e => setMessage(e.target.value)} />
-
-                {type === 'dm' && (
-                  <Select
-                    value={targetUser}
-                    onValueChange={setTargetUser}
-                    disabled={usersLoading}
-                  >
-                    <SelectTrigger className="mt-4 w-full">
-                      <SelectValue placeholder="Select a user" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredUsers.map((user: any) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.full_name ?? user.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-                {type === 'alert' && (
-                  <Select value={targetRole} onValueChange={v => setTargetRole(v as any)}>
-                    <SelectTrigger className="w-full mt-4">
-                      <SelectValue placeholder="Target role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="branch_manager">Branch Manager</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="volunteer">Volunteer</SelectItem>
-                      <SelectItem value="referrer">Referrer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-
-                <Button variant="default" className="mt-4" onClick={handleSubmit}>
-                  Post
-                </Button>   
-              </CardContent>
-            </Card>         
+     
           </div>
         </div>
       </PermissionGuard>

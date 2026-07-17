@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+//import { useProfile } from '@/hooks/useProfile';
 
 export interface DivisionSummary {
   id: string;
@@ -12,12 +12,11 @@ export interface DivisionSummary {
   workforce: number;
 }
 
-export function useDivisions(
-  entityId?: string | null,
-  role?: string | null
+export function useDivisionSummary(
+  entityId?: string | null
 ) {
   const { user } = useAuth();
-  const [divisions, setDivisions] = useState<DivisionSummary[]>([]);
+  const [divisionSummary, setDivisions] = useState<DivisionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,14 +38,14 @@ export function useDivisions(
     } finally {
       setLoading(false);
     }
-  }, [user, entityId, role]);
+  }, [user, entityId]);
 
   useEffect(() => {
     fetchDivisions();
   }, [fetchDivisions]);
 
   return { 
-    divisions, 
+    divisionSummary, 
     loading, 
     error, 
     refetch: fetchDivisions 

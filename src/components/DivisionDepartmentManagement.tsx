@@ -10,9 +10,7 @@ import { useDivisions } from '@/hooks/useDivisions';
 import { useEntities } from '@/hooks/useEntities';
 import { toast } from 'sonner';
 
-// Sekarang ini adalah TEAM MANAGEMENT (divisions = teams)
 export const DivisionDepartmentManagement = () => {
-  // Teams (divisions)
   const { divisions: teams, loading: teamsLoading, createDivision: createTeam, updateDivision: updateTeam, deleteDivision: deleteTeam, refetch: refetchTeams } = useDivisions();
   const { entities } = useEntities();
   
@@ -42,7 +40,7 @@ export const DivisionDepartmentManagement = () => {
   // Team handlers
   const handleCreateTeam = async () => {
     if (!newTeamName.trim()) {
-      toast.error('Team name is required');
+      toast.error('Branch name is required');
       return;
     }
     setCreatingTeam(true);
@@ -51,10 +49,10 @@ export const DivisionDepartmentManagement = () => {
       await createTeam(newTeamName.trim(), entityId);
       setNewTeamName('');
       setNewTeamEntityId('');
-      toast.success('Team created successfully');
+      toast.success('Branch created successfully');
       syncOrgUnits();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create team');
+      toast.error(error.message || 'Failed to create branch');
     } finally {
       setCreatingTeam(false);
     }
@@ -68,7 +66,7 @@ export const DivisionDepartmentManagement = () => {
 
   const handleSaveTeam = async (id: string) => {
     if (!editingTeamName.trim()) {
-      toast.error('Team name is required');
+      toast.error('Branch name is required');
       return;
     }
     setUpdatingTeam(id);
@@ -84,10 +82,10 @@ export const DivisionDepartmentManagement = () => {
       setEditingTeamId(null);
       setEditingTeamName('');
       setEditingTeamEntityId('');
-      toast.success('Team updated successfully');
+      toast.success('Branch updated successfully');
       syncOrgUnits();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update team');
+      toast.error(error.message || 'Failed to update branch');
     } finally {
       setUpdatingTeam(null);
     }
@@ -104,10 +102,10 @@ export const DivisionDepartmentManagement = () => {
     setDeletingTeam(id);
     try {
       await deleteTeam(id);
-      toast.success('Team deleted successfully');
+      toast.success('Branch deleted successfully');
       syncOrgUnits();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete team');
+      toast.error(error.message || 'Failed to delete branch');
     } finally {
       setDeletingTeam(null);
     }
@@ -122,9 +120,9 @@ export const DivisionDepartmentManagement = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Team Management</CardTitle>
+            <CardTitle>Branch Management</CardTitle>
             <CardDescription>
-              Manage teams within entities. Each team can be assigned to an entity and have a manager
+              Manage branches within entities
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={teamsLoading}>
@@ -134,18 +132,18 @@ export const DivisionDepartmentManagement = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Create Team */}
+        {/* Create Branch */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="flex items-center gap-1">
-              <Users className="size-3" /> Teams
+              <Users className="size-3" /> Branches
             </Badge>
           </div>
           
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
             <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
               <Input
-                placeholder="Enter team name..."
+                placeholder="Enter branch name..."
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateTeam()}
@@ -187,11 +185,11 @@ export const DivisionDepartmentManagement = () => {
             <Button variant="outline" size="sm" onClick={() => setFilterEntityId('all')}>Reset</Button>
           </div>
 
-          {/* Teams Table */}
+          {/* Branch Table */}
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Team Name</TableHead>
+                <TableHead>Branch Name</TableHead>
                 <TableHead>Entity</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>

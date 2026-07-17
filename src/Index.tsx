@@ -65,6 +65,10 @@ const Index = () => {
       }
 
       switch (profile.role) {
+        case 'referrer':
+          navigate('/referrals', { replace: true });
+        case 'volunteer':
+          navigate('/dashboard', { replace: true });
         case 'staff':
           navigate('/dashboard', { replace: true });
         case 'branch_manager':

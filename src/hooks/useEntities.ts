@@ -9,6 +9,7 @@ export interface Entity {
   name: string;
   code: string | null;
   is_active: boolean;
+  is_referrer: boolean | false;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -19,17 +20,15 @@ export const useEntities = () => {
   const { user } = useAuth();  
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined | null>(undefined);
 
   const fetchEntities = useCallback(async () => {
+    if (!user) return;
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('entities')
-        .select('*')
-        .order('name');
+      const { data, error } = await supabase.rpc('get_entities');
 
       if (error) throw error;
       setEntities(data || []);
@@ -39,9 +38,9 @@ export const useEntities = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
-  const createEntity = async (name: string, code?: string) => {
+  const createEntity = async (name: string, code?: string, is_referrer?: boolean) => {
     if (!profile?.role || profile.role !== 'admin') {
       throw new Error('Only admins can create entities');
     }
@@ -49,35 +48,24 @@ export const useEntities = () => {
     try {
       const { data: entityId, error: rpcError } = await supabase.rpc('admin_create_entity', {
         p_name: name,
-        p_code: code || null
+        p_code: code || null,
+        p_referrer: is_referrer || false
       });
 
       if (rpcError) {
         console.error('Error creating entity via RPC:', rpcError);
         throw rpcError;
       }
-
-      const { data, error: fetchError } = await supabase
-        .from('entities')
-        .select('*')
-        .eq('id', entityId)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching created entity:', fetchError);
-        await fetchEntities();
-        return { data: null, error: null };
-      }
-
+      
       await fetchEntities();
-      return { data, error: null };
+      return { entityId, error: null };
     } catch (err: any) {
       console.error('Error creating entity:', err);
       return { data: null, error: err.message };
     }
   };
 
-  const updateEntity = async (id: string, updates: { name?: string; code?: string; is_active?: boolean }) => {
+  const updateEntity = async (id: string, updates: { name?: string; code?: string; is_active?: boolean, is_referrer?: boolean }) => {
     if (!profile?.role || profile.role !== 'admin') {
       throw new Error('Only admins can update entities');
     }
@@ -87,7 +75,7 @@ export const useEntities = () => {
         p_entity_id: id,
         p_name: updates.name || null,
         p_code: updates.code || null,
-        p_is_active: updates.is_active ?? null
+        p_is_active: updates.is_active ?? null,
       });
 
       if (rpcError) {
@@ -99,20 +87,9 @@ export const useEntities = () => {
         throw new Error('Entity not found or update failed');
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('entities')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching updated entity:', fetchError);
-        await fetchEntities();
-        return { data: null, error: null };
-      }
-
       await fetchEntities();
-      return { data, error: null };
+      return { success, error: null };
+      // return { data, error: null };
     } catch (err: any) {
       console.error('Error updating entity:', err);
       return { data: null, error: err.message };
@@ -147,11 +124,11 @@ export const useEntities = () => {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!profile) return;
       (async () => {
         await fetchEntities();
       })();
-    }, [user]);
+    }, [profile]);
 
   return {
     entities,

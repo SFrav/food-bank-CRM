@@ -15,7 +15,7 @@ interface UserRow {
   full_name: string | null;
   email: string | null;
   role: UserProfile['role'];
-  title_id: string | null;
+  region_id: string | null;
   entity_id: string | null;
   division_id: string | null;
   manager_id: string | null;
@@ -23,7 +23,7 @@ interface UserRow {
 
 interface Entity { id: string; name: string; is_active: boolean; }
 // interface Division { id: string; name: string; }
-interface Title { id: string; name: string; is_active: boolean; }
+interface Region { id: string; name: string; is_active: boolean; }
 
 interface EditUserModalProps {
   user: UserRow | null;
@@ -35,20 +35,21 @@ interface EditUserModalProps {
     entityId: string | null,
     divisionId: string | null,
     managerId: string | null,
+    regionId: string | null,
   ) => Promise<{ success: boolean; error?: string }>;
   onDelete: (userId: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   entities: Entity[];
-  titles: Title[];
+  regions: Region[];
   currentUserRole: UserProfile['role'] | undefined;
   currentUserId: string | undefined;
 }
 
 const EditUserModal = ({
   user, open, onClose, onSave, onDelete,
-  entities, titles, currentUserRole, currentUserId,
+  entities, regions, currentUserRole, currentUserId,
 }: EditUserModalProps) => {
   const [role, setRole] = useState<UserProfile['role']>('pending');
-  const [titleId, setTitleId] = useState<string>('');
+  const [regionId, setRegionId] = useState<string>('');
   const [entityId, setEntityId] = useState<string>('none');
   const [divisionId, setDivisionId] = useState<string>('none');
   const [saving, setSaving] = useState(false);
@@ -64,7 +65,7 @@ const EditUserModal = ({
     //console.log('EditUserModal user:', user);
     if (user) {
       setRole(user.role);
-      setTitleId(user.title_id ?? '');
+      setRegionId(user.region_id ?? '');
       setEntityId(user.entity_id || 'none');
       setDivisionId(user.division_id ?? 'none');
       setConfirmDelete(false);
@@ -83,7 +84,7 @@ const EditUserModal = ({
 
   const isDirty =
     role !== user.role ||
-    (titleId || '') !== (user.title_id ?? '') ||
+    (regionId || '') !== (user.region_id ?? '') ||
     (entityId === 'none' ? null : entityId) !== user.entity_id ||
     (divisionId === 'none' ? null : divisionId) !== user.division_id;
 
@@ -113,6 +114,7 @@ const EditUserModal = ({
       entityId === 'none' ? null : entityId,
       divisionId === 'none' ? null : divisionId,
       user.manager_id ?? null,
+      regionId === 'none' ? null : regionId,
     );
     setSaving(false);
     if (result.success) onClose();
@@ -159,21 +161,23 @@ const EditUserModal = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pending Assignment</SelectItem>
-                  <SelectItem value="branch_manager">Branch Manager</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="head">Head</SelectItem>
+                  <SelectItem value="volunteer">Volunteer</SelectItem>
+                  <SelectItem value="staff">Staff Member</SelectItem>
+                  <SelectItem value="branch_manager">Food Bank Manager</SelectItem>
+                  <SelectItem value="manager">Level Manager</SelectItem>
+                  <SelectItem value="head">Level Head</SelectItem>
+                  <SelectItem value="referrer">Referrer</SelectItem>
                   <SelectItem value="admin">System Administrator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Title */}
+            {/* Region */}
             <div className="space-y-1">
-              <Label>Title</Label>
+              <Label>Region</Label>
               <Select
-                value={titleId || 'none'}
-                onValueChange={(v) => setTitleId(v === 'none' ? '' : v)}
+                value={regionId || 'none'}
+                onValueChange={(v) => setRegionId(v === 'none' ? '' : v)}
                 disabled={saving}
               >
                 <SelectTrigger>
@@ -181,12 +185,12 @@ const EditUserModal = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">
-                    <span className="text-muted-foreground">No Title</span>
+                    <span className="text-muted-foreground">No Region</span>
                   </SelectItem>
-                  {titles
-                    .filter((t) => t.is_active && t.id?.trim())
-                    .map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  {regions
+                    .filter((r) => r.is_active && r.id?.trim())
+                    .map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                     ))}
                 </SelectContent>
               </Select>
@@ -212,20 +216,20 @@ const EditUserModal = ({
               </Select>
             </div>
 
-            {/* Team / Division */}
+            {/* Division */}
             <div className="space-y-1">
-              <Label>Team</Label>
+              <Label>Branch</Label>
               <Select
                 value={divisionId}
                 onValueChange={setDivisionId}
                 disabled={divisionsLoading || entityId === 'none' || saving}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select team" />
+                  <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">
-                    <span className="text-muted-foreground">No Team</span>
+                    <span className="text-muted-foreground">No Branch</span>
                   </SelectItem>
                   {filteredDivisions.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>

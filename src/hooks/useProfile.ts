@@ -9,39 +9,18 @@ export interface UserProfile {
   email: string | null;
   phone: string | null;
   role: 'pending' | 'referrer' | 'volunteer' |  'staff' | 'branch_manager' | 'manager' | 'head' | 'admin';
-  department?: string | null; // UI only, not persisted
+  entity_id: string | null;
+  entity?: string | null;
+  division_id: string | null;
+  division?: string | null; 
+  region_id: string | null;
+  region: string | null;
+  manager_id?: string | null;
+  user_status: 'active' | 'inactive' | 'resigned' | 'terminated' | 'leave';
+  is_active: boolean;
   created_at: string;
   updated_at: string | null;
-  preferences: any | null;
-  division_id: string | null;
-  team_id: string | null;
-  entity?: string | null;
-  entity_id: string | null;
-  manager_id?: string | null;
-  is_active: boolean;
-  title_id: string | null;
-  region_id: string | null;
-  region_code: string | null;
-  external_id: string | null;
-  tenant_id: string | null;
-  user_status: 'active' | 'inactive' | 'resigned' | 'terminated' | 'leave';
-  is_deleted: boolean;
-  deleted_at: string | null;
-  deleted_by: string | null;
 }
-
-// Admin detection — single source of truth.
-// Only used when no DB row exists (bootstrap) or to determine initial mock fallback.
-const isAdminEmail = (email: string): boolean => {
-  const envList = (import.meta as any).env?.VITE_ADMIN_EMAILS as string | undefined;
-  const list = (envList || '')
-    .split(',')
-    .map((e: string) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return list.includes(email.toLowerCase());
-};
-
-const ADMIN_UUID = '';
 
 export const useProfile = () => {
   const { user, loading: authLoading } = useAuth();
@@ -60,114 +39,12 @@ export const useProfile = () => {
     setError(null);
 
     try {
-      const { data: profileData, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data: profileData, error: fetchError } = await supabase.rpc('user_get_profile');
 
       if (fetchError) throw fetchError;
 
-      if (profileData && profileData.division_id) {
-        const { data: div, error: divErr } = await supabase
-          .from('divisions')
-          .select('name')
-          .eq('id', profileData.division_id)
-          .single();
-
-        if (!divErr && div) {
-          // Attach the division name as the “department” field
-          profileData.department = div.name;
-        }
-      }
-
-      if (profileData && profileData.entity_id) {
-        const { data: ent, error: entErr } = await supabase
-          .from('entities')
-          .select('name')
-          .eq('id', profileData.entity_id)
-          .single();
-
-        if (!entErr && ent) {
-          // Attach the division name as the “department” field
-          profileData.entity = ent.name;
-        }
-      }
       setProfile(profileData as UserProfile);
 
-      // if (profileData) {
-      //     // Row exists — always trust the DB role exactly as stored.
-      //     // Never auto-promote here; admin assignment is done via admin_update_user_profile RPC.  
-      //   setProfile(profileData as UserProfile); // cast after adding department and entity
-      //   return;
-      // }
-
-      // const { data, error: fetchError } = await supabase
-      //   .from('user_profiles')
-      //   .select('*')
-      //   .eq('user_id', user.id)
-      //   .maybeSingle();
-
-      // if (fetchError) throw fetchError;
-
-      // if (data) {
-      //   // Row exists — always trust the DB role exactly as stored.
-      //   // Never auto-promote here; admin assignment is done via admin_update_user_profile RPC.
-      //   setProfile(data as UserProfile);
-      //   return;
-      // }
-
-      // No row found. The handle_new_auth_user trigger should have created one.
-      // This path means signup trigger failed or this is a legacy admin user.
-      const userEmail = user.email ?? '';
-      const isAdmin = user.id === ADMIN_UUID || isAdminEmail(userEmail);
-
-      if (isAdmin) {
-        // Attempt to bootstrap via RPC (security definer, bypasses RLS)
-        try {
-          await supabase.rpc('ensure_admin_profile');
-          const { data: bootstrapped } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          if (bootstrapped) {
-            setProfile(bootstrapped as UserProfile);
-            return;
-          }
-        } catch {
-          // RPC unavailable — fall through to mock
-        }
-
-        // Last resort mock — only for admin, never for regular users
-        setProfile({
-          id: user.id,
-          user_id: user.id,
-          full_name: userEmail.split('@')[0] || 'Administrator',
-          email: userEmail,
-          phone: null,
-          role: 'admin',
-          created_at: new Date().toISOString(),
-          updated_at: null,
-          preferences: null,
-          division_id: null,
-          team_id: null,
-          entity_id: null,
-          is_active: true,
-          title_id: null,
-          region_id: null,
-          region_code: null,
-          external_id: null,
-          tenant_id: null,
-          user_status: 'active',
-          is_deleted: false,
-          deleted_at: null,
-          deleted_by: null,
-        });
-      } else {
-        // Regular user with no profile row — trigger likely failed
-        setError('Profile not found. Please contact your administrator.');
-      }
     } catch (err: any) {
       console.error('useProfile fetch error:', err);
       setError(err.message);
@@ -183,16 +60,16 @@ export const useProfile = () => {
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user || !profile) return { error: 'No user or profile found' };
     try {
-      const { department, ...safeUpdates } = updates as any;
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update(safeUpdates)
-        .eq('user_id', user.id)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('user_update_profile', {
+        p_user_id: user.id,
+        p_full_name: updates.full_name,
+        p_phone: updates.phone,
+      });
       if (error) throw error;
-      setProfile(data as UserProfile);
-      return { data, error: null };
+
+      await fetchProfile(); 
+
+      return { data: null, error: null };
     } catch (err: any) {
       return { data: null, error: err.message };
     }
@@ -240,8 +117,6 @@ export const useProfile = () => {
     isStaff,
     isPending,
     getRoleDisplayName,
-    getDisplayName: () => profile?.full_name ?? '',
-    // Keep for legacy compatibility
-    canAccessDepartmentData: () => ['manager', 'admin'].includes(profile?.role ?? ''),
+    getDisplayName: () => profile?.full_name ?? ''
   };
 };

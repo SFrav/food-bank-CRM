@@ -2,12 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Phone, Baby, ShipWheel, CheckCircle, XCircle, Clock, Edit, Trash2, Gem } from "lucide-react";
+import CalendarStatusIcon from "@/components/CalendarStatusIcon"
 
 interface Task {
   id: string;
-  entry_type: "referrer_request" | "client_requests" | "staff_todo" | "volunteer_todo" | "event";
-  customer_id: string;
-  customer_name?: string;
+  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
+  beneficiary_id: string;
+  beneficiary_name?: string;
   pic_id?: string;
   pic_name?: string;
   scheduled_at: string;
@@ -27,17 +28,7 @@ interface TaskItemProps {
   ) => void;
 }
 
-interface TaskItemProps {
-  task: Task;
-  onEdit: () => void;
-  onDelete: () => void;
-  onStatusChange: (
-    id: string,
-    newStatus: "scheduled" | "done" | "cancelled"
-  ) => void;
-}
-
-export default function TaskItem({
+export default function TaskSelected({
   task,
   onEdit,
   onDelete,
@@ -48,11 +39,11 @@ export default function TaskItem({
     "MMM d, yyyy 'at' HH:mm"
   );
 
-  const getTaskIcon = (type: string) => {
+  const getTaskIcon = (type: Task["entry_type"]) => {
     switch (type) {
       case "referrer_request":
         return Phone;
-      case "client_requests":
+      case "beneficiary_request":
         return Baby;
       case "staff_todo":
         return ShipWheel;
@@ -63,22 +54,10 @@ export default function TaskItem({
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "done":
-        return CheckCircle;
-      case "cancelled":
-        return XCircle;
-      case "scheduled":
-      default:
-        return Clock;
-    }
-  };
-
-  const getTaskBadgeColor = (type: string) => {
+  const getTaskBadgeColor = (type: Task["entry_type"]) => {
     const variants = {
       call: "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100",
-      client_requests:
+      beneficiary_request:
         "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
       staff_todo: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
       volunteer_todo:
@@ -87,7 +66,7 @@ export default function TaskItem({
     return variants[type as keyof typeof variants] ?? variants.call;
   };
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeColor = (type: Task["status"]) => {
     const variants = {
       scheduled: "bg-amber-50 text-amber-700 border-amber-200",
       done: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -97,7 +76,6 @@ export default function TaskItem({
   };
 
   const TaskIcon = getTaskIcon(task.entry_type);
-  const StatusIcon = getStatusIcon(task.status);
 
   return (
     <div
@@ -110,21 +88,20 @@ export default function TaskItem({
             <div className="flex items-center gap-2">
               <TaskIcon className="size-4" />
               <Badge className={`${getTaskBadgeColor(task.entry_type)} border`}>
-                {task.entry_type.replace("_", " ")}
+                {task.entry_type.charAt(0).toUpperCase() + task.entry_type.slice(1).replace("_", " ")} 
               </Badge>
               <Badge className={`${getStatusBadgeColor(task.status)} border`}>
-                <StatusIcon className="size-3 mr-1" />
+                <CalendarStatusIcon className="size-3 mr-1" status={task.status} />
                 {task.status}
               </Badge>
             </div>
           </div>
 
-          {/* <div className="space-y-1">
-            <h4 className="font-medium text-foreground">{task.customer_name}</h4>
+          <div className="space-y-1">
             {task.pic_name && (
-              <p className="text-sm text-muted-foreground">Contact: {task.pic_name}</p>
+              <p className="text-sm text-muted-foreground">Request by: {task.beneficiary_name}</p>
             )}
-          </div> */}
+          </div>
 
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>{formattedDate}</span>

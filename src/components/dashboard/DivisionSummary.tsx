@@ -2,20 +2,20 @@ import { User, UserPlus, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDivisions } from "@/hooks/useDivisionSummary";
+import { useDivisionSummary } from "@/hooks/useDivisionSummary";
 import { useProfile } from '@/hooks/useProfile';
 
 export function DivisionSummary() {
   const { profile } = useProfile();
-  const { divisions, loading, error } = useDivisions(
+  const { divisionSummary: divisions, loading, error } = useDivisionSummary(
     profile?.role === 'admin' || profile?.role === 'head'
       ? profile.entity_id ?? null
-      : null,
-    profile?.role ?? null
+      : null
   );
 
   const totalPending =  Math.max(...divisions.map(d => d.pending_beneficiaries)); // divisions.reduce((sum, d) => sum + d.pending_beneficiaries, 0);
   const totalActive = divisions.reduce((sum, d) => sum + d.beneficiaries, 0);
+  const totalReferrer = divisions.reduce((sum, d) => sum + d.referrers, 0);
   const totalWorkforce = divisions.reduce((sum, d) => sum + d.workforce, 0);
 
   if (!profile) {
@@ -139,7 +139,7 @@ export function DivisionSummary() {
                 <User className="size-8 text-yellow-600" />
                 <div>
                   <p className="text-sm text-muted-foreground">Total Referrers</p>
-                  <p className="text-xl font-bold">0</p>
+                  <p className="text-xl font-bold">{totalReferrer}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-4 border rounded-lg">

@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Users, Calendar, FileText, Settings, PieChart, Building2, Shield, Activity, X, ContactRound, GitBranch, CheckSquare, LogOut, Plus, Bell, Database, UserPlus, Building, TrendingUp, Briefcase, Target, Home, ChevronDown, ChevronRight } from 'lucide-react';
+import { BarChart3, Users, Calendar, FileText, Settings, PieChart, Building2, Shield, Activity, X, ContactRound,  LogOut, Plus, Bell, Database, UserPlus, Building, TrendingUp, Briefcase, Target, Home, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleBadge } from './RoleBadge';
@@ -43,7 +43,7 @@ export const RoleBasedSidebar = ({
           { title: 'Dashboard', url: '/admin/dashboard', icon: BarChart3 },
           { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'System Logs', url: '/admin/logs', icon: Database },
-          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          // { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
           { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
@@ -53,7 +53,7 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
-          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
@@ -64,18 +64,26 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
-          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           // { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
+      case 'referrer':
+        return [
+          { title: 'Dashboard', url: '/dashboard', icon: Home },
+          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Calendar', url: '/calendar', icon: Calendar },
+          { title: 'Settings', url: '/settings', icon: Settings }
+        ];
       case 'branch_manager':
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
-          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
@@ -86,6 +94,15 @@ export const RoleBasedSidebar = ({
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
           // { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Support Services', url: '/services', icon: Building },
+          { title: 'Tasks', url: '/tasks', icon: Activity },
+          { title: 'Calendar', url: '/calendar', icon: Calendar },
+          { title: 'Settings', url: '/settings', icon: Settings }
+        ];
+      case 'volunteer':
+        return [
+          { title: 'Dashboard', url: '/dashboard', icon: Home },
+          { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
@@ -138,11 +155,11 @@ export const RoleBasedSidebar = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
            {navigationItems.map(item => {
-             const hasChildren = false;
-             const isExpanded = false;
+            //  const hasChildren = false;
+            //  const isExpanded = false;
 
              return (
                <li key={item.title}>
@@ -169,7 +186,7 @@ export const RoleBasedSidebar = ({
 
       {/* Logout Button */}
       <div className="p-4 border-t border-sidebar-border">
-        <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent/50" onClick={handleLogout}>
+        <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-accent/50! cursor-pointer transition-colors" onClick={handleLogout}>
           <LogOut className="size-4" />
           Logout
         </Button>

@@ -1,7 +1,6 @@
-import { Moon, Sun, Search, User, LogOut, Settings } from "lucide-react";
+import { User, LogOut, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,32 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-// import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { RoleBadge } from "@/components/RoleBadge";
 import { NotificationBell } from "@/components/NotificationBell";
-// import { toast } from "sonner";
 
-interface CRMHeaderProps {
-  darkMode: boolean;
-  onToggleDark: () => void;
-}
 
-export function CRMHeader({ darkMode, onToggleDark }: CRMHeaderProps) {
-  //const [isDarkMode, setIsDarkMode] = useState(false);
+export function CRMHeader() {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
 
-  // const toggleDarkMode = () => {
-  //   setIsDarkMode(prev => !prev);
-  //   onToggleDark();        // notify parent
-  // };  
-  // const toggleDarkMode = () => {
-  //   setIsDarkMode(!isDarkMode);
-  //   document.documentElement.classList.toggle("dark");
-  // };
 
   const handleSignOut = async () => {
     try {
@@ -44,11 +28,9 @@ export function CRMHeader({ darkMode, onToggleDark }: CRMHeaderProps) {
       if (error) {
         console.error('Sign out error:', error);
       }
-      // Force navigation to auth page after signout
       navigate('/auth', { replace: true });
     } catch (error) {
       console.error('Sign out failed:', error);
-      // Even if signout fails, navigate to auth page
       navigate('/auth', { replace: true });
     }
   };
@@ -67,12 +49,6 @@ export function CRMHeader({ darkMode, onToggleDark }: CRMHeaderProps) {
       <div className="flex h-16 items-center px-4 gap-4">        
         <div className="flex-1 flex items-center gap-4">
           <div className="relative max-w-md flex-1">
-            {/*search not used and is duplicated across sidebar tabs*/}
-            {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search ..."
-              className="pl-10 bg-muted/50"
-            /> */}
           </div>
         </div>
 
@@ -85,15 +61,6 @@ export function CRMHeader({ darkMode, onToggleDark }: CRMHeaderProps) {
               className="hidden sm:flex"
             />
           )}
-          
-          <Button variant="ghost" size="icon" onClick={onToggleDark}>
-            {darkMode ? (
-              <Sun className="size-4" />
-            ) : (
-              <Moon className="size-4" />
-            )}
-          </Button>
-
           <NotificationBell />
 
           <DropdownMenu>

@@ -48,10 +48,10 @@ export function DivisionChart({ dateRange }: DivisionChartProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="size-4 text-primary" />
-            Monthly Trends
+            Timeseries
           </CardTitle>
           <CardDescription>
-            Department-wide performance trends over time
+            Weekly food bank usage (beneficiaries served per food bank)
           </CardDescription>
         </CardHeader>
         <CardContent>

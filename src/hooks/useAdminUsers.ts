@@ -10,8 +10,10 @@ export function useAdminUsers(query: string, roleFilter: string) {
     admin: 'admin',
     head: 'head',
     manager: 'manager',
+    referrer: 'referrer',
     branch_manager: 'branch_manager',
     staff: 'staff',
+    volunteer: 'volunteer',
     pending: 'pending',
   };
 
@@ -19,15 +21,6 @@ export function useAdminUsers(query: string, roleFilter: string) {
     setLoading(true);
     const p_query = query?.trim() ? query.trim() : null;
     const p_role = roleMap[roleFilter] ?? null;
-    const cacheKey = `adminUsers_${p_query ?? ''}_${p_role ?? ''}`;
-
-    // Try session‑storage cache first
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      setUsers(JSON.parse(cached));
-      setLoading(false);
-      return;
-    }
 
     const { data, error } = await supabase.rpc('get_users_with_profiles', {
       p_query,
@@ -43,7 +36,6 @@ export function useAdminUsers(query: string, roleFilter: string) {
         role: u.role ?? 'pending',
       }));
       setUsers(mapped);
-      sessionStorage.setItem(cacheKey, JSON.stringify(mapped));
     }
     setLoading(false);
   }, [query, roleFilter]);
@@ -59,10 +51,11 @@ export function useAdminUsers(query: string, roleFilter: string) {
 
   const updateUserProfile = async (
     userId: string,
-    role: string,
+    role: 'admin' | 'head' | 'manager' | 'referrer' | 'branch_manager' | 'staff' | 'volunteer' |  'pending',
     entityId?: string | null,
     teamId?: string | null,
     managerId?: string | null,
+    regionId?: string | null
   ) => {
     try {
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
@@ -73,6 +66,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
           p_entity_id: entityId ?? null,
           p_division_id: teamId ?? null,
           p_manager_id: managerId ?? null,
+          p_region_id: regionId ?? null
         },
       );
 
@@ -125,19 +119,25 @@ export function useAdminUsers(query: string, roleFilter: string) {
         return { success: false, error: error.message };
       }
 
-      if (data?.success === false) {
-        console.error('Delete failed:', data.error);
-        return { success: false, error: data.error };
-      }
+      // if (data?.success === false) {
+      //   console.error('Delete failed:', data.error);
+      //   return { success: false, error: data.error };
+      // }
 
       sessionStorage.clear();
       refetch();
-      return { success: true, message: data?.message };
+      // return { success: true, message: data?.message };
     } catch (err: any) {
       console.error('Unexpected error:', err);
       return { success: false, error: err.message };
     }
   };
 
-  return { users, loading, refetch, updateUserProfile, deleteUser };
+  return { 
+    users, 
+    loading, 
+    refetch, 
+    updateUserProfile, 
+    deleteUser 
+  };
 }

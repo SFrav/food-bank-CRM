@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ContactsTable } from '@/components/ContactsTable';
-import { EditContactModal, ContactFormData } from '@/components/modals/EditContactModal';
+import { EditContactModal, ContactFormData } from '@/components/modals/EditContact';
 import MinimisedContactsBar, { MinimisedContact } from '@/components/MinimisedContactsBar';
 import { Contact } from '@/hooks/useContacts';
+// import { useProfile } from "@/hooks/useProfile";
+// import { useDivisions, Division } from '@/hooks/useDivisions';
 
 const MAX_MINIMISED = 3;
 const STORAGE_KEY = 'contacts_minimised_tabs';
@@ -23,19 +25,28 @@ const saveToStorage = (tabs: MinimisedContact[]) => {
 };
 
 export default function Contacts() {
+  //const { profile } = useProfile();
+  // const { divisions } = useDivisions();
+  // const [divsRegion, setDivsRegion] = useState<Division[]>([]);
+  const [filterQueue, setFilterQueue] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [restoredFormData, setRestoredFormData] = useState<ContactFormData | null>(null);
   const [minimised, setMinimised] = useState<MinimisedContact[]>(loadFromStorage);
 
-
   useEffect(() => {
     saveToStorage(minimised);
   }, [minimised]);
 
+
   const handleContactUpdated = useCallback(() => {
     setRefreshKey(k => k + 1);
+  }, []);
+
+  const handleDuplicateAdd = useCallback((dup: Contact) => {
+    setEditingContact(dup);
+    setIsEditOpen(true);
   }, []);
 
   const handleEditContact = useCallback((contact: Contact) => {
@@ -86,10 +97,17 @@ export default function Contacts() {
         </div>
       </div> */}
 
-      <ContactsTable key={refreshKey} onEditContact={handleEditContact} />
+      <ContactsTable 
+        key={refreshKey} 
+        filterQueue={filterQueue}
+        setFilterQueue={setFilterQueue}
+        onDuplicateAdd={handleDuplicateAdd}
+        onEditContact={handleEditContact} 
+      />
 
       <EditContactModal
         isOpen={isEditOpen}
+        isServing={filterQueue}
         onClose={handleClose}
         onContactUpdated={handleContactUpdated}
         onMinimise={handleMinimise}

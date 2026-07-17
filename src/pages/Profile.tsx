@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useProfile } from '@/hooks/useProfile';
-import { useAuth } from '@/hooks/useAuth';
+import { User, Mail } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Profile() {
   const { profile, updateProfile, refetch, loading } = useProfile();
@@ -26,7 +26,7 @@ export default function Profile() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!profile) return;
 
@@ -49,11 +49,11 @@ export default function Profile() {
           description: "Profile updated successfully",
         });
 
-        setFormData(prev => ({
-          ...prev,
-          full_name: formData.full_name,
-          phone: formData.phone,
-        }));
+        // setFormData(prev => ({
+        //   ...prev,
+        //   full_name: formData.full_name,
+        //   phone: formData.phone,
+        // }));
 
         if (refetch) {
           await refetch();     
@@ -171,19 +171,39 @@ export default function Profile() {
                   className="bg-muted text-muted-foreground cursor-not-allowed"
                 />
               </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="department">Department</Label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <Label htmlFor="entity">Affiliation</Label>
                 <Input
-                  id="department"
-                  value={profile?.department || ''}
+                  id="branch"
+                  value={profile?.entity || ''}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="branch">Branch</Label>
+                <Input
+                  id="branch"
+                  value={profile?.division || ''}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <Label htmlFor="region">Region</Label>
+                <Input
+                  id="branch"
+                  value={profile?.region || ''}
                   disabled
                   className="bg-muted text-muted-foreground cursor-not-allowed"
                 />
               </div>
             </div>
 
-            <div className="pt-4">
+            <div className="flex justify-end">
               <Button 
                 type="submit" 
                 disabled={isUpdating}

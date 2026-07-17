@@ -45,7 +45,7 @@ export const NotificationBell = () => {
         <Button variant="ghost" size="sm" className="relative" onClick={() => navigate('/notifications')}>
           <Bell className="size-5" />
           {unreadBellCount > 0 && (
-            <Badge variant="destructive" className="absolute -top-2 -right-2 size-5 text-xs">
+            <Badge variant="destructive" className="absolute -top-2 -right-2 size-5 text-xs flex items-center justify-center">
               {unreadBellCount > 99 ? '99+' : unreadBellCount}
             </Badge>
           )}

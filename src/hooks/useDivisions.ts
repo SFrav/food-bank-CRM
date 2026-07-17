@@ -7,7 +7,9 @@ export interface Division {
   name: string;
   entity_id: string | null;
   head_id: string | null;
+  manager_id: string | null;
   created_at: string;
+  region_id: string | null;
 }
 
 export function useDivisions(
@@ -16,13 +18,13 @@ export function useDivisions(
   const { user } = useAuth();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined | null>(undefined);
 
   const fetchDivisions = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true);
-      setError(null);
+      setError(undefined);
 
       const { data, error: rpcErr } = entityId && entityId !== 'none'
         ? await supabase.rpc('get_divisions_by_entity', { p_entity_id: entityId })
@@ -44,14 +46,19 @@ export function useDivisions(
   }, [fetchDivisions]);
 
   const createDivision = async (name: string, entityId: string, headId?: string | null) => {
-    const { data, error: rpcErr } = await supabase.rpc('create_division', {
-      p_name: name,
-      p_entity_id: entityId,
-      p_head_id: headId,
-    });
-    if (rpcErr) throw rpcErr;
-    await fetchDivisions();
-    return data as string; // returns new division id
+    try{
+      const { data, error: rpcErr } = await supabase.rpc('create_division', {
+        p_name: name,
+        p_entity_id: entityId,
+        p_head_id: headId,
+      });
+      if (rpcErr) throw rpcErr;
+      await fetchDivisions();
+      return data as string; // returns new division id
+    } catch (err: any) {
+      console.error(err);
+      return { data: null, error: err.message };
+    }
   };
 
   const updateDivision = async (
@@ -60,22 +67,31 @@ export function useDivisions(
     entityId: string,
     headId?: string | null
   ) => {
-    const { error: rpcErr } = await supabase.rpc('update_division', {
-      p_id: id,
-      p_name: name,
-      p_entity_id: entityId,
-      p_head_id: headId,
-    });
-    if (rpcErr) throw rpcErr;
-    await fetchDivisions();
+    try{
+      const { error: rpcErr } = await supabase.rpc('update_division', {
+        p_id: id,
+        p_name: name,
+        p_entity_id: entityId,
+        p_head_id: headId,
+      });
+      if (rpcErr) throw rpcErr;
+      await fetchDivisions();
+    } catch (err: any) {
+      console.error(err);
+      return { data: null, error: err.message };
+    }
   };
 
   const deleteDivision = async (id: string) => {
-    const { error: rpcErr } = await supabase.rpc('delete_division', {
-      p_id: id,
-    });
-    if (rpcErr) throw rpcErr;
-    await fetchDivisions();
+    try{
+      const { error: rpcErr } = await supabase.rpc('delete_division', {
+        p_id: id,
+      });
+      if (rpcErr) throw rpcErr;
+      await fetchDivisions();
+    } catch (err: any) {
+      return { error: err.message };
+    }
   };
 
   return {

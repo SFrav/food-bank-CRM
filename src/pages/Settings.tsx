@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { User, Settings as SettingsIcon, Shield, Moon, Sun, Bell, Globe, Lock, LogOut, Smartphone } from 'lucide-react';
+import { useLocation} from 'react-router-dom';
+import { User, Settings as SettingsIcon, Shield, Moon, Sun, Lock, LogOut, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -8,10 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import ProfilePage from '@/pages/Profile'; 
-import { useProfile } from "@/hooks/useProfile";
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useNotifications } from '@/hooks/useNotificationsContext';
-// import { NotificationBell } from '@/components/NotificationBell';
 
 type SettingsSection = 'profile' | 'preferences' | 'security';
 
@@ -20,13 +18,8 @@ interface Settings {
   notification_email?: string;
   notification_tasks?: string;
   notification_calendar?: string;
+  two_FA?: string;
 }
-
-// const settingsNavigation = [
-//   { id: 'profile' as SettingsSection, label: 'Profile', icon: User },
-//   { id: 'preferences' as SettingsSection, label: 'Preferences', icon: SettingsIcon },
-//   { id: 'security' as SettingsSection, label: 'Security', icon: Shield },
-// ];
 
 const timezones = [
   { value: 'UTC', label: 'UTC (GMT+0)' },
@@ -40,12 +33,8 @@ const timezones = [
 ];
 
 export default function Settings() {
-  const { profile } = useProfile();
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
-  // const [isDarkMode, setIsDarkMode] = useState(false);
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { refetch } = useNotifications();
   const { settings, loading, updateSetting } = useUserSettings();
 
@@ -148,12 +137,14 @@ export default function Settings() {
             </SelectContent>
           </Select>
         </div>
-{/* 
+
         <Separator />
 
         <div className="flex justify-end">
-          <Button>Save Changes</Button>
-        </div> */}
+          <Button onClick={() => window.location.reload()}>
+            Save Changes 
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -192,8 +183,8 @@ export default function Settings() {
               </div>
             </div>
             <Switch
-              checked={twoFactorAuth}
-              onCheckedChange={setTwoFactorAuth}
+              checked={settings.two_FA === 'true'}
+              onCheckedChange={checked => updateSetting('two_FA', String(checked))}
             />
           </div>
 
@@ -236,12 +227,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold text-foreground">Settings</h1>
-        <NotificationBell />
-      </div> */}
-      
+    <div className="space-y-6">    
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Navigation Sidebar */}
         <div className="md:col-span-1">

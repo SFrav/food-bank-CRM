@@ -1,10 +1,10 @@
-import { Settings2, Search, Filter, Save, Check, X } from 'lucide-react';
-import { TitleManagement } from '@/components/TitleManagement';
 import { RegionManagement } from '@/components/RegionManagement';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { EntityManagement } from '@/components/EntityManagement';
-import { GlobalSettings } from '@/components/GlobalSettings';
+import { EntitySettingsTable } from '@/components/EntitySettings';
+// import { GlobalSettings } from '@/components/GlobalSettings';
 import { DivisionDepartmentManagement } from '@/components/DivisionDepartmentManagement';
+import { DivisionSettingsTable } from '@/components/DivisionSettings';
 
 export default function AdminOther() {
   return (
@@ -12,15 +12,18 @@ export default function AdminOther() {
       <PermissionGuard permission="canAccessUserManagement">
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            <TitleManagement />
             <RegionManagement />
           </div>
-
-          <DivisionDepartmentManagement />     
-               
+              
           <EntityManagement />
+
+          <EntitySettingsTable />
+
+          <DivisionDepartmentManagement />   
+
+          <DivisionSettingsTable />  
           
-          <GlobalSettings />
+          {/* <GlobalSettings /> */}
                  
         </div>
       </PermissionGuard>

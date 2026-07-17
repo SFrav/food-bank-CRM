@@ -24,7 +24,7 @@ interface EventDetailModalProps {
   onDelete?: (eventId: string) => void;
 }
 
-export function EventDetailModal({
+export default function EventDetailModal({
   isOpen,
   onClose,
   event,

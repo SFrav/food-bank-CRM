@@ -55,32 +55,12 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       // Calculate offset for pagination
       const offset = (page - 1) * pageSize;
 
-      let query = supabase
-        .from('v_audit_log_complete')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(offset, offset + pageSize - 1);
-
-      // Apply filters
-      if (filters?.actionType) {
-        query = query.eq('action_type', filters.actionType);
-      }
-      
-      if (filters?.tableName) {
-        query = query.eq('table_name', filters.tableName);
-      }
-      
-      if (filters?.userId) {
-        query = query.eq('user_id', filters.userId);
-      }
-      
-      if (filters?.dateRange) {
-        query = query
-          .gte('created_at', filters.dateRange.from)
-          .lte('created_at', filters.dateRange.to);
-      }
-
-      const { data, error, count } = await query;
+      const { data, error, count } = await supabase
+        .rpc('get_audit_logs', {
+          p_filters: filters,
+          p_page: page,
+          p_page_size: pageSize,
+        });
 
       if (error) throw error;
 
@@ -114,7 +94,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
   ) => {
     try {
       const { error } = await supabase.rpc('log_audit_event', {
-        p_action_type: actionType,
+        p_action: actionType,
         p_table_name: tableName,
         p_record_id: recordId || null,
         p_old_values: oldValues || null,
@@ -132,13 +112,13 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
     }
   };
 
-  const clearAuditLogs = async (scope: 'non_admin' | 'all' = 'non_admin') => {
+  const clearAuditLogs = async (filters: AuditLogFilters) => {
     try {
       setLoading(true);
       setError(null);
 
       const { data, error } = await supabase.rpc('admin_clear_audit_logs', {
-        p_scope: scope,
+        p_filters: filters as unknown as any,
       });
 
       if (error) throw error;

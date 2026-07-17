@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Eye, Filter, RefreshCw, User, Database, Activity, Calendar, Trash2 } from 'lucide-react';
+import { Eye, Filter, User, Database, Activity, Trash2 } from 'lucide-react';
 import { useAuditLogs, AuditLogFilters } from '@/hooks/useAuditLogs';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from 'sonner';
 
 const ACTION_COLORS = {
   'CREATE': 'bg-green-500',
@@ -22,7 +21,7 @@ const ACTION_COLORS = {
 };
 
 const TABLE_NAMES = [
-  'user_profiles', 'entities', 'system_settings', 'organizations', 'contacts'
+  'user_profiles', 'entities', 'divisions', 'system_settings', 'organizations', 'contacts'
 ];
 
 export const AuditLogViewer = () => {
@@ -37,7 +36,6 @@ export const AuditLogViewer = () => {
     if (dateFrom && dateTo) {
       newFilters.dateRange = { from: dateFrom, to: dateTo };
     }
-    
     setFilters(newFilters);
   };
 
@@ -48,14 +46,14 @@ export const AuditLogViewer = () => {
   };
 
   const handleClearLogs = async () => {
-    const ok = window.confirm('Hapus SEMUA audit logs? Tindakan ini permanen dan tidak bisa dibatalkan.');
+    const ok = window.confirm('Are you sure? This operation can not be undone.');
     if (!ok) return;
     try {
-      await clearAuditLogs('all');
-      toast.success('Semua audit logs berhasil dihapus secara permanen.');
+      await clearAuditLogs(filters);
+
     } catch (err: any) {
       console.error('Failed to clear audit logs', err);
-      toast.error(err?.message || 'Gagal menghapus audit logs.');
+      // toast.error(err?.message);
     }
   };
 
@@ -181,9 +179,9 @@ export const AuditLogViewer = () => {
                 <Button onClick={handleClearFilters} variant="outline" size="sm">
                   Clear Filters
                 </Button>
-                <Button onClick={refetch} variant="outline" size="sm">
+                {/* <Button onClick={refetch} variant="outline" size="sm">
                   <RefreshCw className="size-4" />
-                </Button>
+                </Button> */}
                 <Button onClick={handleClearLogs} variant="destructive" size="sm">
                   <Trash2 className="size-4 mr-1" />
                   Clear Logs

@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { Loader2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
-import { Loader2, Chrome, Clock, LogOut } from 'lucide-react';
+
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
@@ -20,6 +21,11 @@ const Auth = () => {
   const justSignedIn = useRef(false);
   const justSignedUp = useRef(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
+
+  useEffect(() => {
+    justSignedIn.current = false;
+    justSignedUp.current = false;
+  }, [user]);
 
   useEffect(() => {
     if (!user || profileLoading) return;
@@ -40,7 +46,7 @@ const Auth = () => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setLoading(true);
     const { error } = await signIn(formData.email, formData.password);
@@ -52,27 +58,31 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signUp(formData.email, formData.password, formData.fullName);
+    const { error } = await signUp(formData.email, formData.password, formData.fullName); //use redirect argument to If required. Default is "/".
     if (error) {
       toast.error(error.message);
     } else {
       justSignedUp.current = true;
       setShowPendingModal(true);
     }
+    setFormData({ email: '', password: '', fullName: ''});
     setLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    const { error } = await signInWithGoogle();
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-    }
-  };
+  // const handleGoogleSignIn = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const { error } = await signInWithGoogle();
+  //     if (error) throw error;
+  //   } catch (e) {
+  //     toast.error((e as Error).message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handlePendingDismiss = () => {
     setShowPendingModal(false);
@@ -175,6 +185,7 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
 
+{/*
           <div className="relative my-2">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
             <div className="relative flex justify-center text-xs uppercase">
@@ -183,8 +194,9 @@ const Auth = () => {
           </div>
 
           <Button variant="outline" onClick={handleGoogleSignIn} disabled={loading} className="w-full h-12">
-            <Chrome className="mr-2 size-4" />Google
+             <Chrome className="mr-2 size-4" />Google 
           </Button>
+          */}
         </div>
       </div>
 

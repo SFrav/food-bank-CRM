@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -15,7 +16,8 @@ export const EntityManagement = () => {
   const { toast } = useToast();
   const [newEntityName, setNewEntityName] = useState('');
   const [newEntityCode, setNewEntityCode] = useState('');
-  const [editingEntity, setEditingEntity] = useState<{ id: string; name: string; code: string } | null>(null);
+  const [newEntityReferrer, setNewEntityReferrer] = useState(false);
+  const [editingEntity, setEditingEntity] = useState<{ id: string; name: string; code: string, is_referrer: boolean } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingEntityId, setDeletingEntityId] = useState<string | null>(null);
 
@@ -23,7 +25,7 @@ export const EntityManagement = () => {
     if (!newEntityName.trim()) return;
 
     setIsSubmitting(true);
-    const { error } = await createEntity(newEntityName.trim(), newEntityCode.trim() || undefined);
+    const { error } = await createEntity(newEntityName.trim(), newEntityCode.trim(), newEntityReferrer || undefined);
     
     if (error) {
       toast({
@@ -38,6 +40,7 @@ export const EntityManagement = () => {
       });
       setNewEntityName('');
       setNewEntityCode('');
+      setNewEntityReferrer(false);
       
       // Trigger refresh event for Admin page to reload entities
       try {
@@ -56,7 +59,8 @@ export const EntityManagement = () => {
     setIsSubmitting(true);
     const { error } = await updateEntity(editingEntity.id, {
       name: editingEntity.name,
-      code: editingEntity.code || undefined
+      code: editingEntity.code || undefined,
+      is_referrer: editingEntity.is_referrer || undefined
     });
     
     if (error) {
@@ -122,7 +126,6 @@ export const EntityManagement = () => {
         title: "Success",
         description: `Entity ${!currentStatus ? 'activated' : 'deactivated'} successfully`,
       });
-      
       // Trigger refresh event
       try {
         window.dispatchEvent(new CustomEvent('org-units-changed'));
@@ -155,7 +158,7 @@ export const EntityManagement = () => {
           {/* Create New Entity */}
           <div className="border rounded-lg p-4">
             <h3 className="text-lg font-medium mb-4">Add New Entity</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="entity-name">Entity Name *</Label>
                 <Input
@@ -173,6 +176,16 @@ export const EntityManagement = () => {
                   onChange={(e) => setNewEntityCode(e.target.value)}
                   placeholder="e.g., ACME"
                 />
+              </div>
+              <div>
+                <Label htmlFor="entity-referrer">Is Referrer</Label>
+                <div className="flex justify-left mt-1">
+                <Switch
+                  id="entity-referrer"
+                  checked={newEntityReferrer}
+                  onCheckedChange={checked => setNewEntityReferrer(checked)}
+                />
+                </div>
               </div>
               <div className="flex items-end">
                 <Button
@@ -205,6 +218,7 @@ export const EntityManagement = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -244,6 +258,14 @@ export const EntityManagement = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <Badge 
+                          variant={entity.is_referrer ? "default" : "secondary"}
+                          className="cursor-pointer"
+                          >
+                          {entity.is_referrer ? 'Referrer' : 'Food bank'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {new Date(entity.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
@@ -277,7 +299,8 @@ export const EntityManagement = () => {
                                 onClick={() => setEditingEntity({
                                   id: entity.id,
                                   name: entity.name,
-                                  code: entity.code || ''
+                                  code: entity.code || '',
+                                  is_referrer: entity.is_referrer || false
                                 })}
                               >
                                 <Edit3 className="size-4" />

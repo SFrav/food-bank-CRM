@@ -52,10 +52,12 @@ export const RegionManagement = () => {
 
     setUpdating(id);
     try {
-      await updateRegion(id, { 
-        name: editingName.trim(),
-        code: editingCode.trim().toUpperCase()
-      });
+      await updateRegion(
+        id, 
+        editingName.trim() || null,
+        editingCode.trim().toUpperCase() || null,
+        null
+      );
       setEditingId(null);
       setEditingName('');
       setEditingCode('');
@@ -76,7 +78,7 @@ export const RegionManagement = () => {
   const handleToggleActive = async (id: string, isActive: boolean) => {
     setUpdating(id);
     try {
-      await updateRegion(id, { is_active: !isActive });
+      await updateRegion(id, null, null, !isActive );
       toast.success(isActive ? 'Region deactivated' : 'Region activated');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update region status');

@@ -1,34 +1,23 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react"; //, lazy, Suspense
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Building, Search, Plus, Phone, Mail } from "lucide-react";
-import AddServiceModal from "@/components/modals/AddServiceModal";
-import { toast } from "@/hooks/use-toast";
+import AddServiceModal from "@/components/modals/AddService";
+import {useServices} from "@/hooks/useServices"
+
+// const AddServiceModal = lazy(() =>
+//   import("@/components/modals/AddService")
+// );
 
 const Services = () => {
+  const {services, loading: isLoading} = useServices();
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: services, isLoading, refetch } = useQuery({
-    queryKey: ["services"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("organizations")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const filteredServices = services?.filter((service) =>
     service.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.industry?.toLowerCase().includes(searchQuery.toLowerCase())
+    service.service?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -65,9 +54,9 @@ const Services = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">{service.name}</h3>
-                        {/* {service.industry && (
+                        {/* {service.service && (
                           <Badge variant="secondary" className="mt-1">
-                            {service.industry}
+                            {service.service}
                           </Badge>
                         )} */}
                       </div>
@@ -102,10 +91,12 @@ const Services = () => {
         </CardContent>
       </Card>
 
-      <AddServiceModal
-        isOpen={showAddModal}
-        onOpenChange={setShowAddModal}
-      />
+      {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
+        <AddServiceModal
+          isOpen={showAddModal}
+          onOpenChange={setShowAddModal}
+        />
+      {/* </Suspense> */}
     </div>
   );
 };

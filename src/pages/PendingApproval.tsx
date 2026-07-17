@@ -16,15 +16,6 @@ const PendingApproval = () => {
     if (loading) return;
     if (!profile) return;
 
-    // Debug logging
-    console.log('🔍 [PendingApproval] Profile check:', {
-      role: profile.role,
-      entity_id: profile.entity_id,
-      division_id: profile.division_id,
-      manager_id: (profile as any).manager_id,
-      is_active: profile.is_active
-    });
-
     const roleText = String(profile.role);
     
     const managerNeedsApproval = profile.role === 'manager' && (!profile.entity_id || !profile.division_id);
@@ -34,17 +25,17 @@ const PendingApproval = () => {
       managerNeedsApproval
     );
 
-    if (managerNeedsApproval) {
-      console.warn('⚠️ [PendingApproval] Manager needs approval:', {
-        has_entity_id: !!profile.entity_id,
-        has_division_id: !!profile.division_id,
-        entity_id: profile.entity_id,
-        division_id: profile.division_id
-      });
-    }
+    // if (managerNeedsApproval) {
+    //   console.warn('[PendingApproval] Manager needs approval:', {
+    //     has_entity_id: !!profile.entity_id,
+    //     has_division_id: !!profile.division_id,
+    //     entity_id: profile.entity_id,
+    //     division_id: profile.division_id
+    //   });
+    // }
 
     if (!needsApproval) {
-      console.log('✅ [PendingApproval] Profile approved, redirecting...');
+      // console.log('[PendingApproval] Profile approved, redirecting...');
       switch (profile.role) {
         case 'admin':
           navigate('/admin/dashboard', { replace: true });
@@ -112,15 +103,15 @@ const PendingApproval = () => {
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <Users className="size-4 mt-0.5 flex-shrink-0 text-primary" />
-                <span>A Strategic Leader will review your account</span>
+                <span>An administrator will review your account</span>
               </div>
               <div className="flex items-start gap-2">
                 <Building className="size-4 mt-0.5 flex-shrink-0 text-primary" />
-                <span>You'll be assigned to the appropriate role and department</span>
+                <span>You'll be assigned to the appropriate role and affiliation</span>
               </div>
               <div className="flex items-start gap-2">
                 <Shield className="size-4 mt-0.5 flex-shrink-0 text-primary" />
-                <span>Once approved, you'll have access to your CRM dashboard</span>
+                <span>Once approved, you'll have access to your dashboard</span>
               </div>
             </div>
           </div>
