@@ -14,50 +14,15 @@ This project is built with:
 - Tailwind CSS
 
 Look and feel:
-<table>
-<tr>
-<td>
-<video controls width="200"><source src="assets/Admin-org-manage.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Admin organisation management
-</td>
-<td>
-<video controls width="200"><source src="assets/Admin-approve-user.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Admin user approval
-</td>
-<td>
-<video controls width="200"><source src="assets/Admin-logs.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Admin logs
-</td>
-</tr>
-<tr>
-<td>
-<video controls width="200"><source src="assets/Contact-new-refer.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Refer new contact
-</td>
-<td>
-<video controls width="200"><source src="assets/Contact-allotment.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Administring visits
-</td>
-<td>
-<video controls width="200"><source src="assets/Contact-current-refer.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Refer existing contact
-</td>
-</tr>
-<tr>
-<td>
-<video controls width="200"><source src="assets/Contact-merge.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Merge contacts
-</td>
-<td>
-<video controls width="200"><source src="assets/Other-tabs.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Other tabs
-</td>
-<td>
-<video controls width="200"><source src="assets/Other-settings.mp4" type="video/mp4">Not supported by your browser</video>
-<br>Settings
-</td>
-</tr>
-</table>
-(Videos have been altered to meet Github's file size requirements. This can make load time appear slower than it is)
+![New refer](assets/Contact-new-refer.gif "New contact referral – click to view full size")
+
+- [User sign-up and approval process](assets/Admin-approve-user.gif)
+- [Organisation management](assets/Admin-org-manage.gif)
+- [Logs](assets/Admin-logs.gif)
+- [Current contact referral](assets/Contact-current-refer.gif)
+- [How the process works when beneficiaries collect food](assets/Contact-allotment.gif)
+- [Merging contacts](assets/Contact-merge.gif)
+- [Other tabs - support services, calendar and tasks](assets/Other-tabs.gif)
+- [Settings for users - profile, preferences and security](assets/Other-settings.gif)
 
 Repo limitation: Core SQL logic of adding allotment for beneficiary after approval has been removed. Table policies also removed.
