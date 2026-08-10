@@ -9,9 +9,9 @@ export interface AuditLog {
   action_type: string;
   table_name: string;
   record_id: string | null;
-  old_values: any;
-  new_values: any;
-  metadata: any;
+  old_values: JSON;
+  new_values: JSON;
+  metadata: JSON;
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
@@ -52,9 +52,6 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       setLoading(true);
       setError(null);
 
-      // Calculate offset for pagination
-      const offset = (page - 1) * pageSize;
-
       const { data, error, count } = await supabase
         .rpc('get_audit_logs', {
           p_filters: filters,
@@ -65,7 +62,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       if (error) throw error;
 
       // Transform the data to include joined information
-      const transformedData = (data || []).map((log: any) => ({
+      const transformedData = (data || []).map((log: AuditLog) => ({
         ...log,
         action_type: String(log.action_type).toUpperCase(),
         user_name: log.user_name || 'Unknown User',
@@ -76,9 +73,10 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       
       // Calculate total pages based on exact count when available
       setTotalPages(Math.max(1, Math.ceil(((count ?? transformedData.length) / pageSize))));
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching audit logs:', err);
-      setError(err.message);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -88,9 +86,9 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
     actionType: string,
     tableName: string,
     recordId?: string,
-    oldValues?: any,
-    newValues?: any,
-    metadata?: any
+    oldValues?: JSON,
+    newValues?: JSON,
+    metadata?: JSON
   ) => {
     try {
       const { error } = await supabase.rpc('log_audit_event', {
@@ -106,9 +104,10 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       
       // Refresh logs after creating new one
       await fetchAuditLogs(1);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error logging audit event:', err);
-      throw err;
+      throw error;
     }
   };
 
@@ -118,7 +117,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       setError(null);
 
       const { data, error } = await supabase.rpc('admin_clear_audit_logs', {
-        p_filters: filters as unknown as any,
+        p_filters: filters as unknown,
       });
 
       if (error) throw error;
@@ -126,10 +125,11 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       // Refetch first page after clearing
       await fetchAuditLogs(1);
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error clearing audit logs:', err);
-      setError(err.message);
-      throw err;
+      setError(error.message);
+      throw error;
     } finally {
       setLoading(false);
     }

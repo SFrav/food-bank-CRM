@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,8 +88,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
       handleReset();
       onOpenChange(false);
       onSuccess?.();
-    } catch (err: any) {
-      console.error('Error creating service:', err);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Error creating service:', error);
     } finally {
       setLoading(false);
     }

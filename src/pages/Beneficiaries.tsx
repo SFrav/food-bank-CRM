@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { ContactsTable } from '@/components/ContactsTable';
 import { EditContactModal, ContactFormData } from '@/components/modals/EditContact';
 import MinimisedContactsBar, { MinimisedContact } from '@/components/MinimisedContactsBar';
-import { Contact } from '@/hooks/useContacts';
+import { useContacts, Contact } from '@/hooks/useContacts';
 // import { useProfile } from "@/hooks/useProfile";
 // import { useDivisions, Division } from '@/hooks/useDivisions';
 
@@ -31,18 +31,20 @@ export default function Contacts() {
   const [filterQueue, setFilterQueue] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // const [refreshKey, setRefreshKey] = useState(0);
   const [restoredFormData, setRestoredFormData] = useState<ContactFormData | null>(null);
   const [minimised, setMinimised] = useState<MinimisedContact[]>(loadFromStorage);
+
+  const { contacts, loading, refetch } = useContacts(false);
 
   useEffect(() => {
     saveToStorage(minimised);
   }, [minimised]);
 
-
   const handleContactUpdated = useCallback(() => {
-    setRefreshKey(k => k + 1);
-  }, []);
+    refetch(filterQueue);
+    // setRefreshKey(k => k + 1);
+  }, [refetch, filterQueue]);
 
   const handleDuplicateAdd = useCallback((dup: Contact) => {
     setEditingContact(dup);
@@ -65,12 +67,12 @@ export default function Contacts() {
     setMinimised(prev => {
       const without = prev.filter(m => m.contact.id !== contact.id);
       const capped = without.length >= MAX_MINIMISED ? without.slice(1) : without;
-      return [...capped, { contact, isDirty, savedFormData: formData } as any];
+      return [...capped, { contact, isDirty, savedFormData: formData }];
     });
   }, []);
 
   const handleRestore = useCallback((id: string) => {
-    const entry = minimised.find(m => m.contact.id === id) as any;
+    const entry = minimised.find(m => m.contact.id === id) as MinimisedContact;
     if (!entry) return;
     setMinimised(prev => prev.filter(m => m.contact.id !== id));
     setRestoredFormData(entry.savedFormData ?? null);
@@ -98,11 +100,14 @@ export default function Contacts() {
       </div> */}
 
       <ContactsTable 
-        key={refreshKey} 
+        // key={refreshKey} 
+        contacts={contacts}
+        loading={loading}
         filterQueue={filterQueue}
         setFilterQueue={setFilterQueue}
         onDuplicateAdd={handleDuplicateAdd}
         onEditContact={handleEditContact} 
+        refetch={refetch}
       />
 
       <EditContactModal

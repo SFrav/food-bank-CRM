@@ -29,6 +29,7 @@ type UIState = {
   selectedTask: Task | null;
 };
 
+
 const initialState: UIState = {
   isAddOpen: false,
   isEditOpen: false,
@@ -41,6 +42,14 @@ type FilterState = {
   filterStatus: string;
   dateFilter: string;
 };
+
+type UIAction =
+  | { type: 'OPEN_ADD' }
+  | { type: 'CLOSE_ADD' }
+  | { type: 'OPEN_EDIT'; payload: Task }
+  | { type: 'CLOSE_EDIT'; payload: null }
+  | { type: 'CLOSE_ADD' | 'OPEN_ADD' }
+  | { type: 'CLOSE_ADD' | 'CLOSE_EDIT'};
 
 type FilterAction =
   | { type: 'SET_SEARCH'; payload: string }
@@ -66,7 +75,7 @@ const filterReducer = (
   }
 };
 
-function stateReducer(state: UIState, action: any): UIState {
+function stateReducer(state: UIState, action: UIAction ): UIState {
   switch (action.type) {
     case 'OPEN_ADD':
       return { ...state, isAddOpen: true };

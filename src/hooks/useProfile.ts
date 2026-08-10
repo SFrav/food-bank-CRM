@@ -45,9 +45,10 @@ export const useProfile = () => {
 
       setProfile(profileData as UserProfile);
 
-    } catch (err: any) {
-      console.error('useProfile fetch error:', err);
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('useProfile fetch error:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -70,8 +71,9 @@ export const useProfile = () => {
       await fetchProfile(); 
 
       return { data: null, error: null };
-    } catch (err: any) {
-      return { data: null, error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      return { data: null, error: error.message };
     }
   };
 

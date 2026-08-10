@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 //import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ArrowRightLeft, Maximize2, Minimize } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useContacts, Contact } from '@/hooks/useContacts';
 import { useRegions } from '@/hooks/useRegions';
 import { cn } from '@/lib/utils';
@@ -14,8 +14,8 @@ interface MergeContactModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMerged: () => void;
-  primary: Contact;
-  secondary: Contact;
+  primary: Contact | null;
+  secondary: Contact | null;
 }
 
 const COMPARISON_FIELDS: Array<keyof Contact> = [
@@ -37,6 +37,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
   primary: initialPrimary,
   secondary: initialSecondary,
 }) => {
+  if (!initialPrimary || !initialSecondary) return null;
   const { mergeContacts } = useContacts();
   const { toast } = useToast();
 
@@ -47,6 +48,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
   const { regions } = useRegions();
 
   useEffect(() => {
+    if (!isOpen) return;
     setPrimary(initialPrimary);
     setSecondary(initialSecondary);
   }, [initialPrimary, initialSecondary]);

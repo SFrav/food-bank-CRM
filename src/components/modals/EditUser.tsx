@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Check, Trash2, X } from 'lucide-react';
 import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RoleBadge } from '@/components/RoleBadge';
-import { UserProfile } from '@/hooks/useProfile';
+import { Users } from '@/hooks/useAdminUsers';
 import { useDivisions } from '@/hooks/useDivisions'; 
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,7 +14,7 @@ interface UserRow {
   id: string;
   full_name: string | null;
   email: string | null;
-  role: UserProfile['role'];
+  role: Users['role'];
   region_id: string | null;
   entity_id: string | null;
   division_id: string | null;
@@ -27,7 +27,8 @@ interface Region { id: string; name: string; is_active: boolean; }
 
 interface EditUserModalProps {
   user: UserRow | null;
-  open: boolean;
+  isOpen: boolean;
+  usersLoading: boolean;
   onClose: () => void;
   onSave: (
     userId: string,
@@ -40,15 +41,16 @@ interface EditUserModalProps {
   onDelete: (userId: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   entities: Entity[];
   regions: Region[];
-  currentUserRole: UserProfile['role'] | undefined;
+  currentUserRole: Users['role'];
   currentUserId: string | undefined;
 }
 
 const EditUserModal = ({
-  user, open, onClose, onSave, onDelete,
+  user, isOpen, usersLoading, onClose, onSave, onDelete,
   entities, regions, currentUserRole, currentUserId,
 }: EditUserModalProps) => {
-  const [role, setRole] = useState<UserProfile['role']>('pending');
+  if (!user) return null;
+  const [role, setRole] = useState<Users['role']>('pending');
   const [regionId, setRegionId] = useState<string>('');
   const [entityId, setEntityId] = useState<string>('none');
   const [divisionId, setDivisionId] = useState<string>('none');
@@ -62,6 +64,7 @@ const EditUserModal = ({
 
   // Sync local state when user changes
   useEffect(() => {
+    if (!isOpen || usersLoading) return;
     //console.log('EditUserModal user:', user);
     if (user) {
       setRole(user.role);
@@ -70,9 +73,9 @@ const EditUserModal = ({
       setDivisionId(user.division_id ?? 'none');
       setConfirmDelete(false);
     }
-  }, [user]);
+  }, [user, isOpen, usersLoading]);
 
-  if (!user) return null;
+  // if (!user) return null;
 
   const isSelf = user.id === currentUserId;
   const isAdminTarget = user.role === 'admin';
@@ -92,14 +95,11 @@ const EditUserModal = ({
     setSaving(true);
 
     if (role === 'branch_manager' && divisionId !== 'none') {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('division_id', divisionId)
-        .eq('role', 'manager')
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_manager_by_division', {
+        p_division_id: divisionId,
+      });
 
-      if (!data) {
+      if (error || !data) {
         setSaving(false);
         toast.error(
           "The selected division has no manager. Please assign one first."
@@ -129,12 +129,13 @@ const EditUserModal = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[525px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {user.full_name || user.email || 'User'}
           </DialogTitle>
+          <DialogDescription> </DialogDescription>
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </DialogHeader>
 
@@ -144,7 +145,7 @@ const EditUserModal = ({
               <span className="text-sm text-muted-foreground">Role:</span>
               <RoleBadge role={user.role} />
             </div>
-            <p className="text-xs text-muted-foreground">You don't have permission to edit this user.</p>
+            <p className="text-xs text-muted-foreground">You do not have permission to edit this user.</p>
           </div>
         ) : (
           <div className="space-y-4 py-2">
@@ -153,7 +154,7 @@ const EditUserModal = ({
               <Label>Role</Label>
               <Select
                 value={role}
-                onValueChange={(v) => setRole(v as UserProfile['role'])}
+                onValueChange={(v) => setRole(v as Users['role'])}
                 disabled={saving || isSelf}
               >
                 <SelectTrigger>
@@ -266,7 +267,7 @@ const EditUserModal = ({
               <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
                 {saving
                   ? <><div className="size-3 animate-spin border border-current border-t-transparent rounded-full mr-2" />Saving…</>
-                  : <><Check className="size-3.5 mr-1.5" />Save changes</>
+                  : <><Check className="size-3.5 mr-1.5" />Save</>
                 }
               </Button>
             </>
@@ -277,6 +278,7 @@ const EditUserModal = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
   );
 };
 

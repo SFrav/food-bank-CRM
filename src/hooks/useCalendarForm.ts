@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
@@ -29,6 +29,18 @@ type useCalendarFormProps = {
   loadContacts?: (coId: string) => void;
   onSuccess: () => void;
 };
+
+export interface CalendarCreateInput {
+  entry_type: TaskT;
+  subject?: string | null;
+  location?: string | null;
+  beneficiary_id?: string | null;
+  pic_id?: string | null;
+  scheduled_at: string;
+  status: TaskStatusT;
+  notes?: string | null;
+  created_by: string;
+}
 
 const roundToNearestQuarter = (date: Date) => {
   const ms = 15 * 60 * 1000;          // 15 minutes in ms
@@ -91,7 +103,7 @@ export function useCalendarForm({
 
       toast({ title: "Success", description: "Calendar entry created!" });
       onSuccess();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       toast({
         title: "Error",
@@ -103,7 +115,7 @@ export function useCalendarForm({
     }
   };
 
-  const createEventBulk = async (events: any[]) => {
+  const createEventBulk = async (events: CalendarCreateInput[]) => {
     if (!user) throw new Error("User not authenticated");
     setIsSubmitting(true);
     try {
@@ -113,7 +125,7 @@ export function useCalendarForm({
       if (error) throw error;
       toast({ title: "Success", description: `${events.length} events added.` });
       onSuccess();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       toast({
         title: "Error",
@@ -157,7 +169,7 @@ export function useCalendarForm({
 
       toast({ title: "Success", description: "Calendar updated!" });
       onSuccess();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       toast({
         title: "Error",

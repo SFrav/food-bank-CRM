@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { NativeFileUploader } from '@/components/FileDropzone';
-import { useCalendarForm } from "@/hooks/useCalendarForm";
+import { useCalendarForm, CalendarCreateInput, TaskT, TaskStatusT } from "@/hooks/useCalendarForm";
 
 interface AddEventBulkModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: () => void;
 }
+
+type EventRecord = {
+  entry_type: TaskT;
+  title: string | null;
+  event_title: string | null;
+  name: string | null;
+  location: string | null;
+  date: string;
+  time: string;
+  status: TaskStatusT;
+  description: string | null;
+};
 
 
 // export const AddEventBulkModal: React.FC<AddEventBulkModalProps> = ({
@@ -29,7 +41,7 @@ export default function AddEventBulkModal({
   const { createEventBulk } = useCalendarForm({ onSuccess: onAdd });
   const [isLoading, setIsLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<CalendarCreateInput[]>([]);
   const [fileName, setFileName] = useState<string>("");
 
   const stripQuotes = (s: string | null | undefined) => {
@@ -99,22 +111,22 @@ export default function AddEventBulkModal({
       console.log("CSV rows parsed:", rows.length);   // debug line
       const mapped = rows
         .filter((row) => row.date)
-        .map((row: any) => ({
-          p_entry_type: "event",
-          p_subject:
+        .map((row: EventRecord) => ({
+          entry_type: "event" as TaskT,
+          subject:
             stripQuotes(row.title) ||
             stripQuotes(row.event_title) ||
             stripQuotes(row.name) ||
             "",
-          p_location: stripQuotes(row.location) || null,
-          p_beneficiary_id: null,
-          p_pic_id: null,
-          p_scheduled_at: toISO(row.date, row.time) ?? null,
-          p_status: stripQuotes(row.status) ?? "scheduled",
-          p_notes: stripQuotes(row.description) || null,
-          p_created_by: user?.id,
+          location: stripQuotes(row.location) || null,
+          beneficiary_id: null,
+          pic_id: null,
+          scheduled_at: toISO(row.date, row.time) ?? null,
+          status: stripQuotes(row.status) as TaskStatusT ?? "scheduled" as TaskStatusT,
+          notes: stripQuotes(row.description) || null,
+          created_by: user?.id,
         }))
-        .filter((e) => e.p_subject && e.p_scheduled_at);
+        .filter((e) => e.subject && e.scheduled_at);
 
       console.log("Valid events to submit:", mapped.length); // debug line
       setEvents(mapped);
@@ -151,7 +163,8 @@ export default function AddEventBulkModal({
       setFile(null);
       setFileName("");
       onClose();
-    } catch (err) {
+    } catch (err: unknown) {
+      // const error = err as { message?: string }; 
       console.error("Bulk add error:", err);
       toast({
         title: "Error",

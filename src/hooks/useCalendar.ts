@@ -1,15 +1,27 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/hooks/useAuth';
 import type { CalendarEvent } from '@/components/CalendarView';
 import { startOfMonth, endOfMonth } from 'date-fns';
+
+type Calendar = {
+  id: string;
+  subject?: string;
+  scheduled_at: string;
+  location?: string
+  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
+  status: "scheduled" | "done" | "cancelled";
+  notes?: string;
+  created_at: string;
+};
 
 export function useCalendar() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
   const fetchEvents = useCallback(async (date = new Date()) => {
     if (!user) return;
@@ -19,7 +31,7 @@ export function useCalendar() {
       const end = endOfMonth(date).toISOString();
       const { data, error } = await supabase.rpc('get_calendar', { start_date: start, end_date: end });
       if (error) throw error;
-      setEvents((data || []).map((a: any) => ({
+      setEvents((data || []).map((a: Calendar) => ({
         id: a.id,
         subject: a.subject || (a.entry_type ? a.entry_type.replace('_', ' ') : 'Task'),
         starts_at: a.scheduled_at,
@@ -30,7 +42,10 @@ export function useCalendar() {
         status: a.status ?? 'scheduled',
         created_at: a.created_at ?? new Date().toISOString(),
       })));
-    } catch (err) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Contacts fetch error', err);
+      setError(error.message || 'Failed to load events');
       toast({ title: 'Error', description: 'Failed to load events.', variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -47,13 +62,17 @@ export function useCalendar() {
       toast({ title: 'Deleted', description: 'Calendar entry removed.' });
 
       await fetchEvents();
-    } catch (err) {
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       toast({ title: 'Error', description: 'Failed to delete calendar entry.', variant: 'destructive' });
+      return { success: false, error: error.message };
     }
   }, [user, toast, fetchEvents]);
 
   return { events, 
     loading, 
+    error,
     fetchEvents, 
     deleteEvent };
 }

@@ -20,7 +20,7 @@ export const useContactNotes = (contactId: string | null) => {
     const { data, error } = await supabase
       .rpc('get_contact_notes', { p_contact_id: contactId });
     if (!error && data) setNotes(data as ContactNote[]);
-    } catch (err) { 
+    } catch (err: unknown) { 
         console.error(err);
       } finally {
         // setLoading(false);
@@ -36,7 +36,7 @@ export const useContactNotes = (contactId: string | null) => {
         if (!error) {
           setNotes(prev => prev.filter(n => n.note_id !== noteId));
         }
-      } catch (err) { 
+      } catch (err: unknown) { 
         console.error(err);
       } finally {
         // setLoading(false);

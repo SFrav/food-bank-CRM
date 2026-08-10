@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Settings, Crown, Users, Target, User } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EntityManagement } from '@/components/EntityManagement';
 

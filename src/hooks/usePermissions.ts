@@ -9,6 +9,7 @@ export interface PermissionSet {
   canApproveOrganizations: boolean;
   canAssignBeneficiaries: boolean;
   canApproveBeneficiaries: boolean;
+  canServeBeneficiaries: boolean;
   canSetManagerTargets: boolean;
   canSetAccountManagerTargets: boolean;
   canViewAllManagerReports: boolean;
@@ -28,6 +29,7 @@ const NO_PERMISSIONS: PermissionSet = {
   canApproveOrganizations: false,
   canAssignBeneficiaries: false,
   canApproveBeneficiaries: false,
+  canServeBeneficiaries: false,
   canSetManagerTargets: false,
   canSetAccountManagerTargets: false,
   canViewAllManagerReports: false,
@@ -59,6 +61,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: true,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
+        canServeBeneficiaries: true,
         canViewAllManagerReports: true,
         canProposeReassignments: true,
         canApproveReassignments: true,
@@ -73,6 +76,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
+        canServeBeneficiaries: true,
         canViewAllManagerReports: true,
         canProposeReassignments: false,
         canApproveReassignments: true,
@@ -86,6 +90,7 @@ export const usePermissions = (): PermissionSet => {
         canDeleteRecords: false,
         canApproveOrganizations: true,
         canApproveBeneficiaries: true,
+        canServeBeneficiaries: true,
         canAssignBeneficiaries: true,
         canProposeReassignments: true,
         canApproveReassignments: false,
@@ -100,6 +105,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: true,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
+        canServeBeneficiaries: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -113,6 +119,21 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: false,
         canApproveBeneficiaries: false,
+        canServeBeneficiaries: true,
+        canProposeReassignments: false,
+        canApproveReassignments: false,
+      } as PermissionSet;
+
+    case 'volunteer':
+      return {
+        ...BASE_CRUD,
+        canAccessUserManagement: false,
+        canAccessAnalytics: false,
+        canDeleteRecords: false,
+        canApproveOrganizations: false,
+        canAssignBeneficiaries: false,
+        canApproveBeneficiaries: false,
+        canServeBeneficiaries: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -126,6 +147,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: false,
+        canServeBeneficiaries: false,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;

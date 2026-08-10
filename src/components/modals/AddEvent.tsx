@@ -29,14 +29,7 @@ export default function AddEventBulkModal({
 }: AddEventModalProps) {
   const { user } = useAuth();
 
-  const {
-    form,
-    setForm,
-    createEvent,
-    isSubmitting,
-  } = useCalendarForm({
-    onSuccess: onAdd,
-  });
+  const { form, setForm, createEvent, isSubmitting } = useCalendarForm({ onSuccess: onAdd });
 
   useEffect(() => {
     setForm((prev) => ({
@@ -46,6 +39,7 @@ export default function AddEventBulkModal({
   }, [setForm]);
 
   useEffect(() => {
+    if (!isOpen) return;
     if (selectedDate) {
       // Convert the Date to the format expected by the datetime‑local input
       const formatted = format(selectedDate, "yyyy-MM-dd'T'HH:mm");
@@ -69,6 +63,9 @@ export default function AddEventBulkModal({
 
   const handleClose = () => {
     onClose();
+    setForm((prev) => ({ ...prev, subject: '' }));
+    setForm((prev) => ({ ...prev, location: '' }));
+    setForm((prev) => ({ ...prev, description: '' }));
   }
 
   return (

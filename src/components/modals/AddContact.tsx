@@ -72,13 +72,15 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     notes: '',
   });
 
+  // if (!user || !profile) return null;
+
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || !isOpen) return;
     const divs = divisions.filter((d) => d.region_id === formData.region_id);
     setDivsRegion(divs);
-    if (!isOpen || nameInit ==='') return;
+    if (!isOpen || nameInit ==='' || formData.name !== '') return;
     setFormData(prev => ({ ...prev, name: nameInit }));
-  }, [isOpen, formData.region_id, nameInit, divisions]);
+  }, [isOpen, formData.region_id, formData.name, nameInit, divisions]);
 
   // const loadDivsRegion = (dId: string): Division[] => {
   //   return divsRegion;
@@ -154,8 +156,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       setDuplicateCandidates(duplicates);
       setDupExact(false);
       return true;
-    } catch (e: any) {
-      console.error('Duplicate check error', e);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Duplicate check error', error);
       return true; 
     } finally {
       setCheckingDup(false);
@@ -193,8 +196,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       onContactAdded();
       onClose();
       resetForm();
-    } catch (e: any) {
-      console.error('Create new anyway error', e);
+    } catch (err: unknown) {
+      console.error('Create new contact error', err);
     } finally {
       setIsLoading(false);
     }
@@ -449,9 +452,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 <SelectValue placeholder="Select Branch" />
               </SelectTrigger>
               <SelectContent>
-                {divsRegion.map(co => (
-                  <SelectItem key={co.manager_id} value={co.manager_id}>
-                    {co.name}
+                {divsRegion.map(div => (
+                  <SelectItem key={div.manager_id} value={div.manager_id}>
+                    {div.name}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEntities } from './useEntities';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 export interface EntitySettings {
   referrer_request?: string;
@@ -38,7 +38,8 @@ export const useEntitySettings = () => {
       });
 
       setSettingsMap(prev => ({ ...prev, [entity_id]: local as EntitySettings }));
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching settings:', err);
       toast({
         title: 'Error',
@@ -65,7 +66,7 @@ export const useEntitySettings = () => {
 
       if (error) throw error;
       await fetchSettings(entity_id);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error updating setting:', err);
       toast({
         title: 'Error',

@@ -18,22 +18,22 @@ export function useDivisionSummary(
   const { user } = useAuth();
   const [divisionSummary, setDivisions] = useState<DivisionSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>();
 
   const fetchDivisions = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true);
-      setError(null);
+      setError(undefined);
 
-      let params: any = { p_entity_id: entityId ?? null };
-      const { data, error: rpcErr } = await supabase.rpc('get_division_summary', params);
+      const { data, error: rpcErr } = await supabase.rpc('get_division_summary', { p_entity_id: entityId ?? null });
 
       if (rpcErr) throw rpcErr;
       setDivisions(data ?? []);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('useDivisions error:', err);
-      setError(err.message);
+      setError(error.message);
       setDivisions([]);
     } finally {
       setLoading(false);
@@ -47,7 +47,7 @@ export function useDivisionSummary(
   return { 
     divisionSummary, 
     loading, 
-    error, 
+    // error, 
     refetch: fetchDivisions 
   };
 }

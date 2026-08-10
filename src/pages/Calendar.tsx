@@ -35,6 +35,21 @@ type UIState = {
   currentDate: Date;
 };
 
+type UIAction =
+  | { type: 'OPEN_ADD' }
+  | { type: 'CLOSE_ADD' }
+  | { type: 'OPEN_BULK' }
+  | { type: 'CLOSE_BULK' }
+  | { type: 'OPEN_DETAIL'; payload: CalendarEvent | null }
+  | { type: 'CLOSE_DETAIL' }
+  | { type: 'SET_CURRENT'; payload: Date | null }
+  | { type: 'SET_SELECTED_DATE'; payload: Date | null }
+  | { type: 'OPEN_ADD' }
+  | { type: 'OPEN_EDIT'; payload: CalendarEvent }
+  | { type: 'CLOSE_EDIT'; payload: null }
+  | { type: 'CLOSE_ADD' | 'OPEN_ADD' }
+  | { type: 'CLOSE_ADD' | 'CLOSE_EDIT'};
+
 const initialState: UIState = {
   isAddOpen: false,
   isBulkOpen: false,
@@ -45,7 +60,8 @@ const initialState: UIState = {
   currentDate: new Date(),
 };
 
-function reducer(state: UIState, action: any): UIState {
+
+function reducer(state: UIState, action: UIAction): UIState {
   switch (action.type) {
     case 'OPEN_ADD':
       return { ...state, isAddOpen: true };

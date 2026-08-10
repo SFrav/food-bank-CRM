@@ -1,9 +1,22 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface Users {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: 'pending' | 'referrer' | 'volunteer' |  'staff' | 'branch_manager' | 'manager' | 'head' | 'admin';
+  entity_id: string | null;
+  division_id: string | null;
+  manager_id: string | null;
+  region_id: string | null;
+  status: 'active' | 'inactive' | 'suspended';
+}
+
 export function useAdminUsers(query: string, roleFilter: string) {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Users[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | undefined>();
 
   const roleMap: Record<string, string | null> = {
     all: null,
@@ -18,26 +31,26 @@ export function useAdminUsers(query: string, roleFilter: string) {
   };
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
     const p_query = query?.trim() ? query.trim() : null;
     const p_role = roleMap[roleFilter] ?? null;
 
-    const { data, error } = await supabase.rpc('get_users_with_profiles', {
-      p_query,
-      p_role,
-    });
+    try{
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_users_with_profiles', {
+        p_query,
+        p_role,
+      });
 
-    if (error) {
-      console.error('get_users_with_profiles error', error);
+      if (error) throw error;
+      setUsers(data ?? []);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Error fetching divisions:', err);
+      setError(error.message);
       setUsers([]);
-    } else {
-      const mapped = (data ?? []).map((u: any) => ({
-        ...u,
-        role: u.role ?? 'pending',
-      }));
-      setUsers(mapped);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [query, roleFilter]);
 
   useEffect(() => {
@@ -45,7 +58,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
   }, [fetchUsers]);
 
   const refetch = useCallback(() => {
-    sessionStorage.clear();
+    // sessionStorage.clear();
     fetchUsers();
   }, [fetchUsers]);
 
@@ -98,13 +111,14 @@ export function useAdminUsers(query: string, roleFilter: string) {
       );
 
       // Re‑cache the list
-      sessionStorage.clear();
+      // sessionStorage.clear();
       refetch();
 
       return { success: true };
-    } catch (e: any) {
-      console.error('Unexpected error in updateUserProfile:', e);
-      return { success: false, error: e.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Unexpected error in updateUserProfile:', err);
+      return { success: false, error: error.message };
     }
   };
 
@@ -119,23 +133,25 @@ export function useAdminUsers(query: string, roleFilter: string) {
         return { success: false, error: error.message };
       }
 
-      // if (data?.success === false) {
-      //   console.error('Delete failed:', data.error);
-      //   return { success: false, error: data.error };
-      // }
+      if (data?.success === false) {
+        console.error('Delete failed:', data.error);
+        return { success: false, error: data.error };
+      }
 
-      sessionStorage.clear();
+      // sessionStorage.clear();
       refetch();
-      // return { success: true, message: data?.message };
-    } catch (err: any) {
+      return { success: true, message: data?.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Unexpected error:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: error.message };
     }
   };
 
   return { 
     users, 
     loading, 
+    error,
     refetch, 
     updateUserProfile, 
     deleteUser 

@@ -24,7 +24,7 @@ interface EditContactModalProps {
   currentMinimisedCount: number;
 }
 
-interface FormData {
+export interface FormData {
   name: string;
   email: string;
   phone: string;
@@ -38,6 +38,8 @@ interface FormData {
   owner_id: string;
   notes_new: string;
 }
+
+export type { FormData as ContactFormData };
 
 const emptyForm: FormData = { name: '', email: '', phone: '', street_address: '', postcode: '', region_id: '', adults: 1, children_gt16: 0, children_lt16: 0, status: 'inactive', owner_id: '', notes_new: '' };
 
@@ -68,11 +70,12 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   maxMinimised,
   currentMinimisedCount,
 }) => {
+  if (!contact) return null;
+  const { user } = useAuth();
   const { profile } = useProfile();
   const { regions } = useRegions();
   const { divisions } = useDivisions();
   const [divsRegion, setDivsRegion] = useState<Division[]>([]);
-  const { user } = useAuth();
   const { deleteContact, updateContact, refetch: fetchContacts } = useContacts();
   const { notes, fetch: fetchNotes } = useContactNotes(contact?.id ?? null);
   const { allotment, markAttendance, toggleAllotmentServing, markServed, insertDiscretionary, 
@@ -94,24 +97,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const [condition3, setCondition3] = useState(false);
   const [showAllotment, setShowAllotment] = useState(isServing);
 
-
-
-  // const isDirty = contact
-  //   ? formData.name !== (contact.name || '') ||
-  //     formData.email !== (contact.email || '') ||
-  //     formData.phone !== (contact.phone || '') ||
-  //     formData.street_address !== (contact.street_address || '') ||
-  //     formData.postcode !== (contact.postcode || '') ||
-  //     formData.region_id !== (contact.region_id || '') ||
-  //     formData.adults !== (contact.adults || 1) ||
-  //     formData.children_gt16 !== (contact.children_gt16 || 0) || 
-  //     formData.children_lt16 !== (contact.children_lt16 || 0) ||
-  //     formData.status !== (contact.status || 'pending') ||
-  //     formData.owner_id !== (contact.owner_id || '') ||
-  //     //noteData !== (contact.notes || '')
-  //     formData.notes_new !== ''
-  //   : false;
-
   const isDirty = useMemo(() => {
     if (!contact) return false;
     return (
@@ -130,7 +115,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     );
   }, [contact, formData]); 
 
+  // if (!user || !profile) return null;
+
   useEffect(() => {
+    // if (!isOpen) return;
     if (contact && isOpen) {
       setFormData(restoredFormData ?? formFromContact(contact));
       setConfirmDelete(false);
@@ -140,7 +128,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     setDivsRegion(divs);
     setLocalContact(contact);
     if (isServing) setShowAllotment(isServing); 
-  }, [contact, isOpen, isServing, restoredFormData, profile, divisions, newAllotmentType, user?.id]); //, insertDiscretionary //@find alternative solution
+  }, [contact, isOpen, isServing, restoredFormData, profile, divisions, newAllotmentType, user?.id]);
 
   const loadDivsRegion = (_dId: string): Division[] => {
     return divsRegion;
@@ -188,6 +176,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleMarkServed = async (entryId: string) => {
     if (!entryId) return;
     await markServed(entryId);
+    onContactUpdated();
   };
 
   const handleAddAllotment = async (type: "referral" | "drop_in" | "") => {
@@ -196,7 +185,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     if (type === '' || !user?.id) return;
 
     const note = type === 'referral' ? 'Rescheduled visit' : 'Approved drop‑in';
-    await insertDiscretionary(type as any, note, user.id);
+  await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
 
     setNewAllotmentType('');
   };
@@ -267,10 +256,13 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       onContactUpdated();
       if (showAllotment) return; 
       onClose();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
     } finally {
       setIsLoading(false);
+      setCondition1(false);
+      setCondition2(false);
+      setCondition3(false);
     }
   };
 
@@ -435,4 +427,3 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   );
 };
 
-export type { FormData as ContactFormData };

@@ -84,7 +84,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Control access levels and permissions for all users in the system.
                 </p>
-                <Button className="w-[250px]" onClick={goTo('/admin/users')}>
+                <Button className="w-[250px] sm:w-half" onClick={goTo('/admin/users')}>
                   Manage User Roles
                 </Button>
               </CardContent>
@@ -104,7 +104,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   Access information about system usage.
                 </p>
-                <Button className="w-[250px]" onClick={goTo('/admin/logs')}>
+                <Button className="w-[250px] sm:w-half" onClick={goTo('/admin/logs')}>
                   View logs
                 </Button>
               </CardContent>

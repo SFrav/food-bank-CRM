@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Filter, User, Database, Activity, Trash2 } from 'lucide-react';
 import { useAuditLogs, AuditLogFilters } from '@/hooks/useAuditLogs';
 import { format } from 'date-fns';
@@ -21,7 +22,7 @@ const ACTION_COLORS = {
 };
 
 const TABLE_NAMES = [
-  'user_profiles', 'entities', 'divisions', 'system_settings', 'organizations', 'contacts'
+  'user_profiles', 'entities', 'divisions', 'contacts'
 ];
 
 export const AuditLogViewer = () => {
@@ -29,6 +30,7 @@ export const AuditLogViewer = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const { auditLogs, loading, getActivitySummary, getTableActivity, getUserActivity, refetch, currentPage, totalPages, goToNextPage, goToPreviousPage, clearAuditLogs } = useAuditLogs(filters, 5);
+
 
   const handleApplyFilters = () => {
     const newFilters: AuditLogFilters = { ...filters };
@@ -46,13 +48,14 @@ export const AuditLogViewer = () => {
   };
 
   const handleClearLogs = async () => {
-    const ok = window.confirm('Are you sure? This operation can not be undone.');
-    if (!ok) return;
+    // const ok = window.confirm('Are you sure? This operation can not be undone.');
+    // if (!ok) return;
     try {
       await clearAuditLogs(filters);
 
-    } catch (err: any) {
-      console.error('Failed to clear audit logs', err);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Failed to clear audit logs', error);
       // toast.error(err?.message);
     }
   };
@@ -61,7 +64,7 @@ export const AuditLogViewer = () => {
   const tableActivity = getTableActivity();
   const userActivity = getUserActivity();
 
-  const formatJsonPreview = (data: any) => {
+  const formatJsonPreview = (data: unknown) => {
     if (!data) return 'No data';
     
     try {
@@ -71,7 +74,7 @@ export const AuditLogViewer = () => {
       if (keys.length <= 3) {
         return JSON.stringify(obj, null, 2);
       } else {
-        const preview: Record<string, any> = {};
+        const preview: Record<string, unknown> = {};
         keys.slice(0, 3).forEach(key => {
           preview[key] = obj[key];
         });
@@ -182,10 +185,38 @@ export const AuditLogViewer = () => {
                 {/* <Button onClick={refetch} variant="outline" size="sm">
                   <RefreshCw className="size-4" />
                 </Button> */}
-                <Button onClick={handleClearLogs} variant="destructive" size="sm">
+                {/* <Button onClick={handleClearLogs} variant="destructive" size="sm">
                   <Trash2 className="size-4 mr-1" />
                   Clear Logs
-                </Button>
+                </Button> */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                    >
+                    <Trash2 className="size-4 mr-1" />
+                    Clear Logs
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear Logs</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to clear these logs? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleClearLogs}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
 
@@ -198,7 +229,7 @@ export const AuditLogViewer = () => {
                     <TableHead>Action</TableHead>
                     <TableHead>Table</TableHead>
                     <TableHead>User</TableHead>
-                    <TableHead>Entity</TableHead>
+                    {/* <TableHead>Entity</TableHead> */}
                     <TableHead>Details</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -236,9 +267,9 @@ export const AuditLogViewer = () => {
                         <TableCell className="max-w-[150px] truncate">
                           {log.user_name}
                         </TableCell>
-                        <TableCell className="max-w-[150px] truncate">
+                        {/* <TableCell className="max-w-[150px] truncate">
                           {log.entity_name}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>
                           <Sheet>
                             <SheetTrigger asChild>
@@ -263,7 +294,7 @@ export const AuditLogViewer = () => {
                                       <div><strong>Action:</strong> {log.action_type}</div>
                                       <div><strong>Table:</strong> {log.table_name}</div>
                                       <div><strong>User:</strong> {log.user_name}</div>
-                                      <div><strong>Entity:</strong> {log.entity_name}</div>
+                                      {/* <div><strong>Entity:</strong> {log.entity_name}</div> */}
                                       <div><strong>Time:</strong> {format(new Date(log.created_at), 'PPpp')}</div>
                                       <div><strong>Record ID:</strong> {log.record_id || 'N/A'}</div>
                                     </div>

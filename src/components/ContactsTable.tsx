@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,73 +6,41 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/StatusBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PermissionGuard } from '@/components/PermissionGuard';
 import { AddContactModal } from '@/components/modals/AddContact';
 import { MergeContactModal } from '@/components/modals/MergeContact';
 import { useContacts, Contact } from '@/hooks/useContacts';
-import { useToast } from '@/hooks/use-toast';
+import { useDivisionSettings, DivisionSettings } from '@/hooks/useDivisionSettings';
+import { useProfile } from '@/hooks/useProfile';
+import { useToast } from '@/hooks/useToast';
 
 interface ContactsTableProps {
+  contacts: Contact[];
+  loading: boolean;
   filterQueue: boolean;
   setFilterQueue: (value: boolean) => void;
   onDuplicateAdd: (dup: Contact) => void;
   onEditContact: (contact: Contact) => void;
+  refetch: (filterQueue: boolean) => Promise<void>;
 }
-
-interface BadgeProps {
-  role: 'active' | 'inactive' | 'pending';
-  className?: string;
-}
-
-export const StatusBadge = ({ role, className = "" }: BadgeProps) => {
-  const getConfig = (role: string) => {
-    switch (role) {
-      case 'active':
-        return {
-          label: 'Active',
-          className: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
-        };
-      case 'pending':
-        return {
-          label: 'Pending',
-          className: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800'
-        };
-      case 'inactive':
-        return {
-          label: 'Inactive',
-          className: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-800'
-        };
-      default:
-        return {
-          label: 'Unknown',
-          className: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-800'
-        };
-    }
-  };
-
-  const config = getConfig(role);
-
-  return (
-  <Badge 
-    variant='default'
-    className={`flex items-center gap-1 ${config.className} ${className}`}
-  >
-    {config.label}
-  </Badge>
-);
-};
 
 export const ContactsTable: React.FC<ContactsTableProps> = ({
+  contacts,
+  loading,
   filterQueue,
-  setFilterQueue, 
+  setFilterQueue,
   onDuplicateAdd,
-  onEditContact 
+  onEditContact,
+  refetch
 }) => {
-  const [orderDesc] = useState(false);
+  // const [orderDesc] = useState(false);
   // const [filterQueue, setFilterQueue] = useState(false);
-  const { contacts, loading, refetch} = useContacts(orderDesc); //orderDesc, filterQueue
+  // const { contacts, loading, refetch } = useContacts(orderDesc); //orderDesc, filterQueue
   const { toast } = useToast();
+  const { settingsMap, loading: settingsLoading, fetchSettings} = useDivisionSettings();
+  const { profile, updateProfile, refetch: fetchProfile, loading: loadingProfile } = useProfile();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('all');
   // const [filterTermStore, setFilterTermStore] = useState('active');
@@ -82,8 +50,13 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   const [primaryMerge, setPrimaryMerge] = useState<Contact | null>(null);
   const [secondaryMerge, setSecondaryMerge] = useState<Contact | null>(null);
 
+  const divisionSettings = settingsMap[profile?.division_id || ''] ?? {};
+  const dayOffset = parseInt(divisionSettings.day_offset ?? '-1', 10);
+  const todayIndex = (new Date().getDay() + 6) % 7; 
+  const dayServing = todayIndex === dayOffset;
+
   useEffect(() => {
-    if (selected.size !== 2) return;
+    if (!profile || selected.size !== 2) return;
     const ids = Array.from(selected);
     const primary = contacts.find(c => c.id === ids[0]) ?? null;
     const secondary = contacts.find(c => c.id === ids[1]) ?? null;
@@ -93,7 +66,16 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
       setMergeDialogOpen(true);
       // setSelected(new Set());
     }
-  }, [selected, contacts, refetch]);
+    if (profile?.division_id && !settingsMap[profile.division_id]) {
+      fetchSettings(profile.division_id);
+    }
+  }, [profile, selected, contacts, refetch, fetchSettings]); //, refetch
+
+  useEffect(() => {
+    if (profile?.division_id && !settingsMap[profile.division_id]) {
+      fetchSettings(profile.division_id);
+    }
+  }, [profile?.division_id, fetchSettings, settingsMap]);
 
   const toggleSelection = (id: string, checked: boolean) => {
     setSelected(prev => {
@@ -151,9 +133,9 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
     toast({ title: 'Success', description: 'Contacts exported to CSV!' });
   };
 
-  const handleQueueRefetch = useMemo(() => {
-    refetch(filterQueue)
-  }, [refetch, filterQueue]);
+  // const handleQueueRefetch = useCallback(() => {
+  //   refetch(filterQueue)
+  // }, [refetch, filterQueue]);
 
   // const handleNameInit = (searchTerm: string) => {
   //   if (searchTerm.length > 6) return searchTerm; 
@@ -210,22 +192,18 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
               </Select>
             </div>
             <div className="relative flex-1">
-              <div className="flex flex-col items-end">
-                <label className="text-sm">Queue:</label>
-                <Switch
-                  id="queue"
-                  onCheckedChange={checked => {
-                                    setFilterQueue(checked);
-                                    handleQueueRefetch;
-                                    // if (checked) {
-                                    //   setFilterTerm('active');
-                                      
-                                    // }
-                                    // else{setFilterTerm(filterTermStore);}
-                                  }}
-
-                />
-              </div>
+              <PermissionGuard permission="canServeBeneficiaries">
+                <div className={`flex flex-col items-end ${!dayServing ? 'invisible' : ''}`}>
+                  <label className="text-sm">Queue:</label>
+                  <Switch
+                    id="queue"
+                    onCheckedChange={checked => {
+                      setFilterQueue(checked);
+                      refetch(checked);
+                    }}
+                  />
+                </div>
+              </PermissionGuard>
             </div>
             </div>
             <div className="flex gap-2">
@@ -318,8 +296,8 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                         )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell max-w-[80px]">
-                        {c.status ? <StatusBadge role={c.status}>
-                          {c.status} </StatusBadge> : <span className="text-muted-foreground">&hellip;</span>}
+                        {c.status ? ( <StatusBadge role={c.status}/> 
+                        ) : (<span className="text-muted-foreground">&hellip;</span>)}
                       </TableCell>
                         <TableCell className="text-xs text-muted-foreground pl-3 pr-3 max-w-[200px]">
                           {c.notes ? (

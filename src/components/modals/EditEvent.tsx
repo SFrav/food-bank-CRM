@@ -34,6 +34,7 @@ export default function EditEventModal({
   event,
   onUpdate,
 }: EditEventProps) {
+  if (!event) return null;
   const { form, setForm, updateEvent, isSubmitting } = useCalendarForm({
     initialCalendar: event
       ? {
@@ -53,6 +54,7 @@ export default function EditEventModal({
   });
 
   useEffect(() => {
+    if (!isOpen) return;
     if (!event) return;
     setForm({
       entry_type: 'event',

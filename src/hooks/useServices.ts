@@ -7,7 +7,7 @@ export interface Service {
   name: string;
   org_type: 'government' | 'ngo' | 'faith_based';
   service: string | null;
-  address: any;
+  address: JSON;
   website: string | null;
   phone: string | null;
   email: string | null;
@@ -36,9 +36,10 @@ export function useServices(
 
       if (rpcErr) throw rpcErr;
       setServices(data ?? []);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching services:', err);
-      setError(err.message);
+      setError(error.message);
       setServices([]);
     } finally {
       setLoading(false);

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Save, X, RefreshCw, Trash2 } from 'lucide-react';
-import { useRegions } from '@/hooks/useRegions';
+import { useRegions, Region } from '@/hooks/useRegions';
 import { toast } from 'sonner';
 
 export const RegionManagement = () => {
@@ -31,14 +31,15 @@ export const RegionManagement = () => {
       setNewRegionName('');
       setNewRegionCode('');
       toast.success('Region created successfully');
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       toast.error(error.message || 'Failed to create region');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleEdit = (region: any) => {
+  const handleEdit = (region: Region) => {
     setEditingId(region.id);
     setEditingName(region.name);
     setEditingCode(region.code);
@@ -62,7 +63,8 @@ export const RegionManagement = () => {
       setEditingName('');
       setEditingCode('');
       toast.success('Region updated successfully');
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       toast.error(error.message || 'Failed to update region');
     } finally {
       setUpdating(null);
@@ -80,7 +82,8 @@ export const RegionManagement = () => {
     try {
       await updateRegion(id, null, null, !isActive );
       toast.success(isActive ? 'Region deactivated' : 'Region activated');
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       toast.error(error.message || 'Failed to update region status');
     } finally {
       setUpdating(null);
@@ -100,7 +103,8 @@ export const RegionManagement = () => {
       } else {
         toast.success('Region deleted successfully');
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       toast.error(error.message || 'Failed to delete region');
     } finally {
       setDeleting(null);

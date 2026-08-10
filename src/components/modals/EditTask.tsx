@@ -1,5 +1,5 @@
 //import { useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,7 @@ export default function EditTaskModal({
   onClose,
   onUpdate
 }: EditTaskProps) {
+  if (!task) return null;
 
   const { form, setForm, updateEvent: updateTask, isSubmitting, } = useCalendarForm({ initialCalendar: task, beneficiaries, loadContacts, onSuccess: onUpdate, });
 
@@ -65,6 +66,7 @@ export default function EditTaskModal({
       <DialogContent className="sm:max-w-[525px]">
       <DialogHeader>
         <DialogTitle>Edit Task</DialogTitle>
+        <DialogDescription> </DialogDescription>
       </DialogHeader>
         <div className="space-y-4">
           <div>

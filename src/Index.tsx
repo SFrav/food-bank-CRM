@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProfile } from "@/hooks/useProfile";
+import { useProfile, UserProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -38,7 +38,7 @@ const Index = () => {
         role: profile.role,
         entity_id: profile.entity_id,
         division_id: profile.division_id,
-        manager_id: (profile as any).manager_id,
+        manager_id: (profile as UserProfile).manager_id,
         is_active: profile.is_active
       });
 

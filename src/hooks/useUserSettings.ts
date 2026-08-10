@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 export interface UserSettings {
   dark_mode?: string;
@@ -33,12 +33,13 @@ export const useUserSettings = () => {
 
       const settingsMap: Record<string, string> = {};
       if (data) {
-        data.forEach((setting: any) => {
+        data.forEach((setting) => {
           settingsMap[setting.setting_key] = setting.setting_value;
         });
       }
-      setSettings(settingsMap);
-    } catch (err: any) {
+      setSettings(settingsMap as UserSettings);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching settings:', err);
       // toast({
       //   title: 'Error',
@@ -82,14 +83,16 @@ export const useUserSettings = () => {
       if (error) throw error;
       fetchSettings()
       setSettings(prev => ({ ...prev, [key]: value }));
-
-    } catch (err) {
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error updating setting:', err);
       toast({
         title: 'Error',
         description: 'Could not save your settings.',
         variant: 'destructive',
       });
+      return { success: false, error: error.message };
     }
   }, [user, toast]);
 

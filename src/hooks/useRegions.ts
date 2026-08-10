@@ -27,9 +27,10 @@ export const useRegions = () => {
 
         if (rpcErr) throw rpcErr;
         setRegions(data ?? []);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err as { message?: string }; 
         console.error('Error fetching regions:', err);
-        setError(err.message);
+        setError(error.message);
         setRegions([]);
       } finally {
         setLoading(false);
@@ -49,9 +50,10 @@ export const useRegions = () => {
       if (error) throw error;
       await fetchRegions(); 
       return { data, error: null };
-    } catch (err: any) {
-      console.error(err);
-      return { data: null, error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error(error);
+      return { data: null, error: error.message };
     }
   };
 
@@ -75,9 +77,10 @@ export const useRegions = () => {
       if (error) throw error;
       await fetchRegions(); 
       return { data, error: undefined };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string };
       console.error(err)
-      return { data: null, error: err.message };
+      return { data: null, error: error.message };
     }
   };
 
@@ -92,8 +95,10 @@ export const useRegions = () => {
       if (error) throw error;
       await fetchRegions(); 
       return { error: null };
-    } catch (err: any) {
-      return { error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Delete error', err);
+      return { error: error.message };
     }
   };
 

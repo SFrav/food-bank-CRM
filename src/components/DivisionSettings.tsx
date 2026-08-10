@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw } from 'lucide-react';
+// import { RefreshCw } from 'lucide-react';
 import { useDivisions } from '@/hooks/useDivisions';
 import { useEntities } from '@/hooks/useEntities';
 import { useDivisionSettings, DivisionSettings } from '@/hooks/useDivisionSettings';

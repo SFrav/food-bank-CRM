@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
+import { useProfile, UserProfile } from "@/hooks/useProfile";
 import { RoleBadge } from "@/components/RoleBadge";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -56,7 +56,7 @@ export function CRMHeader() {
           {/* Role Display */}
           {profile?.role && (
             <RoleBadge 
-              role={profile.role as any} 
+              role={profile.role as UserProfile['role']} 
               showEnhanced={true}
               className="hidden sm:flex"
             />

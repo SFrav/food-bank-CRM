@@ -32,9 +32,10 @@ export const useEntities = () => {
 
       if (error) throw error;
       setEntities(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching entities:', err);
-      setError(err.message);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -59,9 +60,10 @@ export const useEntities = () => {
       
       await fetchEntities();
       return { entityId, error: null };
-    } catch (err: any) {
-      console.error('Error creating entity:', err);
-      return { data: null, error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Error creating entity:', error);
+      return { data: null, error: error.message };
     }
   };
 
@@ -90,9 +92,10 @@ export const useEntities = () => {
       await fetchEntities();
       return { success, error: null };
       // return { data, error: null };
-    } catch (err: any) {
-      console.error('Error updating entity:', err);
-      return { data: null, error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error('Error updating entity:', error);
+      return { data: null, error: error.message };
     }
   };
 
@@ -117,9 +120,10 @@ export const useEntities = () => {
 
       await fetchEntities();
       return { error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error deleting entity:', err);
-      return { error: err.message };
+      return { error: error.message };
     }
   };
 

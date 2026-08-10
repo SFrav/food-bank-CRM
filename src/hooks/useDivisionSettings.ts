@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivisions } from './useDivisions';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 export interface DivisionSettings {
   allotment_weeks?: string;
@@ -31,7 +31,8 @@ export const useDivisionSettings = () => {
       });
 
       setSettingsMap(prev => ({ ...prev, [division_id]: local as DivisionSettings }));
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching settings:', err);
       toast({
         title: 'Error',
@@ -58,13 +59,16 @@ export const useDivisionSettings = () => {
 
       if (error) throw error;
       await fetchSettings(division_id);
-    } catch (err) {
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error updating setting:', err);
       toast({
         title: 'Error',
         description: 'Could not save settings.',
         variant: 'destructive',
       });
+      return { success: false, error: error.message };
     }
   }, [fetchSettings, toast]);
 

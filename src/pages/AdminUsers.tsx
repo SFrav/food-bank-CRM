@@ -1,13 +1,13 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleBadge } from '@/components/RoleBadge';
-import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { Users, useAdminUsers } from '@/hooks/useAdminUsers';
 // import EditUserModal from '@/components/modals/EditUser';
-import { useProfile, UserProfile } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { useRegions } from '@/hooks/useRegions';
 import { useEntities } from '@/hooks/useEntities';
@@ -29,7 +29,7 @@ export default function AdminUsers() {
   const { entities, refetch: refetchEntities } = useEntities();
   const { refetch: refetchDivisions } = useDivisions();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handler = () => {
       refetchDivisions();
       refetchEntities();
@@ -37,12 +37,12 @@ export default function AdminUsers() {
     window.addEventListener('org-units-changed', handler);
     return () => window.removeEventListener('org-units-changed', handler);
   }, [refetchDivisions, refetchEntities]);
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [selectedUser, setSelectedUser] = useState<Users | null>(null);
   const [savingUsers, setSavingUsers] = useState<Set<string>>(new Set());
 
-  const filteredUsers = users || [];
+  const filteredUsers = useMemo(() => users ?? [], [users]);
 
-  const saveUserRole = async (
+  const saveUserRole = useCallback(async (
     userId: string,
     role: string,
     entityId: string | null,
@@ -51,29 +51,29 @@ export default function AdminUsers() {
     regionId: string | null
   ) => {
     setSavingUsers(prev => new Set(prev).add(userId));
-    const result = await updateUserProfile(userId, role as UserProfile['role'], entityId, divisionId, managerId, regionId);
+    const result = await updateUserProfile(userId, role as Users['role'], entityId, divisionId, managerId, regionId);
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
     if (result.success) {
       toast.success('User updated successfully');
-      setTimeout(() => refetch(), 300);
     } else {
       toast.error(result.error || 'Failed to update user');
     }
     return result;
-  };
+  }, [updateUserProfile]);
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = useCallback(async (userId: string) => {
     setSavingUsers(prev => new Set(prev).add(userId));
     const result = await deleteUser(userId);
+    setSelectedUser(null);
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
     if (!result.success) {
       toast.error('Failed to delete user: ' + (result.error || 'Unknown error'));
     } else {
       toast.success('User deleted successfully');
-      refetch();
     }
     return result;
-  };
+  }, [deleteUser]);
+
 
   return (
     <div className="space-y-6">
@@ -120,7 +120,7 @@ export default function AdminUsers() {
                   <TableRow>
                     <TableHead className="min-w-[140px]">Name</TableHead>
                     <TableHead className="min-w-[180px] hidden sm:table-cell">Email</TableHead>
-                    <TableHead className="min-w-[140px]">Role</TableHead>
+                    <TableHead className="w-[200px]">Role</TableHead>
                     <TableHead className="min-w-[120px] text-right text-muted-foreground text-xs font-normal">
                       Entity
                     </TableHead>
@@ -173,19 +173,23 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
       </PermissionGuard>
-      <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}>
-        <EditUserModal
-          user={selectedUser}
-          open={!!selectedUser}
-          onClose={() => setSelectedUser(null)}
-          onSave={saveUserRole}
-          onDelete={handleDeleteUser}
-          entities={entities}
-          regions={regions}
-          currentUserRole={profile?.role}
-          currentUserId={profile?.id}
-        />
-      </Suspense>
+      {!!selectedUser && (
+        <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}>
+          <EditUserModal
+            //key={selectedUser?.id ?? 'modal'} //@Workaround to resolve this issue: "Internal React error: Expected static flag was missing.". Not related to lazy load. Adding usersLoading checks to modal didn't resolve
+            user={selectedUser}
+            isOpen={!!selectedUser}
+            usersLoading={usersLoading}
+            onClose={() => setSelectedUser(null)}
+            onSave={saveUserRole}
+            onDelete={handleDeleteUser}
+            entities={entities}
+            regions={regions}
+            currentUserRole={profile?.role}
+            currentUserId={profile?.id}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

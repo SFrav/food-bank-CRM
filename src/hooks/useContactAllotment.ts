@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-//import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 export interface ContactAllotment {
   allotment_id: string;
@@ -17,21 +17,27 @@ export interface ContactAllotment {
 export const useContactAllotment = (contactId: string | null) => {
   const [allotment, setAllotment] = useState<ContactAllotment[]>([]);
   const [loading, setLoading] = useState(false);
-  //const { toast } = useToast();
+  const [error, setError] = useState<string | undefined>();
+  const { toast } = useToast();
 
   const fetch = useCallback(async () => {
     if (!contactId) return;
     setLoading(true);
+    setError(undefined);
     try{
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .rpc('get_allotment', { p_contact_id: contactId });
-      if (!error && data) setAllotment(data as ContactAllotment[]);
-        } catch (err) {
+      if (err) throw err;
+      setAllotment(data as ContactAllotment[] ?? []);
+        } catch (err: unknown) {
+          const error = err as { message?: string }; 
           console.error(err);
+          setError(error.message || 'Failed to load allotment');
+          toast({ title: 'Error', description: error.message || 'Failed to load allotment', variant: 'destructive' });
         } finally {
         setLoading(false);
       }
-    }, [contactId]);
+    }, [toast, contactId]);
 
   const markAttendance = useCallback(
     async (id: string) => {
@@ -41,8 +47,11 @@ export const useContactAllotment = (contactId: string | null) => {
         setAllotment(prev => prev.map(n => (n.allotment_id === id ? { ...n, attended: true } : n)));
         setLoading(false);
         fetch();
-      } catch (err) { 
+        return { success: true };
+      } catch (err: unknown) { 
+        const error = err as { message?: string };
         console.error(err);
+        return { success: false, error: error.message };
       } finally {
         setLoading(false);
       }
@@ -55,8 +64,11 @@ export const useContactAllotment = (contactId: string | null) => {
         await supabase.rpc('toggle_allotment_serving', { p_id: id});
         setAllotment(prev => prev.map(n => n.allotment_id === id ? { ...n, serving: !n.serving } : n));
         fetch();
-      } catch (err) { 
+        return { success: true };
+      } catch (err: unknown) {
+        const error = err as { message?: string }; 
         console.error(err);
+        return { success: false, error: error.message };
       } finally {
         setLoading(false);
       }
@@ -69,8 +81,11 @@ export const useContactAllotment = (contactId: string | null) => {
         await supabase.rpc('mark_allotment_served', { p_id: id});
         setAllotment(prev => prev.map(n => n.allotment_id === id ? { ...n, served: true } : n));
         fetch();
-      } catch (err) { 
+        return { success: true };
+      } catch (err: unknown) { 
+        const error = err as { message?: string };
         console.error(err);
+        return { success: false, error: error.message };
       } finally {
         setLoading(false);
       }
@@ -114,6 +129,7 @@ export const useContactAllotment = (contactId: string | null) => {
     allotment, 
     fetch, 
     loading,
+    error,
     markAttendance,
     toggleAllotmentServing,
     markServed,

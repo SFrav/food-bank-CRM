@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 // import type { Task } from '@/integrations/supabase/types';  
 
 export interface Task {
@@ -29,10 +29,11 @@ export function useTasks() {
     try {
       const { data, error } = await supabase.rpc('get_tasks');
       if (error) throw error;
-      setTasks(data as any);
-    } catch (err: any) {
+      setTasks(data as Task[]);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error(err);
-      toast({ title: 'Error', description: err.message ?? 'Failed to load tasks', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message ?? 'Failed to load tasks', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -52,9 +53,10 @@ export function useTasks() {
       if (error) throw error;
       toast({ title: 'Success', description: `Marked ${status}` });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error(err);
-      toast({ title: 'Error', description: err.message ?? 'Failed to update status', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message ?? 'Failed to update status', variant: 'destructive' });
     }
   }, [toast]); 
 
@@ -63,12 +65,16 @@ export function useTasks() {
       const { error } = await supabase.rpc('delete_calendar', { p_id: id });
       if (error) throw error;
       toast({ title: 'Deleted', description: 'Calendar entry removed' });
+      await fetch();
+      return { success: true };
 
-    } catch (err: any) {
-      console.error(err);
-      toast({ title: 'Error', description: err.message ?? 'Failed to delete', variant: 'destructive' });
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error(error);
+      toast({ title: 'Error', description: error.message ?? 'Failed to delete', variant: 'destructive' });
+      return { success: false, error: error.message };
     }
-  }, [toast]); 
+  }, [fetch, toast]); 
 
   return { 
     tasks, 

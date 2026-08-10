@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 // import { useUserSettings } from './useUserSettings';
 
 export interface Notification {
@@ -11,7 +11,7 @@ export interface Notification {
   title: string;
   message: string;
   link?: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
   is_read: boolean;
   created_at: string;
 }
@@ -22,7 +22,8 @@ interface NotificationsContextType {
   bellNotifications: Notification[];
   unreadBellCount: number;
   loading: boolean;
-  createNotification: (p_title: string, p_message: string, p_link: string, p_type: 'alert' | 'dm') => Promise<{ success: boolean; error?: any }>; 
+  createNotification: (p_title: string, p_message: string, p_link: string, p_type: 'alert' | 'dm', p_target_user: string | null, 
+    p_org_role: 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null) => Promise<{ success: boolean; error?: unknown }>; 
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refetch: () => Promise<void>;

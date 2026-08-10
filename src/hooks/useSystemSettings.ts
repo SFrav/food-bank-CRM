@@ -5,7 +5,7 @@ import { useProfile } from './useProfile';
 export interface SystemSetting {
   id: string;
   setting_key: string;
-  setting_value: any;
+  setting_value: string;
   updated_by: string | null;
   updated_at: string;
 }
@@ -33,14 +33,15 @@ export const useSystemSettings = () => {
 
       if (rpcErr) throw rpcErr;
       setSettings(data || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const updateSetting = async (key: string, value: any) => {
+  const updateSetting = async (key: string, value: string) => {
     if (!profile?.role || profile.role !== 'admin') {
       throw new Error('Only admins can update system settings');
     }
@@ -55,8 +56,9 @@ export const useSystemSettings = () => {
       
       await fetchSettings();
       // return { data: data || null, error: null };
-    } catch (err: any) {
-      return { data: null, error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      return { data: null, error: error.message };
     }
   };
 

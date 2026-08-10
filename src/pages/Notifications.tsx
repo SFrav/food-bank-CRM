@@ -11,8 +11,10 @@ import { Bell, AlertTriangle, Target, CheckSquare, Brain, Settings as SettingsIc
 import { useNotifications, Notification } from '@/hooks/useNotificationsContext';
 // import { useCreateNotifications } from "@/hooks/useNotifications";
 import { useProfile } from "@/hooks/useProfile";
-import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { useAdminUsers, Users } from '@/hooks/useAdminUsers';
 import { PermissionGuard } from '@/components/PermissionGuard';
+
+type TargetRole = 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null
 
 const getTypeIcon = (type: Notification['type']) => {
   switch (type) {
@@ -48,7 +50,7 @@ const NotificationsPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [targetUser, setTargetUser] = useState('');
-  const [targetRole, setTargetRole] = useState('');
+  const [targetRole, setTargetRole] = useState<TargetRole>(null);
   const [type, setType] = useState<'dm' | 'alert'>('dm');
 
   useEffect(() => {
@@ -86,7 +88,7 @@ const NotificationsPage: React.FC = () => {
 
   const filteredUsers = useMemo(() => {
     if (!profile) return [];   
-    return allUsers.filter((u: any) => u.id !== profile.user_id && u.entity_id === profile.entity_id);
+    return allUsers.filter((u: Users) => u.id !== profile.user_id && u.entity_id === profile.entity_id);
   }, [allUsers, profile]);
 
   const handleSubmit = async () => {
@@ -102,7 +104,7 @@ const NotificationsPage: React.FC = () => {
       setTitle('');
       setMessage('');
       setTargetUser('');
-      setTargetRole('');
+      setTargetRole(null);
     }
   };  
   const getTypeBadgeVariant = (type: Notification['type']) => {
@@ -217,7 +219,7 @@ const NotificationsPage: React.FC = () => {
             <CardTitle>Post Notification</CardTitle>
           </CardHeader>
           <CardContent>
-            <Select value={type} onValueChange={v => setType(v as any)}>
+            <Select value={type} onValueChange={v => setType(v as "alert" | "dm")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
@@ -240,7 +242,7 @@ const NotificationsPage: React.FC = () => {
                   <SelectValue placeholder="Select a user" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredUsers.map((user: any) => (
+                  {filteredUsers.map((user: Users) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.full_name ?? user.email}
                     </SelectItem>
@@ -250,7 +252,7 @@ const NotificationsPage: React.FC = () => {
             )}
 
             {type === 'alert' && (
-              <Select value={targetRole} onValueChange={v => setTargetRole(v as any)}>
+              <Select value={targetRole} onValueChange={v => setTargetRole(v as TargetRole)}>
                 <SelectTrigger className="w-full mt-4"> 
                   <SelectValue placeholder="Target role" />
                 </SelectTrigger>

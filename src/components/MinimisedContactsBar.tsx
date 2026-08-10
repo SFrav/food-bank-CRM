@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Maximize2 } from 'lucide-react';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { ContactFormData } from '@/components/modals/EditContact';
 
 export interface MinimisedContact {
   contact: {
@@ -11,6 +12,7 @@ export interface MinimisedContact {
     notes: string | null;
   };
   isDirty: boolean;
+  savedFormData: ContactFormData;
 }
 
 interface MinimisedContactsBarProps {

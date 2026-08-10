@@ -11,6 +11,7 @@ import { Division } from '@/hooks/useDivisions';
 import { Textarea } from '@/components/ui/textarea';
 import { ContactFormData } from '@/components/modals/EditContact';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { ContactNote } from '@/hooks/useContactNotes';
 
 interface ContactEditFormProps {
   formData: ContactFormData;
@@ -31,7 +32,7 @@ interface ContactEditFormProps {
   regions: Region[];
   divsRegion: Division[];
   loadDivsRegion: (dId: string) => Division[];
-  notes: any[];
+  notes: ContactNote[];
   handleDelete: () => void;
   setConfirmDelete: React.Dispatch<React.SetStateAction<boolean>>;
   setIgnoreCloseWarning: React.Dispatch<React.SetStateAction<boolean>>;

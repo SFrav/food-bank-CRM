@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 // import { PermissionGuard } from '@/components/PermissionGuard';
+import { useDivisions, Division } from '@/hooks/useDivisions';
+import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import { Contact } from '@/hooks/useContacts';
+import { ContactAllotment } from '@/hooks/useContactAllotment';
 import { ContactFormData } from '@/components/modals/EditContact';
 
 
@@ -26,7 +29,7 @@ interface ContactEditAllotmentProps {
   handleToggleHallal: () => Promise<void>;
   handleAddAllotment: (v: string) => Promise<void>;
   loadingAllotment: boolean;
-  allotment: any[];
+  allotment: ContactAllotment[];
   newAllotmentType: string;
   // setNewAllotmentType: React.Dispatch<React.SetStateAction<string>>;
   newAllotmentNote: string;
@@ -56,8 +59,25 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   handleMarkAttended,
   handleMarkServed,
 }) => {
-
+  const { divisions } = useDivisions();
+  const { settingsMap, fetchSettings } = useDivisionSettings();
+  const [divId, setDivId] = useState('');
   const [showAll, setShowAll] = useState(false);
+
+  const divisionSettings = settingsMap[divId || ''] ?? {}; 
+  const allotmentWeeks = parseInt(divisionSettings.allotment_weeks ?? '0', 10);
+  const exclusionWeeks = parseInt(divisionSettings.exclusion_weeks ?? '0', 10);
+  const visibleMonths = Math.max(3, Math.ceil((allotmentWeeks + exclusionWeeks) / 4));
+
+  useEffect(() => {
+    if (!contact) return;
+    const div = String(divisions.filter((d) => d.manager_id === contact.owner_id).map(d => (d.id))); 
+    setDivId(div);
+
+    if (div && !settingsMap[div]) {
+      fetchSettings(div);
+    }
+  }, [divisions, fetchSettings, settingsMap]);
 
   const displayedAllotment = useMemo(() => {
     if (!allotment) return [];
@@ -66,11 +86,12 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
       return arr.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     const allotmentRecent = new Date();
-    allotmentRecent.setMonth(allotmentRecent.getMonth() - 3); //@ add entity setting in DB so head can change number of months visible (or use exclusion period)
+    allotmentRecent.setDate(1); 
+    allotmentRecent.setMonth(allotmentRecent.getMonth() - visibleMonths); 
     return arr
       .filter(entry => new Date(entry.date) >= allotmentRecent)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [allotment, showAll]);
+  }, [allotment, showAll, visibleMonths]);
 
 
   const normalizeDate = (d: string | Date) => {

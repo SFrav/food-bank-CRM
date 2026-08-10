@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Area, AreaChart } from "recharts";
-import { BarChart3, TrendingUp, Activity, Calendar, ExternalLink } from "lucide-react";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,  Line, Area, AreaChart } from "recharts";
+import { TrendingUp } from "lucide-react";
+import type { TooltipProps } from "recharts";
 
 interface DivisionChartProps {
   dateRange: string;
@@ -15,6 +16,18 @@ interface MonthlyTrendData {
   conversion: number;
 }
 
+type CustomTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    payload: MonthlyTrendData;
+    value: number;
+    dataKey: keyof MonthlyTrendData;
+    color: string;
+    name: string;
+  }>;
+  label?: string;
+};
+
 export function DivisionChart({ dateRange }: DivisionChartProps) {
   const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrendData[]>([]);
 
@@ -23,21 +36,19 @@ export function DivisionChart({ dateRange }: DivisionChartProps) {
     setMonthlyTrends([]);
   }, [dateRange]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-popover border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.dataKey === 'value' ? entry.value : 
-                           entry.dataKey === 'conversion' ? `${entry.value}%` : entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
+  const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+    return (
+      <div className="bg-popover border rounded-lg p-3 shadow-lg">
+        <p className="font-medium">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {entry.dataKey === 'value' ? entry.value : 
+                          entry.dataKey === 'conversion' ? `${entry.value}%` : entry.value}
+          </p>
+        ))}
+      </div>
+    );
   };
 
   return (

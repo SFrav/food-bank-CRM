@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
 
 export interface Division {
   id: string;
@@ -16,6 +17,7 @@ export function useDivisions(
   entityId?: string | null
 ) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined | null>(undefined);
@@ -32,9 +34,10 @@ export function useDivisions(
 
       if (rpcErr) throw rpcErr;
       setDivisions(data ?? []);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error('Error fetching divisions:', err);
-      setError(err.message);
+      setError(error.message);
       setDivisions([]);
     } finally {
       setLoading(false);
@@ -55,9 +58,10 @@ export function useDivisions(
       if (rpcErr) throw rpcErr;
       await fetchDivisions();
       return data as string; // returns new division id
-    } catch (err: any) {
-      console.error(err);
-      return { data: null, error: err.message };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error(error);
+      return { data: null, error: error.message };
     }
   };
 
@@ -76,23 +80,30 @@ export function useDivisions(
       });
       if (rpcErr) throw rpcErr;
       await fetchDivisions();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
       console.error(err);
-      return { data: null, error: err.message };
+      return { data: null, error: error.message };
     }
   };
 
-  const deleteDivision = async (id: string) => {
+  const deleteDivision = useCallback(
+    async (id: string) => {
     try{
       const { error: rpcErr } = await supabase.rpc('delete_division', {
         p_id: id,
       });
       if (rpcErr) throw rpcErr;
       await fetchDivisions();
-    } catch (err: any) {
-      return { error: err.message };
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+      return { success: false, error: error.message };
     }
-  };
+  },
+  [fetchDivisions, toast]
+);
 
   return {
     divisions,

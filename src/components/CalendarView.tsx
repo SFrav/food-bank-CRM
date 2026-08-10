@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, parseISO } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, MoreHorizontal, Edit, Trash2, MapPin, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,16 +46,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onAdd,
   onBulkAdd,
 }) => {
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const startPad = monthStart.getDay();
-  const endPad = 6 - monthEnd.getDay();
-  const padded = [
-    ...Array.from({ length: startPad }, (_, i) => new Date(monthStart.getTime() - (startPad - i) * 86400000)),
-    ...days,
-    ...Array.from({ length: endPad }, (_, i) => new Date(monthEnd.getTime() + (i + 1) * 86400000)),
-  ];
+  const { padded } = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    const startPad = monthStart.getDay();
+    const endPad = 6 - monthEnd.getDay();
+
+    const padded = [
+      ...Array.from(
+        { length: startPad },
+        (_, i) => new Date(monthStart.getTime() - (startPad - i) * 86400000)
+      ),
+      ...days,
+      ...Array.from(
+        { length: endPad },
+        (_, i) => new Date(monthEnd.getTime() + (i + 1) * 86400000)
+      ),
+    ];
+    return { monthStart, monthEnd, padded };
+  }, [currentDate]);
+  
   const eventsFor = (d: Date) => events.filter(ev => isSameDay(parseISO(ev.starts_at), d));
 
   if (isLoading)
