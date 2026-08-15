@@ -156,7 +156,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
                     </Label>
                   <Input
                     id={field}
-                    value={primary[field] ?? ''}
+                    value={primary[field] as string ?? ''}
                     disabled
                     // onChange={e =>
                     //   setPrimary(prev => ({ ...prev, [field]: e.target.value }))
@@ -201,7 +201,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
                     </Label>
                   <Input
                     id={field}
-                    value={secondary[field] ?? ''}
+                    value={secondary[field] as string ?? ''}
                     disabled
                     // onChange={e =>
                     //   setPrimary(prev => ({ ...prev, [field]: e.target.value }))

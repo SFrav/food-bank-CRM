@@ -85,9 +85,9 @@ export const useEntities = () => {
         throw rpcError;
       }
 
-      if (!success) {
-        throw new Error('Entity not found or update failed');
-      }
+      // if (!success) {
+      //   throw new Error('Entity not found or update failed');
+      // }
 
       await fetchEntities();
       return { success, error: null };
@@ -114,9 +114,9 @@ export const useEntities = () => {
         throw rpcError;
       }
 
-      if (!success) {
-        throw new Error('Entity not found or delete failed');
-      }
+      // if (!success) {
+      //   throw new Error('Entity not found or delete failed');
+      // }
 
       await fetchEntities();
       return { error: null };

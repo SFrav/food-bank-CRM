@@ -38,6 +38,7 @@ export const useUserSettings = () => {
         });
       }
       setSettings(settingsMap as UserSettings);
+      return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error fetching settings:', err);
@@ -46,6 +47,7 @@ export const useUserSettings = () => {
       //   description: 'Failed to load your settings.',
       //   variant: 'destructive',
       // });
+      return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
@@ -56,7 +58,7 @@ export const useUserSettings = () => {
 
     try {
       if (key.startsWith('notification_') && value === 'false') {
-        let p_type: string | undefined;
+        let p_type: "alert" | "calendar" | "referral" | "dm" | "task" | "ref_decision" | "system"; // string | undefined;
         let p_org_role: string | undefined;
 
         if (key === 'notification_tasks') p_type = 'task';

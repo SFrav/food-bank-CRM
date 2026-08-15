@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {useServices, Service} from "@/hooks/useServices"
 import { useRegions, Region } from '@/hooks/useRegions';
@@ -29,10 +29,10 @@ interface ServiceFormData {
 interface AddServiceModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onServiceAdded: () => void;
 }
 
-export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddServiceModalProps) {
+export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}: AddServiceModalProps) {
   const [loading, setLoading] = useState(false);
   const {createService} = useServices();
   const { regions } = useRegions();
@@ -54,47 +54,45 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
     region_id: ''
   });
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!formData.name.trim()) return;
 
     setLoading(true);
-    try {
-      const newService: Service = {
-        id: '', 
-        name: formData.name.trim(),
-        org_type: 'ngo', 
-        service: formData.service.trim() || null,
-        address: {
-          street: formData.address.street.trim(),
-          city: formData.address.city.trim(),
-          state: formData.address.state.trim(),
-          postcode: formData.address.postcode.trim(),
-          country: formData.address.country.trim(),
-        },
-        region_id: formData.region_id,
-        website: formData.website.trim() || null,
-        phone: formData.phone.trim() || null,
-        email: formData.email.trim() || null,
-        approval_status: null, 
-        is_active: true,      
-        notes: formData.notes.trim() || null,
-        created_by: null,     
-        created_at: '',     
-      };
+    const newService: Service = {
+      id: '', 
+      name: formData.name.trim(),
+      org_type: 'ngo', 
+      service: formData.service.trim() || null,
+      address: {
+        street: formData.address.street.trim(),
+        city: formData.address.city.trim(),
+        state: formData.address.state.trim(),
+        postcode: formData.address.postcode.trim(),
+        country: formData.address.country.trim(),
+      },
+      region_id: formData.region_id,
+      website: formData.website.trim() || null,
+      phone: formData.phone.trim() || null,
+      email: formData.email.trim() || null,
+      approval_status: null, 
+      is_active: true,      
+      notes: formData.notes.trim() || null,
+      created_by: null,     
+      created_at: '',     
+    };
 
-      await createService(newService);
+    await createService(newService);
 
-      // Reset & close
-      handleReset();
-      onOpenChange(false);
-      onSuccess?.();
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error('Error creating service:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // refetch();
+
+    // Reset & close
+    handleReset();
+    onOpenChange(false);
+    onServiceAdded();
+
+    setLoading(false);
+
+  }, [createService]);
 
   const handleReset = () => {
     setFormData({
@@ -133,6 +131,7 @@ export default function AddServiceModal({ isOpen, onOpenChange, onSuccess}: AddS
           <DialogTitle className="text-xl">
             {'Add New Service'}
           </DialogTitle>
+          <DialogDescription> </DialogDescription>
         </DialogHeader>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">

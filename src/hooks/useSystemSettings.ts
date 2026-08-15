@@ -47,7 +47,7 @@ export const useSystemSettings = () => {
     }
 
     try {
-      const { error } = await supabase.rpc('upsert_system_setting', {
+      const { data, error } = await supabase.rpc('upsert_system_setting', {
         p_setting_key: key,
         p_setting_value: value,
       });
@@ -55,7 +55,7 @@ export const useSystemSettings = () => {
       if (error) throw error;
       
       await fetchSettings();
-      // return { data: data || null, error: null };
+      return { data: data || null, error: null };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       return { data: null, error: error.message };
@@ -67,24 +67,24 @@ export const useSystemSettings = () => {
     return setting?.setting_value || null;
   };
 
-  const getEntityMode = (): EntityModeSettings => {
-    return getSetting('entity_mode') || { mode: 'single' };
-  };
+  // const getEntityMode = (): EntityModeSettings => {
+  //   return getSetting('entity_mode') || { mode: 'single' };
+  // };
 
 
-  const getDashboardDisplay = (): DashboardDisplaySettings => {
-    return getSetting('dashboard_display') || { showTitleAndRegion: false };
-  };
+  // const getDashboardDisplay = (): DashboardDisplaySettings => {
+  //   return getSetting('dashboard_display') || { showTitleAndRegion: false };
+  // };
 
-  const setEntityMode = async (mode: 'single' | 'multi') => {
-    return updateSetting('entity_mode', { mode });
-  };
+  // const setEntityMode = async (mode: 'single' | 'multi') => {
+  //   return updateSetting('entity_mode', { mode });
+  // };
 
 
-  const setDashboardDisplay = async (showTitleAndRegion: boolean) => {
-    const value: DashboardDisplaySettings = { showTitleAndRegion };
-    return updateSetting('dashboard_display', value);
-  };
+  // const setDashboardDisplay = async (showTitleAndRegion: boolean) => {
+  //   const value: DashboardDisplaySettings = { showTitleAndRegion };
+  //   return updateSetting('dashboard_display', value);
+  // };
 
   useEffect(() => {
     fetchSettings();
@@ -95,10 +95,10 @@ export const useSystemSettings = () => {
     loading,
     error,
     getSetting,
-    getEntityMode,
-    getDashboardDisplay,
-    setEntityMode,
-    setDashboardDisplay,
+    // getEntityMode,
+    // getDashboardDisplay,
+    // setEntityMode,
+    // setDashboardDisplay,
     updateSetting,
     refetch: fetchSettings,
   };

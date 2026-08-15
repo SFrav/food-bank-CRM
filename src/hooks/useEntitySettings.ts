@@ -66,6 +66,7 @@ export const useEntitySettings = () => {
 
       if (error) throw error;
       await fetchSettings(entity_id);
+      return { success: true };
     } catch (err: unknown) {
       console.error('Error updating setting:', err);
       toast({
@@ -73,6 +74,7 @@ export const useEntitySettings = () => {
         description: 'Could not save settings.',
         variant: 'destructive',
       });
+      return { success: false, error: err };
     }
   }, [fetchSettings, toast]);
 

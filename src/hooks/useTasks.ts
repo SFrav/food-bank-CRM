@@ -52,11 +52,12 @@ export function useTasks() {
 
       if (error) throw error;
       toast({ title: 'Success', description: `Marked ${status}` });
-
+      return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(err);
       toast({ title: 'Error', description: error.message ?? 'Failed to update status', variant: 'destructive' });
+      return { success: false, error: error.message };
     }
   }, [toast]); 
 

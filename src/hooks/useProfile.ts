@@ -43,7 +43,7 @@ export const useProfile = () => {
 
       if (fetchError) throw fetchError;
 
-      setProfile(profileData as UserProfile);
+      setProfile(profileData as any);
 
     } catch (err: unknown) {
       const error = err as { message?: string }; 

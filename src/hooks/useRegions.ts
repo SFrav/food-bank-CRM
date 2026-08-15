@@ -23,10 +23,10 @@ export const useRegions = () => {
         setLoading(true);
         setError(undefined);
 
-        const { data, error: rpcErr } = await supabase.rpc('get_regions', { });
+        const { data, error: rpcErr } = await supabase.rpc('get_regions');
 
         if (rpcErr) throw rpcErr;
-        setRegions(data ?? []);
+        setRegions(data as Region[] ?? []);
       } catch (err: unknown) {
         const error = err as { message?: string }; 
         console.error('Error fetching regions:', err);

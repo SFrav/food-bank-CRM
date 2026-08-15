@@ -1,24 +1,37 @@
-import { useState } from "react"; //, lazy, Suspense
+import { useState, useCallback } from "react"; //, lazy, Suspense
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Building, Search, Plus, Phone, Mail } from "lucide-react";
 import AddServiceModal from "@/components/modals/AddService";
-import {useServices} from "@/hooks/useServices"
+import DetailServiceModal from "@/components/modals/DetailService"
+import {useServices, Service} from "@/hooks/useServices"
 
 // const AddServiceModal = lazy(() =>
 //   import("@/components/modals/AddService")
 // );
 
 const Services = () => {
-  const {services, loading: isLoading} = useServices();
+  const {services, loading: isLoading, deleteService, refetch} = useServices();
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const filteredServices = services?.filter((service) =>
     service.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     service.service?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleAddService = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  const handleDeleteService = useCallback(async (serviceId: string) => {
+    await deleteService(serviceId);
+    setSelectedService(null);
+    await refetch();
+  }, [deleteService, refetch]);
 
   return (
     <div className="space-y-6">
@@ -46,7 +59,8 @@ const Services = () => {
           ) : filteredServices && filteredServices.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredServices.map((service) => (
-                <Card key={service.id} className="hover:shadow-md transition-shadow">
+                <Card key={service.id} className="hover:shadow-md transition-shadow"
+                onClick={() => {setSelectedService(service); setShowDetailModal(true);}}>
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg">
@@ -92,11 +106,19 @@ const Services = () => {
       </Card>
 
       {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
-        <AddServiceModal
-          isOpen={showAddModal}
-          onOpenChange={setShowAddModal}
-        />
+      <AddServiceModal
+        isOpen={showAddModal}
+        onOpenChange={setShowAddModal}
+        onServiceAdded={handleAddService}
+      />
       {/* </Suspense> */}
+      <DetailServiceModal
+            // key={selectedService?.id ?? 'modal'}
+            service={selectedService}
+            isOpen={showDetailModal}
+            onClose={() => setSelectedService(null)}
+            onDelete={handleDeleteService}
+          />
     </div>
   );
 };

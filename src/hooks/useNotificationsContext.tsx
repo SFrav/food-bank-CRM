@@ -24,8 +24,8 @@ interface NotificationsContextType {
   loading: boolean;
   createNotification: (p_title: string, p_message: string, p_link: string, p_type: 'alert' | 'dm', p_target_user: string | null, 
     p_org_role: 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null) => Promise<{ success: boolean; error?: unknown }>; 
-  markAsRead: (id: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
+  markAsRead: (id: string) => Promise<{ success: boolean; error?: string | undefined; }>; 
+  markAllAsRead: () => Promise<{ success: boolean; error?: string | undefined; }>;
   refetch: () => Promise<void>;
 }
 
@@ -56,23 +56,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAsRead = useCallback(async (id: string) => {
     try {
-      await supabase.rpc('mark_notification_read', { p_id: id });
+      const { error: rpcErr } = await supabase.rpc('mark_notification_read', { p_id: id });
       // Optimistic UI update
+      if (rpcErr) throw rpcErr;
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-    } catch (e) {
-      console.error(e);
+      return { success: true };
+    } catch (err) {
+      const error = err as { message?: string };
+      console.error(err);
       toast({ title: 'Error', description: 'Could not mark notification as read.', variant: 'destructive' });
+      return { success: false, error: error.message };
       // Rollback optimistic update if needed, though DB sync will fix it eventually
     }
   }, [toast]);
 
   const markAllAsRead = useCallback(async () => {
     try {
-      await supabase.rpc('mark_all_notifications_read');
+      const { error: rpcErr } = await supabase.rpc('mark_all_notifications_read');
+      if (rpcErr) throw rpcErr;
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    } catch (e) {
-      console.error(e);
+      return { success: true };
+      } catch (err) {
+      const error = err as { message?: string };
+      console.error(err);
       toast({ title: 'Error', description: 'Could not mark all as read.', variant: 'destructive' });
+      return { success: false, error: error.message };
     }
   }, [toast]);
 

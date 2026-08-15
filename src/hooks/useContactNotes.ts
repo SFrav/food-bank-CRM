@@ -19,9 +19,12 @@ export const useContactNotes = (contactId: string | null) => {
     try{
     const { data, error } = await supabase
       .rpc('get_contact_notes', { p_contact_id: contactId });
+    if (error) throw error;
     if (!error && data) setNotes(data as ContactNote[]);
+    return { success: true };
     } catch (err: unknown) { 
         console.error(err);
+        return { success: false, error: err };
       } finally {
         // setLoading(false);
       }
@@ -33,11 +36,14 @@ export const useContactNotes = (contactId: string | null) => {
         const { error } = await supabase.rpc('delete_contact_note', {
           p_note_id: noteId,
         });
+        if (error) throw error;
         if (!error) {
           setNotes(prev => prev.filter(n => n.note_id !== noteId));
+          return { success: true };
         }
       } catch (err: unknown) { 
         console.error(err);
+        return { success: false, error: err };
       } finally {
         // setLoading(false);
       }

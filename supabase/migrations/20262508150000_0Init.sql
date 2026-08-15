@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "infant" boolean DEFAULT NULL,
     "allergies" boolean DEFAULT NULL,
     "vegetarian" boolean DEFAULT NULL,
-    "hallal" boolean DEFAULT NULL, 
+    "hallal" boolean DEFAULT NULL, --@ add no_cooking, no_freezer, no_fridge, gluten free? Move all these preferences to another table?
     "notes" "text",
     "owner_id" "uuid",
     "updated_by" "uuid",
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS "public"."entities" (
     "name" "text" NOT NULL,
     "code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
-    "is_referrer" boolean DEFAULT false NOT NULL,
+    "is_referrer" boolean DEFAULT false NOT NULL, --@ CREATE TABLE entities_linked - join referrers to food banks and foodbanks to eachother 
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
@@ -219,7 +219,7 @@ CREATE TABLE IF NOT EXISTS "public"."regions" (
 CREATE TABLE IF NOT EXISTS "public"."system_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "setting_key" "text" NOT NULL,
-    "setting_value" "text", --@set enum to align with types
+    "setting_value" "text", --@revised from jsonb --@set enum to align with types
     "updated_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT "now"()
 );
@@ -378,7 +378,7 @@ ALTER TABLE ONLY "public"."audit_logs"
     ADD CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id"); 
+    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id"); --@ check if should be user_id
 
 ALTER TABLE ONLY "public"."user_profiles"
     ADD CONSTRAINT "user_profiles_email_key" UNIQUE ("email");
@@ -670,6 +670,7 @@ LIMIT p_page_size
 OFFSET ((p_page - 1) * p_page_size);
 $$;
 
+
 CREATE OR REPLACE FUNCTION "public"."admin_clear_audit_logs"(
     p_filters jsonb
 )
@@ -921,6 +922,9 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update settings';
+    END IF;
     INSERT INTO entity_settings (entity_id, setting_key, setting_value)
     VALUES (p_entity_id, p_setting_key, p_setting_value)
     ON CONFLICT (entity_id, setting_key) DO UPDATE
@@ -953,6 +957,9 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update settings';
+    END IF;
     INSERT INTO division_settings (division_id, setting_key, setting_value)
     VALUES (p_division_id, p_setting_key, p_setting_value)
     ON CONFLICT (division_id, setting_key) DO UPDATE
@@ -987,6 +994,9 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update settings';
+    END IF;
     INSERT INTO user_settings (user_id, setting_key, setting_value)
     VALUES (p_user_id, p_setting_key, p_setting_value)
     ON CONFLICT (user_id, setting_key) DO UPDATE
@@ -1081,16 +1091,150 @@ $$;
 
 
 -- User management
---CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+--REMOVED
+$$;
 
+CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+--REMOVED
+END;
+$$;
 
---CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
+  "p_profile_id" "uuid", 
+  "p_role" "public"."role_enum" DEFAULT NULL,
+  "p_entity_id" "uuid" DEFAULT NULL, 
+  "p_division_id" "uuid" DEFAULT NULL, 
+  "p_manager_id" "uuid" DEFAULT NULL, 
+  "p_region_id" "uuid" DEFAULT NULL
+  ) 
+  RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_is_admin boolean;
+  v_uid uuid;
+  v_target_profile_id uuid;
+  old_row jsonb; --for audit log
+  new_row  public.user_profiles; --for audit log
+BEGIN
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+  SELECT row_to_json(up)
+  INTO old_row
+  FROM public.user_profiles up
+  WHERE up.user_id = p_profile_id;
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles
+    WHERE user_id = v_uid
+      AND role = 'admin'
+    LIMIT 1
+  ) INTO v_is_admin;
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION 'Only admin can use this function';
+  END IF;
+  SELECT id
+  INTO v_target_profile_id
+  FROM public.user_profiles
+  WHERE id = p_profile_id
+     OR user_id = p_profile_id
+  LIMIT 1;
+  IF v_target_profile_id IS NULL THEN
+    RAISE NOTICE 'Profile not found for identifier %', p_profile_id;
+    RETURN FALSE;
+  END IF;
+  UPDATE public.user_profiles
+  SET
+    role = COALESCE(p_role, role),
+    entity_id = COALESCE(p_entity_id, entity_id),
+    division_id = COALESCE(p_division_id, division_id),
+    manager_id = COALESCE(p_manager_id, manager_id),
+    region_id = COALESCE(p_region_id, region_id),
+    updated_at = now()
+  WHERE id = v_target_profile_id
+  RETURNING * INTO new_row;
+  PERFORM log_audit_event('UPDATE', 'user_profiles', p_profile_id, old_row, row_to_json(new_row)::jsonb);
+  RETURN FOUND;
+END;
+$$;
 
---CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
-
-
---CREATE OR REPLACE FUNCTION "public"."admin_delete_user"("p_id" "uuid") RETURNS "jsonb"
-
+CREATE OR REPLACE FUNCTION "public"."admin_delete_user"("p_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_user_id uuid;
+  v_profile_id uuid;
+  v_role text;
+  old_row jsonb; --for audit_log
+BEGIN
+  SELECT role INTO v_role
+  FROM user_profiles
+  WHERE user_id = auth.uid();
+  IF v_role != 'admin' THEN
+    RAISE EXCEPTION 'Only admins can delete users';
+  END IF;
+  SELECT row_to_json(up)::jsonb
+  INTO old_row
+  FROM public.user_profiles up
+  WHERE up.user_id = p_id;
+  SELECT id, user_id INTO v_profile_id, v_user_id
+  FROM user_profiles
+  WHERE id = p_id;
+  IF v_profile_id IS NULL THEN
+    SELECT id, user_id INTO v_profile_id, v_user_id
+    FROM user_profiles
+    WHERE user_id = p_id;
+  END IF;
+  IF v_profile_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'User not found'
+    );
+  END IF;
+  SELECT role INTO v_role
+  FROM user_profiles
+  WHERE id = v_profile_id;
+  IF v_role = 'admin' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Cannot delete admin users'
+    );
+  END IF;
+  IF v_user_id = auth.uid() THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Cannot delete your own account'
+    );
+  END IF;
+  DELETE FROM calendar
+  WHERE created_by = v_user_id;
+  DELETE FROM user_profiles
+  WHERE id = v_profile_id;
+  PERFORM log_audit_event('DELETE', 'user_profiles', p_id, old_row, NULL);
+  RETURN jsonb_build_object(
+    'success', true,
+    'message', 'User profile deleted successfully. Auth user still exists in auth.users'
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', SQLERRM
+    );
+END;
+$$;
 
 -- User profile access for user RPCs
 CREATE OR REPLACE FUNCTION "public"."user_get_profile"()
@@ -1134,6 +1278,9 @@ SECURITY INVOKER
 SET "search_path" TO 'public', 'auth'
 AS $$
 BEGIN
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update a user profile';
+    END IF;
   UPDATE public.user_profiles
   SET full_name = coalesce(p_full_name, full_name),
       phone = coalesce(p_phone, phone),
@@ -1173,6 +1320,9 @@ AS $$
 DECLARE
     new_id uuid;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add regions';
+    END IF;
     INSERT INTO public.regions (name, code, is_active)
     VALUES (p_name, p_code, true)
     RETURNING id INTO new_id;
@@ -1191,7 +1341,9 @@ LANGUAGE plpgsql
 SET search_path TO 'public'
 AS $$
 BEGIN
-
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update regions';
+    END IF;
   UPDATE public.regions
   SET    name = COALESCE(p_name, name),
          code = COALESCE(p_code, code),
@@ -1207,6 +1359,9 @@ SECURITY DEFINER
 SET search_path TO 'public', 'auth'
 AS $$
 BEGIN
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can delete regions';
+    END IF;
   DELETE FROM public.regions
   WHERE id = p_id;
 END;
@@ -1237,6 +1392,9 @@ DECLARE
   v_id uuid;
   new_row public.contacts; --for audit log
 BEGIN
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add beneficiaries';
+    END IF;
   INSERT INTO "public"."contacts"
     (name, email, phone, street_address, postcode, region_id, adults_count, children_gt16, children_lt16, notes, status, updated_by, owner_id, created_by)
   VALUES
@@ -1276,6 +1434,9 @@ LANGUAGE sql
 SET "search_path" TO 'public'
 SECURITY INVOKER
 AS $$
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
+    END IF;
   SELECT
     id, name, email, phone, street_address, postcode, region_id, 
     adults_count AS adults, children_gt16, children_lt16, infant, 
@@ -1314,6 +1475,9 @@ LANGUAGE sql
 SET "search_path" TO 'public'
 SECURITY DEFINER --@debug to security invoker
 AS $$
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
+  END IF;
   SELECT
     id,
     name,
@@ -1367,6 +1531,9 @@ SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
+    END IF;
     IF p_exact THEN
         RETURN QUERY
         SELECT
@@ -1476,6 +1643,9 @@ DECLARE
   old_row jsonb; --for audit log
   new_row  public.contacts; --for audit log
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can update beneficiaries';
+  END IF;
   SELECT row_to_json(c)
     INTO old_row
     FROM public.contacts c
@@ -1518,17 +1688,63 @@ CREATE OR REPLACE FUNCTION "public"."merge_contacts"(
     p_secondary uuid
 ) RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER --@debug to invoker
 SET "search_path" = 'public'
 AS $$
 DECLARE
+    v_caller_role      text;
+    v_caller_entity_id uuid;
+    v_primary_owner_id uuid;
+    v_secondary_owner_id uuid;
+    v_primary_creator_id uuid;
+    v_secondary_creator_id uuid;
+    v_p_owner_entity_id uuid;
+    v_s_owner_entity_id uuid;
     v_primary_status   beneficiary_enum;
     v_secondary_status beneficiary_enum;
     v_final_status     beneficiary_enum;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can merge contacts';
+    END IF;
+
+    SELECT role::text, entity_id
+    INTO v_caller_role, v_caller_entity_id
+    FROM public.user_profiles
+    WHERE user_id = auth.uid();
+
+    SELECT owner_id , created_by
+    INTO v_primary_owner_id, v_primary_creator_id
+    FROM contacts WHERE id = p_primary;    
+
+    SELECT owner_id, created_by 
+    INTO v_secondary_owner_id, v_secondary_creator_id
+    FROM contacts WHERE id = p_secondary;
+
+    SELECT entity_id
+    INTO v_p_owner_entity_id
+    FROM public.user_profiles
+    WHERE user_id = v_primary_owner_id;
+
+    SELECT entity_id
+    INTO v_s_owner_entity_id
+    FROM public.user_profiles
+    WHERE user_id = v_secondary_owner_id;
+
+    IF v_caller_role IN ('admin', 'head') THEN
+    ELSE
+      IF v_caller_role NOT IN ('manager', 'branch_manager', 'staff', 'referrer') THEN
+        RAISE EXCEPTION 'Only head, managers, branch managers, staff and referrers can merge contacts';
+      END IF;
+      IF (v_primary_creator_id <> auth.uid() OR v_secondary_creator_id <> auth.uid()) OR 
+      (v_p_owner_entity_id <> v_caller_entity_id OR v_s_owner_entity_id <> v_caller_entity_id)  THEN
+        RAISE EXCEPTION 'Contacts must be linked to your organisation unless you are an admin and head';
+      END IF;
+    END IF;
+
     SELECT status INTO v_primary_status
       FROM contacts WHERE id = p_primary
-      FOR UPDATE;          -- lock the rows
+      FOR UPDATE;    
 
     SELECT status INTO v_secondary_status
       FROM contacts WHERE id = p_secondary
@@ -1590,6 +1806,7 @@ DECLARE
   r jsonb;
   old_row jsonb; --for audit_log
 BEGIN
+--@Restrict to admin and head
   SELECT row_to_json(c)::jsonb
   INTO old_row
   FROM public.contacts c
@@ -1607,7 +1824,7 @@ END;
 $$;
 
 
--- Core referral system logic
+-- Core referral system logic - notifications, allotment and clean-up
 --
 --
 ----
@@ -1615,11 +1832,13 @@ $$;
 ------
 --------
 --------
--- CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
--- LANGUAGE "plpgsql" SECURITY INVOKER
--- SET "search_path" TO 'public'
--- AS $$
-
+CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
+LANGUAGE "plpgsql" SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+--REMOVED
+END;
+$$;
 --------
 --------
 ------
@@ -1672,6 +1891,9 @@ SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
+  END IF;
   RETURN QUERY
   SELECT
     cn.id,
@@ -1680,7 +1902,7 @@ BEGIN
     up.full_name,
     cn.created_at
   FROM public.contacts_notes cn
-  LEFT JOIN public.get_profile_names() up 
+  LEFT JOIN public.get_profile_names() up --@Review security profile and potentially restrict return by region, entity and division by role in get_profile_names
     ON cn.created_by = up.user_id
   WHERE cn.contact_id = p_contact_id
   ORDER BY cn.created_at DESC;
@@ -1696,6 +1918,7 @@ AS $$
 DECLARE
   v_deleted boolean;
 BEGIN
+--@restrict to non-volunteer?
   DELETE FROM public.contacts_notes
   WHERE id = p_note_id
   RETURNING true INTO v_deleted;
@@ -1720,6 +1943,9 @@ SECURITY DEFINER --@debug policies
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
+  END IF;
   RETURN QUERY
   SELECT
     ca.id,
@@ -1749,6 +1975,10 @@ AS $$
 DECLARE
   v_id uuid;
 BEGIN
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add allotments';
+    END IF;
+--@ restrict to non-referrer
   INSERT INTO public.contacts_allotment
       (contact_id, date, visit_num, attended, serving, served, type) 
   VALUES
@@ -1766,7 +1996,22 @@ CREATE OR REPLACE FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") R
   LANGUAGE "plpgsql" SECURITY INVOKER
   SET "search_path" TO 'public'
   AS $$
+DECLARE
+  v_caller_role text;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can mark attendance';
+    END IF;
+  
+    SELECT role::text
+    INTO v_caller_role
+    FROM public.user_profiles
+    WHERE user_id = auth.uid();
+
+    IF v_caller_role NOT IN ('admin', 'head', 'manager', 'branch_manager', 'staff', 'volunteer') THEN
+      RAISE EXCEPTION 'Referrers can not administer food parcels';
+    END IF;
+
     UPDATE public.contacts_allotment
        SET attended = TRUE
      WHERE id = p_id
@@ -1774,17 +2019,44 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."toggle_allotment_serving"("p_id" "uuid") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") RETURNS "void"
   LANGUAGE "plpgsql" SECURITY INVOKER
   SET "search_path" TO 'public'
   AS $$
+DECLARE
+  v_caller_role text;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can mark as serving';
+    END IF;
+
+    SELECT role::text
+    INTO v_caller_role
+    FROM public.user_profiles
+    WHERE user_id = auth.uid();
+
+    IF v_caller_role NOT IN ('admin', 'head', 'manager', 'branch_manager', 'staff', 'volunteer') THEN
+      RAISE EXCEPTION 'Referrers can not administer food parcels';
+    END IF;
+
     UPDATE public.contacts_allotment
        SET serving = NOT serving
      WHERE id = p_id;
+    RETURN;
 END;
 $$;
 
+-- CREATE OR REPLACE FUNCTION "public"."mark_allotment_served"("p_id" "uuid") RETURNS "void"
+--   LANGUAGE "plpgsql" SECURITY INVOKER
+--   SET "search_path" TO 'public'
+--   AS $$
+-- BEGIN
+--     UPDATE public.contacts_allotment
+--        SET served = TRUE
+--      WHERE id = p_id
+--        AND served = FALSE;
+-- END;
+-- $$;
 
 CREATE OR REPLACE FUNCTION public.mark_allotment_served(p_id uuid)
 RETURNS void
@@ -1793,9 +2065,23 @@ SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 DECLARE
+  v_caller_role text;
   v_contact_id uuid;
   v_has_future boolean;
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can mark as served';
+  END IF;
+
+  SELECT role::text
+  INTO v_caller_role
+  FROM public.user_profiles
+  WHERE user_id = auth.uid();
+
+  IF v_caller_role NOT IN ('admin', 'head', 'manager', 'branch_manager', 'staff', 'volunteer') THEN
+    RAISE EXCEPTION 'Referrers can not administer food parcels';
+  END IF;
+
   UPDATE public.contacts_allotment
      SET served = TRUE
    WHERE id = p_id
@@ -1862,6 +2148,9 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
+  IF auth.uid() IS NULL THEN
+   RAISE EXCEPTION 'Only authenticated users can view division summaries';
+  END IF;
   SELECT
     d.id,
     d.name,
@@ -2003,6 +2292,7 @@ BEGIN
 END;
 $$;
 
+--@ add region?   
 CREATE OR REPLACE FUNCTION public.update_division(
   p_id          uuid,
   p_name        text,
@@ -2018,6 +2308,10 @@ DECLARE
   old_row jsonb; --for audit log
    new_row  public.divisions; --for audit log
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can update divisions';
+  END IF;
+  --@ add check on role to match policy
   SELECT row_to_json(d)
   INTO old_row
   FROM public.divisions d
@@ -2054,6 +2348,10 @@ AS $$
 DECLARE
   old_row jsonb; --for audit_log
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can delete divisions';
+  END IF;
+  --@add check on role to match policy
   SELECT row_to_json(d)::jsonb
   INTO old_row
   FROM public.divisions d
@@ -2074,6 +2372,9 @@ AS $$
 DECLARE
   other_manager uuid;
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can update division manager';
+  END IF;
   --Manager added / moved to a division
   IF NEW.role = 'manager' AND NEW.is_active AND NEW.division_id IS NOT NULL THEN
     UPDATE public.divisions
@@ -2124,6 +2425,9 @@ SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can view tasks';
+  END IF;
   RETURN QUERY
     SELECT
       ta.id,
@@ -2172,6 +2476,9 @@ DECLARE
     v_division_id  uuid;
     v_user_id      uuid;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can view events';
+    END IF;
     SELECT role, entity_id, division_id, user_id
     INTO   v_role, v_entity_id, v_division_id, v_user_id
     FROM   public.user_profiles
@@ -2219,6 +2526,9 @@ SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add events';
+    END IF;
     INSERT INTO public.calendar (
         entry_type, subject, location, beneficiary_id, pic_id,
         scheduled_at, status, notes,
@@ -2240,6 +2550,9 @@ AS $$
 DECLARE
   rec jsonb;
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can add events';
+  END IF;
   FOR rec IN SELECT * FROM jsonb_array_elements(events)
   LOOP
     INSERT INTO public.calendar (
@@ -2279,6 +2592,10 @@ SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update events and tasks';
+    END IF;
+    --@ add role and user_id=created_by restrictions
     UPDATE public.calendar SET
         entry_type     = p_entry_type,
         subject       = p_subject,
@@ -2302,6 +2619,9 @@ SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update events and tasks';
+    END IF;
     UPDATE public.calendar SET
         status        = p_status,
         updated_at    = NOW()
@@ -2317,6 +2637,9 @@ SECURITY INVOKER
 SET "search_path" TO "public"
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can delete events and tasks';
+    END IF;
     DELETE FROM public.calendar WHERE id = p_id;
 END;
 $$;
@@ -2526,6 +2849,10 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+--
+--
+--
+--@
 
 
 CREATE OR REPLACE FUNCTION "public"."get_user_notifications"(
@@ -2546,6 +2873,9 @@ LANGUAGE sql
 SECURITY INVOKER
 SET search_path TO 'public', 'auth'
 AS $$
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can view notifications';
+    END IF;
   SELECT n.id,
          n.org_role,
          n.type,
@@ -2599,6 +2929,9 @@ AS $$
 DECLARE
     v_notif_id uuid;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add notifications';
+    END IF;
     INSERT INTO public.notifications
         (calendar_id, org_role, type, title, message, link, meta)
     VALUES
@@ -2623,6 +2956,9 @@ CREATE OR REPLACE FUNCTION "public"."mark_notification_read"("p_id" "uuid") RETU
   SET "search_path" TO 'public'
   AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can mark notifications as read';
+    END IF;
     UPDATE public.notifications_user
        SET is_read = TRUE, read_at = NOW()
      WHERE notification_id = p_id
@@ -2637,6 +2973,9 @@ CREATE OR REPLACE FUNCTION "public"."mark_all_notifications_read"()
   SET "search_path" TO 'public'
   AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can mark notifications as read';
+    END IF;
     UPDATE public.notifications_user
        SET is_read = TRUE, read_at = NOW()
      WHERE user_id = auth.uid()
@@ -2650,6 +2989,9 @@ CREATE OR REPLACE FUNCTION "public"."mark_notifications_read_by_type"(p_type pub
   SET "search_path" TO 'public'
   AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can mark notifications as read';
+    END IF;
     UPDATE public.notifications_user
        SET is_read = TRUE, read_at = NOW()
      WHERE user_id = auth.uid()
@@ -2696,6 +3038,9 @@ LANGUAGE sql
 SET "search_path" TO 'public'
 SECURITY INVOKER
 AS $$
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can view services';
+  END IF;
   SELECT
     id, name, org_type, service, address, region_id, website, phone, email, approval_status, is_active, notes, created_by
   FROM organisations
@@ -2728,6 +3073,9 @@ AS $$
 DECLARE
     new_id uuid;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add services';
+    END IF;
     INSERT INTO public.organisations (name, org_type, service, address, region_id, website, phone, email, approval_status, is_active, notes, created_by, created_at, updated_at)
     VALUES (p_name, p_org_type, p_service, COALESCE(p_address, '{}'::jsonb), p_region_id, p_website, p_phone, p_email, p_approval_status, p_is_active, p_notes, p_created_by, now(), now())
     RETURNING id INTO new_id;
@@ -2735,12 +3083,27 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION "public"."delete_organisation"(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'auth'
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can delete services';
+  END IF;
+  DELETE FROM public.organisations
+  WHERE id = p_id;
+END;
+$$;
 
 ---
 -- Triggers
 --
 
 -- Trigger: after insert on auth.users
+CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
 -- CREATE OR REPLACE TRIGGER "calendar_delete_trigger" BEFORE DELETE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_delete_trigger"();
 
@@ -2749,6 +3112,8 @@ $$;
 -- CREATE OR REPLACE TRIGGER "calendar_update_trigger" BEFORE UPDATE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_update_trigger"();
 
 CREATE OR REPLACE TRIGGER "preserve_non_admin_fields_trigger" BEFORE UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."preserve_non_admin_fields"();
+
+CREATE OR REPLACE TRIGGER "validate_user_profile_trigger" BEFORE INSERT OR UPDATE ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."validate_user_profile_assignment"();
 
 CREATE TRIGGER "contact_status_insert_trigger"
 AFTER INSERT ON "public"."contacts"
@@ -2761,7 +3126,7 @@ FOR EACH ROW
 WHEN (OLD.status IS DISTINCT FROM NEW.status)
 EXECUTE FUNCTION "public"."handle_contact_status"();
 
-CREATE TRIGGER allotment_complete_trigger 
+CREATE TRIGGER allotment_complete_trigger --@ consider changing to a cron job. This is not ideal
 AFTER INSERT OR UPDATE ON public.contacts_allotment
 FOR EACH STATEMENT
 EXECUTE FUNCTION public.handle_allotment_complete();
@@ -2794,7 +3159,7 @@ AFTER DELETE ON public.calendar
 FOR EACH ROW
 EXECUTE FUNCTION public.calendar_notify_delete();
 
-CREATE TRIGGER delete_old_notifications_trigger 
+CREATE TRIGGER delete_old_notifications_trigger --@ consider changing to a cron job. This is not ideal
 AFTER INSERT ON public.notifications
 FOR EACH STATEMENT EXECUTE FUNCTION public.delete_old_notifications();
 
@@ -2848,7 +3213,6 @@ ALTER TABLE "public"."division_settings" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."regions" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
---Policies removed for public repo
 
 --
 --Grants 
@@ -2935,7 +3299,7 @@ REVOKE EXECUTE ON FUNCTION "public"."insert_allotment_discretionary"("p_contact_
 
 REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."toggle_allotment_serving"("p_id" "uuid") FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_served"("p_id" "uuid") FROM PUBLIC; 
 
@@ -2956,7 +3320,7 @@ REVOKE EXECUTE ON FUNCTION "public"."delete_old_notifications"() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION "public"."preserve_non_admin_fields"() FROM PUBLIC;
 
 
-GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated"; --@ currently weak? Anyone can sign-up and so add to auth and user_profiles via useAuth GoTrueClient 
 
 GRANT EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_old_values" "jsonb", "p_new_values" "jsonb") TO "authenticated";
 
@@ -2992,7 +3356,7 @@ GRANT EXECUTE ON FUNCTION "public"."get_user_settings"("p_user_id" "uuid") TO "a
 
 GRANT EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; --@ currently weak? Anyone can sign-up and so add to auth and user_profiles via useAuth GoTrueClient
 
 GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text", "p_referrer" boolean) TO "authenticated";
 
@@ -3031,7 +3395,7 @@ GRANT EXECUTE ON FUNCTION "public"."insert_allotment_discretionary"("p_contact_i
 
 GRANT EXECUTE ON FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."toggle_allotment_serving"("p_id" "uuid") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."mark_allotment_served"("p_id" "uuid") TO "authenticated"; 
 

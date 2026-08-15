@@ -9,6 +9,7 @@ export interface PermissionSet {
   canApproveOrganizations: boolean;
   canAssignBeneficiaries: boolean;
   canApproveBeneficiaries: boolean;
+  canMergeBeneficiaries: boolean;
   canServeBeneficiaries: boolean;
   canSetManagerTargets: boolean;
   canSetAccountManagerTargets: boolean;
@@ -29,6 +30,7 @@ const NO_PERMISSIONS: PermissionSet = {
   canApproveOrganizations: false,
   canAssignBeneficiaries: false,
   canApproveBeneficiaries: false,
+  canMergeBeneficiaries: false,
   canServeBeneficiaries: false,
   canSetManagerTargets: false,
   canSetAccountManagerTargets: false,
@@ -61,6 +63,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: true,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
+        canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
         canViewAllManagerReports: true,
         canProposeReassignments: true,
@@ -76,6 +79,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
+        canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
         canViewAllManagerReports: true,
         canProposeReassignments: false,
@@ -90,6 +94,7 @@ export const usePermissions = (): PermissionSet => {
         canDeleteRecords: false,
         canApproveOrganizations: true,
         canApproveBeneficiaries: true,
+        canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
         canAssignBeneficiaries: true,
         canProposeReassignments: true,
@@ -105,6 +110,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: true,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
+        canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
@@ -119,6 +125,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: false,
         canApproveBeneficiaries: false,
+        canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
@@ -133,6 +140,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: false,
         canApproveBeneficiaries: false,
+        canMergeBeneficiaries: false,
         canServeBeneficiaries: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
@@ -147,6 +155,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveOrganizations: false,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: false,
+        canMergeBeneficiaries: true,
         canServeBeneficiaries: false,
         canProposeReassignments: false,
         canApproveReassignments: false,

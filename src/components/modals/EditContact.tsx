@@ -5,6 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useContacts, Contact } from '@/hooks/useContacts';
 import { useContactNotes } from '@/hooks/useContactNotes';
 import { useContactAllotment } from '@/hooks/useContactAllotment';
+import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
@@ -71,6 +72,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   currentMinimisedCount,
 }) => {
   if (!contact) return null;
+  const { toast } = useToast();
   const { user } = useAuth();
   const { profile } = useProfile();
   const { regions } = useRegions();
@@ -78,8 +80,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { deleteContact, updateContact, refetch: fetchContacts } = useContacts();
   const { notes, fetch: fetchNotes } = useContactNotes(contact?.id ?? null);
-  const { allotment, markAttendance, toggleAllotmentServing, markServed, insertDiscretionary, 
-    loading: loadingAllotment, fetch: fetchAllotment} = useContactAllotment(contact?.id ?? null);
+  const { allotment, markAttendance, markAllotmentServing, markServed, insertDiscretionary, 
+    loading: loadingAllotment, fetch: fetchAllotment, error: errorAllotment} = useContactAllotment(contact?.id ?? null);
   const [newAllotmentType, setNewAllotmentType] = useState<'referral' | 'drop_in' | ''>('');
   const [newAllotmentNote, setNewAllotmentNote] = useState('');
   // const [adding, setAdding] = useState(false);
@@ -96,6 +98,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const [condition2, setCondition2] = useState(false);
   const [condition3, setCondition3] = useState(false);
   const [showAllotment, setShowAllotment] = useState(isServing);
+  const [servingOngoing, setServingOngoing] = useState(false);
 
   const isDirty = useMemo(() => {
     if (!contact) return false;
@@ -111,9 +114,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       formData.children_lt16 !== (contact.children_lt16 ?? 0) ||
       formData.status !== (contact.status ?? 'pending') ||
       formData.owner_id !== (contact.owner_id ?? '') ||
-      formData.notes_new !== ''
+      formData.notes_new !== '' || 
+      servingOngoing
     );
-  }, [contact, formData]); 
+  }, [contact, formData, servingOngoing]); 
 
   // if (!user || !profile) return null;
 
@@ -171,12 +175,32 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleMarkAttended = async (entryId: string) => {
     if (!entryId) return;
     await markAttendance(entryId);
+    await fetchAllotment();
+  };
+
+  const handleMarkServing = async (entryId: string) => {
+    if (!contact) return;
+      const { success, error } = await markAllotmentServing(entryId);
+      if(!success) {
+        setServingOngoing(false);
+        await fetchAllotment();
+        return;
+      }
+      setServingOngoing(true);
+      await fetchAllotment();
+      
   };
 
   const handleMarkServed = async (entryId: string) => {
     if (!entryId) return;
-    await markServed(entryId);
+    const { success, error } = await markServed(entryId);
+    if(!success) {
+      await fetchAllotment();
+      return;
+    }
     onContactUpdated();
+    setServingOngoing(false);
+    await fetchAllotment();
   };
 
   const handleAddAllotment = async (type: "referral" | "drop_in" | "") => {
@@ -185,17 +209,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     if (type === '' || !user?.id) return;
 
     const note = type === 'referral' ? 'Rescheduled visit' : 'Approved drop‑in';
-  await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
+    await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
+    await fetchAllotment();
 
     setNewAllotmentType('');
-  };
-
-  const handleToggleServing = async (entryId: string) => {
-    if (!contact) return;
-    await toggleAllotmentServing(
-      entryId
-    );
-
   };
 
   const handleToggleInfant = async () => {
@@ -333,7 +350,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
               isLoading={isLoading}
               isDirty={isDirty}
               // isServing={isServing}
-              handleToggleServing={handleToggleServing}
+              handleMarkServing={handleMarkServing}
               handleToggleInfant={handleToggleInfant}
               handleToggleAllergies={handleToggleAllergies}
               handleToggleVegetarian={handleToggleVegetarian}

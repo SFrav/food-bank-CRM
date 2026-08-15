@@ -24,6 +24,21 @@ export interface Contact {
   user_id: string;
 }
 
+export interface ContactDuplicate {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  street_address: string | null;
+  postcode: string | null;
+  region_id: string | null;
+  status: string;
+  notes: string | null;
+  created_at?: string;
+  owner_id?: string;
+  user_id: string;
+}
+
 export interface UseContactsReturn {
   contacts: Contact[];
   isExactMatch: boolean;
@@ -36,7 +51,7 @@ export interface UseContactsReturn {
     name?: string | null; 
     street_address?: string | null; 
     postcode?: string | null; 
-  }) => Promise<Contact[]>;
+  }) => Promise<ContactDuplicate[]>;
   updateContact: (c: Contact) => Promise<{ success: boolean; error?: string }>;
   // updatePreferences: (c: Contact) => Promise<{ success: boolean; error?: string }>;
   mergeContacts: (primaryId: string, secondaryId: string) => Promise<{ success: boolean; error?: string }>;
@@ -75,7 +90,7 @@ export const useContacts = (
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isExactMatch, setIsExact] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined | null>(undefined);
   // const [tick, setTick] = useState(0);
   const { toast } = useToast();
 
@@ -87,7 +102,7 @@ export const useContacts = (
       const { data, error: err } = await supabase
         .rpc(fn, { p_order_desc: orderDesc });
       if (err) throw err;
-      setContacts(data ?? []);
+      setContacts(data as Contact[] ?? []);
 
     } catch (err: unknown) {
       const error = err as { message?: string }; 
@@ -114,7 +129,7 @@ export const useContacts = (
     name?: string | null;
     street_address?: string | null;
     postcode?: string | null;
-  }): Promise<Contact[]> => {
+  }): Promise<ContactDuplicate[]> => {
     const {
       email = null,
       phone = null,
@@ -182,7 +197,7 @@ export const useContacts = (
       }).single();
 
       setLoading(false);
-
+      if (rpcError) throw rpcError;
       if (rpcError) {
         toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
         console.error('Contacts insert', rpcError);
@@ -225,6 +240,7 @@ export const useContacts = (
       }).single();
     
       setLoading(false);
+      if (rpcError) throw rpcError;
 
       if (rpcError) {
         if (toastUpdateEnabled) toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
@@ -240,18 +256,23 @@ export const useContacts = (
 
   const mergeContacts = async (primaryId: string, secondaryId: string) => {
     setLoading(true);
-    // setError(undefined);
-    const { error: rpcError } = await supabase.rpc('merge_contacts', {
-      p_primary: primaryId,
-      p_secondary: secondaryId,
-    });
-
+    setError(undefined);
+    try{
+      const { error: rpcErr } = await supabase.rpc('merge_contacts', {
+        p_primary: primaryId,
+        p_secondary: secondaryId,
+      });
+      if (rpcErr) throw rpcErr;
+      await fetch();
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      console.error('Merge error', err);
+      setError(error.message); 
+      return { success: false, error: error.message };
+    } finally {
     setLoading(false);
-    if (rpcError) {
-      // setError(rpcError.message);
-      return { success: false, error: rpcError.message };
-    }
-    return { success: true };
+    }      
   };
 
   const deleteContact = useCallback(

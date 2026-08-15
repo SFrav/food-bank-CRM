@@ -33,7 +33,6 @@ export function useAdminUsers(query: string, roleFilter: string) {
   const fetchUsers = useCallback(async () => {
     const p_query = query?.trim() ? query.trim() : null;
     const p_role = roleMap[roleFilter] ?? null;
-
     try{
       setLoading(true);
       const { data, error } = await supabase.rpc('get_users_with_profiles', {
@@ -42,7 +41,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
       });
 
       if (error) throw error;
-      setUsers(data ?? []);
+      setUsers(data as Users[] ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error fetching divisions:', err);
@@ -133,14 +132,14 @@ export function useAdminUsers(query: string, roleFilter: string) {
         return { success: false, error: error.message };
       }
 
-      if (data?.success === false) {
-        console.error('Delete failed:', data.error);
-        return { success: false, error: data.error };
-      }
+      // if (data?.success === false) {
+      //   console.error('Delete failed:', data.error);
+      //   return { success: false, error: data.error };
+      // }
 
-      // sessionStorage.clear();
+      //// sessionStorage.clear();
       refetch();
-      return { success: true, message: data?.message };
+      // return { success: true, message: data?.message };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Unexpected error:', err);

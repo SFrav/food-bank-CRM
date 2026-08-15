@@ -79,7 +79,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <div className="space-y-2 w-[50%] sm:w-full">
           <Label htmlFor="phone">Phone</Label>
           <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone number" />
         </div>
@@ -94,7 +94,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             placeholder="Street Address"
           />
         </div>   
-        <div className="space-y-2">
+        <div className="space-y-2 w-[50%] sm:w-full">
           <Label htmlFor="post">Post Code</Label>
           <Input
             id="postcode"
@@ -104,7 +104,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             placeholder="Post code"
           />
         </div>                 
-        <div>
+        <div className="space-y-2 w-[50%] sm:w-full">
             <Label htmlFor="region">Region *</Label>
             <Select
               required={true}
@@ -126,7 +126,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             </Select>
           </div>
           <PermissionGuard permission="canAssignBeneficiaries"> 
-            <div>
+            <div className="space-y-2 w-[50%] sm:w-full">
               <Label htmlFor="branch">Branch</Label>
               <Select
                 value={formData.owner_id || "none"}
@@ -152,6 +152,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
       </div>
       <div className="flex align-left space-x-2">
         <div>
+          <PermissionGuard permission="canAssignBeneficiaries">
           <label htmlFor="status" className="text-sm">Change status:</label>
         {contact?.status === 'pending' && (         
             <div className="space-y-2 mb-4">
@@ -172,16 +173,15 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               </div>
             </PermissionGuard>
             </div>
-            )}
-            <PermissionGuard permission="canAssignBeneficiaries">         
-              <div className="flex items-center space-x-2 w-[125px]">
+            )}      
+              <div className="flex items-center space-x-2 w-[50%] sm:w-full">
                 <Select
                   value={formData.status}
                   onValueChange={(v: Contact["status"]) => {
                     setFormData({ ...formData, status: v });
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="sm:w-full">
                     <SelectValue placeholder="Select Status"/>
                   </SelectTrigger>
                   <SelectContent>
@@ -224,17 +224,17 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
       </div>
       <Label htmlFor="hh_composition">Household Composition</Label>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="adults">Adults</Label>
+        <div className="space-y-2 w-[30%] sm:w-full">
+          <Label htmlFor="adults">Adults (≥18)</Label>
           <Input id="adults" name="adults" type='number' min={1} step={1} 
           value={formData.adults} onChange={handleInputChange} placeholder={String(formData.adults)} />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 w-[30%] sm:w-full">
           <Label htmlFor="children_gt16">Children (≥16)</Label>
           <Input id="gt16" name="children_gt16" type='number' min={0} step={1} 
           value={formData.children_gt16} onChange={handleInputChange} placeholder="0" />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 w-[30%] sm:w-full">
           <Label htmlFor="children_lt16">Children ({'<16'})</Label>
           <Input id="lt16" name="children_lt16" type='number' min={0} step={1} 
           value={formData.children_lt16} onChange={handleInputChange} placeholder="0" />

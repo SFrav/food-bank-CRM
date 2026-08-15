@@ -151,9 +151,9 @@ export const DivisionSettingsTable = () => {
                             <SelectValue placeholder="Select time" />
                           </SelectTrigger>
                           <SelectContent>
-                            {hourOptions.map(o => (
-                              <SelectItem key={o.value} value={o.value}>
-                                {o.label}
+                            {hourOptions.map(h => (
+                              <SelectItem key={h.value} value={h.value}>
+                                {h.label}
                               </SelectItem>
                             ))}
                           </SelectContent>

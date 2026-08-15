@@ -22,7 +22,7 @@ interface ContactEditAllotmentProps {
   handleSubmit?: () => void;
   isLoading: boolean;
   isDirty: boolean;
-  handleToggleServing: (entryId: string) => Promise<void>;
+  handleMarkServing: (entryId: string) => Promise<void>;
   handleToggleInfant: () => Promise<void>;
   handleToggleAllergies: () => Promise<void>;
   handleToggleVegetarian: () => Promise<void>;
@@ -46,7 +46,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   handleSubmit,
   isLoading,
   isDirty,
-  handleToggleServing,
+  handleMarkServing,
   handleToggleInfant,
   handleToggleAllergies,
   handleToggleVegetarian,
@@ -69,6 +69,11 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   const exclusionWeeks = parseInt(divisionSettings.exclusion_weeks ?? '0', 10);
   const visibleMonths = Math.max(3, Math.ceil((allotmentWeeks + exclusionWeeks) / 4));
 
+  // const entryUpdate = useMemo(() => {
+  //   fetchAllotment();
+  //   return allotment;
+  // }, [allotment, handleMarkServing])
+
   useEffect(() => {
     if (!contact) return;
     const div = String(divisions.filter((d) => d.manager_id === contact.owner_id).map(d => (d.id))); 
@@ -77,7 +82,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     if (div && !settingsMap[div]) {
       fetchSettings(div);
     }
-  }, [divisions, fetchSettings, settingsMap]);
+  }, [contact, divisions, fetchSettings, settingsMap]);
 
   const displayedAllotment = useMemo(() => {
     if (!allotment) return [];
@@ -145,7 +150,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-4 gap-4 py-4 border-b">  
               <div>
-                <Label htmlFor="adults">Adults</Label>             
+                <Label htmlFor="adults">Adults (≥18)</Label>             
                 <Input
                   type="number"
                   name="adults"
@@ -169,7 +174,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                 />
               </div>
               <div>
-                <Label htmlFor="adults">Children ({'(<16)'})</Label>
+                <Label htmlFor="adults">Children ({'<16'})</Label>
                 <Input
                   type="number"
                   name="children_lt16"
@@ -230,9 +235,11 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
           <p>Loading allotments</p>
         ) : (
           <>
-            {displayedAllotment.length === 0 && <p>No recent allotment</p>}
-            <div className="grid grid-cols-3 text-sm text-center gap-0 mb-2 max-w-[400px] py-4 border-b">
-              {!isServed && displayedAllotment.length > 0 ? (
+            {displayedAllotment.length === 0 ? (
+              <p>No recent allotment</p>
+            ) : (
+            <div className="grid grid-cols-4 text-sm text-center gap-0 mb-2 max-w-[400px] py-4   border-b">
+              {/* {!isServed && displayedAllotment.length > 0 ? (
               <div className="flex gap-2">
                 <label className="text-sm">Serving: </label>
                 <Switch
@@ -240,7 +247,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                   disabled={currentAllotment?.serving ?? false}
                   onCheckedChange={async () => {
                     if (!currentAllotment) return;
-                    await handleToggleServing(currentAllotment.allotment_id);
+                    await handleMarkServing(currentAllotment.allotment_id);
                   }}
                 />
               </div>      
@@ -249,10 +256,13 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                 <label className="text-sm text-muted">Serving: </label>
                 <p className="invisible"> switch hidden </p>
               </div>
-              )}        
+              )}         */}
+              <p className="invisible">  </p>
               <span> Attended </span>
+              <span> Serving </span>
               <span> Served </span>
             </div>
+            )}
             {displayedAllotment.map(entry => {
               const entryDate = new Date(entry.date).toLocaleDateString('en-GB');
               const isPast = new Date(entry.date) < new Date();
@@ -262,7 +272,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
               return (
                 <div
                   key={entry.allotment_id}
-                  className={`grid grid-cols-3 text-sm items-center gap-0 mb-2 max-w-[400px] 
+                  className={`grid grid-cols-4 text-sm items-center gap-0 mb-2 max-w-[400px] 
                     ${muted ? 'text-muted-foreground' : ''}`}
                 >
                   <span>
@@ -273,6 +283,17 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                       <Checkbox
                         checked={entry.attended ?? false}
                         onCheckedChange={() => !entry.attended && handleMarkAttended(entry.allotment_id)}
+                      />
+                    )}
+                  </div>
+                  <div className="flex justify-center">
+                    {todayMatch && (
+                      <Checkbox
+                        checked={entry.serving ?? false}
+                        onCheckedChange={async () => {
+                          // if (entry.serving) return;
+                          handleMarkServing(entry.allotment_id);
+                        }}
                       />
                     )}
                   </div>

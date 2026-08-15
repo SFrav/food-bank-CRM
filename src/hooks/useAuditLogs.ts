@@ -9,9 +9,9 @@ export interface AuditLog {
   action_type: string;
   table_name: string;
   record_id: string | null;
-  old_values: JSON;
-  new_values: JSON;
-  metadata: JSON;
+  old_values: any;
+  new_values: any;
+  metadata: any;
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
@@ -86,8 +86,8 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
     actionType: string,
     tableName: string,
     recordId?: string,
-    oldValues?: JSON,
-    newValues?: JSON,
+    oldValues?: any,
+    newValues?: any,
     metadata?: JSON
   ) => {
     try {

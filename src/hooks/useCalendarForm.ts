@@ -94,15 +94,15 @@ export function useCalendarForm({
         p_beneficiary_id: form.beneficiary_id || null,
         p_pic_id: form.beneficiary_id || null,
         p_scheduled_at: scheduledAtISO,
-        p_status: form.status,
+        p_status: form.status || 'scheduled',
         p_notes: form.notes || null,
         p_created_by: user!.id,
       });
 
       if (error) throw error;
 
-      toast({ title: "Success", description: "Calendar entry created!" });
       onSuccess();
+      return { success: true };
     } catch (err: unknown) {
       console.error(err);
       toast({
@@ -110,6 +110,7 @@ export function useCalendarForm({
         description: "Failed to create calendar entry.",
         variant: "destructive",
       });
+      return { success: false, error: err };
     } finally {
       setIsSubmitting(false);
     }
@@ -125,6 +126,7 @@ export function useCalendarForm({
       if (error) throw error;
       toast({ title: "Success", description: `${events.length} events added.` });
       onSuccess();
+      return { success: true };
     } catch (err: unknown) {
       console.error(err);
       toast({
@@ -132,6 +134,7 @@ export function useCalendarForm({
         description: "Bulk insert failed.",
         variant: "destructive",
       });
+      return { success: false, error: err };
     } finally {
       setIsSubmitting(false);
     }
@@ -169,6 +172,7 @@ export function useCalendarForm({
 
       toast({ title: "Success", description: "Calendar updated!" });
       onSuccess();
+      return { success: true };
     } catch (err: unknown) {
       console.error(err);
       toast({
@@ -176,6 +180,7 @@ export function useCalendarForm({
         description: "Failed to update calendar.",
         variant: "destructive",
       });
+      return { success: false, error: err };
     } finally {
       setIsSubmitting(false);
     }

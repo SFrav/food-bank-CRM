@@ -80,6 +80,7 @@ export function useDivisions(
       });
       if (rpcErr) throw rpcErr;
       await fetchDivisions();
+      return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(err);
