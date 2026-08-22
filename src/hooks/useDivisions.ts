@@ -57,11 +57,13 @@ export function useDivisions(
       });
       if (rpcErr) throw rpcErr;
       await fetchDivisions();
-      return data as string; // returns new division id
+      //return data as string; // returns new division id
+      return { success: true }
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(error);
-      return { data: null, error: error.message };
+      toast({ title: 'Error', description: error.message || 'Failed to create', variant: 'destructive' });
+      return { success: false, error: error.message };
     }
   };
 
@@ -72,7 +74,7 @@ export function useDivisions(
     headId?: string | null
   ) => {
     try{
-      const { error: rpcErr } = await supabase.rpc('update_division', {
+      const { data, error: rpcErr } = await supabase.rpc('update_division', {
         p_id: id,
         p_name: name,
         p_entity_id: entityId,
@@ -84,6 +86,7 @@ export function useDivisions(
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(err);
+      toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
       return { data: null, error: error.message };
     }
   };
@@ -91,7 +94,7 @@ export function useDivisions(
   const deleteDivision = useCallback(
     async (id: string) => {
     try{
-      const { error: rpcErr } = await supabase.rpc('delete_division', {
+      const { data, error: rpcErr } = await supabase.rpc('delete_division', {
         p_id: id,
       });
       if (rpcErr) throw rpcErr;

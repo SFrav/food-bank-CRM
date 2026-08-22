@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Save, X, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Edit, Save, X, RefreshCw, Trash2, Loader2 } from 'lucide-react';
 import { useRegions, Region } from '@/hooks/useRegions';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/useToast';
 
 export const RegionManagement = () => {
+  const { toast } = useToast();
   const { regions, loading, createRegion, updateRegion, deleteRegion, refetch } = useRegions();
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionCode, setNewRegionCode] = useState('');
@@ -21,19 +23,20 @@ export const RegionManagement = () => {
 
   const handleCreate = async () => {
     if (!newRegionName.trim() || !newRegionCode.trim()) {
-      toast.error('Region name and code are required');
+      toast({ title: 'Error', description: 'Region name and code are required', variant: 'destructive' });
       return;
     }
 
     setCreating(true);
     try {
-      await createRegion(newRegionName.trim(), newRegionCode.trim().toUpperCase());
-      setNewRegionName('');
-      setNewRegionCode('');
-      toast.success('Region created successfully');
+      const { data, error } = await createRegion(newRegionName.trim(), newRegionCode.trim().toUpperCase());
+      if(!error || data) {
+        setNewRegionName('');
+        setNewRegionCode('');
+
+      };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to create region');
     } finally {
       setCreating(false);
     }
@@ -47,25 +50,25 @@ export const RegionManagement = () => {
 
   const handleSave = async (id: string) => {
     if (!editingName.trim() || !editingCode.trim()) {
-      toast.error('Region name and code are required');
+      toast({ title: 'Error', description: 'Region name and code are required', variant: 'destructive' });
       return;
     }
 
     setUpdating(id);
     try {
-      await updateRegion(
+      const { data, error } = await updateRegion(
         id, 
         editingName.trim() || null,
         editingCode.trim().toUpperCase() || null,
         null
       );
-      setEditingId(null);
-      setEditingName('');
-      setEditingCode('');
-      toast.success('Region updated successfully');
+      if(!error || data) {
+        setEditingId(null);
+        setEditingName('');
+        setEditingCode('');
+      }
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to update region');
     } finally {
       setUpdating(null);
     }
@@ -80,32 +83,25 @@ export const RegionManagement = () => {
   const handleToggleActive = async (id: string, isActive: boolean) => {
     setUpdating(id);
     try {
-      await updateRegion(id, null, null, !isActive );
-      toast.success(isActive ? 'Region deactivated' : 'Region activated');
+      const {data, error } = await updateRegion(id, null, null, !isActive );
+      if(!error || data) toast({ title: 'Error', description: (isActive ? 'Region deactivated' : 'Region activated'), variant: 'destructive' });
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to update region status');
     } finally {
       setUpdating(null);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete the region "${name}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = async (id: string, name: string) => { //@Revise to alert
+    // if (!confirm(`Are you sure you want to delete the region "${name}"? This action cannot be undone.`)) {
+    //   return;
+    // }
 
     setDeleting(id);
     try {
       const result = await deleteRegion(id);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success('Region deleted successfully');
-      }
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to delete region');
     } finally {
       setDeleting(null);
     }
@@ -248,19 +244,45 @@ export const RegionManagement = () => {
                             >
                               <Edit className="size-3" />
                             </Button>
-                            <Button
+                            {/*<Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleDelete(region.id, region.name)}
                               disabled={updating === region.id || deleting === region.id}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              {deleting === region.id ? (
-                                <RefreshCw className="size-3 animate-spin" />
-                              ) : (
-                                <Trash2 className="size-3" />
-                              )}
-                            </Button>
+                            > */}
+<AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                >
+                                  {deleting === region.id ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="size-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Branch</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{region.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(region.id, region.name)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>                      
                           </>
                         )}
                       </div>

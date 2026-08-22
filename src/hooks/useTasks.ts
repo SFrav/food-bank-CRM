@@ -45,7 +45,7 @@ export function useTasks() {
 
   const updateStatus = useCallback(async (id: string, status: TaskStatus) => {
     try {
-      const { error } = await supabase.rpc("update_calendar_status", {
+      const { data, error } = await supabase.rpc("update_calendar_status", {
         p_id: id,
         p_status: status,
       });
@@ -63,7 +63,7 @@ export function useTasks() {
 
   const deleteTask = useCallback(async (id: string) => {
     try {
-      const { error } = await supabase.rpc('delete_calendar', { p_id: id });
+      const { data, error } = await supabase.rpc('delete_calendar', { p_id: id });
       if (error) throw error;
       toast({ title: 'Deleted', description: 'Calendar entry removed' });
       await fetch();

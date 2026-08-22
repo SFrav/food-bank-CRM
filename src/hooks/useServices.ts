@@ -76,6 +76,10 @@ export function useServices(
   }, [fetchServices]);
 
   const createService = async (s: Service) => {
+    if(!s.region_id) {
+      toast({ title: 'Error', description: 'Region must be selected', variant: 'destructive' });
+       return { success: false, error: 'region not selected' };
+    }
     try{
       const { data, error } = await supabase.rpc('create_organisation', {
         p_name: s.name,
@@ -93,19 +97,19 @@ export function useServices(
       });
       if (error) throw error;
       // await fetchServices();
-      return { data, error: null };
+      return { success: true, error: null };
   } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error creating service:', err);
       toast({ title: 'Error', description: error.message || 'Failed to create service', variant: 'destructive' });
-      return { data: null, error: error.message };
+      return { success: false, error: error.message };
   }
     // return data as string;
   };
 
   const deleteService = useCallback(async (id: string) => {
     try {
-      const { error } = await supabase.rpc('delete_organisation', {
+      const { data, error } = await supabase.rpc('delete_organisation', {
         p_id: id
       });
       if (error) throw error;

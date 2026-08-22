@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
+type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+
 type Beneficiary = {
   id: string;
   name: string;
@@ -87,7 +89,7 @@ export function useCalendarForm({
     try {
       const scheduledAtISO = new Date(form.scheduled_at).toISOString();
 
-      const { error } = await supabase.rpc("create_calendar", {
+      const { data, error } = await supabase.rpc("create_calendar", {
         p_entry_type: form.entry_type,
         p_subject: form.subject || null,
         p_location: form.location || null,
@@ -120,8 +122,8 @@ export function useCalendarForm({
     if (!user) throw new Error("User not authenticated");
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.rpc("create_calendar_bulk", {
-        events,
+      const { data, error } = await supabase.rpc("create_calendar_bulk", {
+        events: events as unknown as Json
       });
       if (error) throw error;
       toast({ title: "Success", description: `${events.length} events added.` });
@@ -156,7 +158,7 @@ export function useCalendarForm({
     try {
       const scheduledAtISO = new Date(form.scheduled_at).toISOString();
 
-      const { error } = await supabase.rpc("update_calendar", {
+      const { data, error } = await supabase.rpc("update_calendar", {
         p_id: initialCalendar.id,
         p_entry_type: form.entry_type,
         p_subject: form.subject || null,
@@ -185,25 +187,6 @@ export function useCalendarForm({
       setIsSubmitting(false);
     }
   };
-
-  // const deleteEvent = async (calendarId: string) => {
-  //   setIsSubmitting(true);
-  //   try {
-  //     const { error } = await supabase.rpc("delete_calendar", { p_id: calendarId });
-  //     if (error) throw error;
-  //     toast({ title: "Deleted", description: "Calendar entry removed." });
-  //     onSuccess();
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to delete calendar entry.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
 
   useEffect(() => {
     if (initialCalendar?.beneficiary_id && loadContacts) {

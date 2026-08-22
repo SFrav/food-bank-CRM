@@ -51,10 +51,10 @@ export default function EditTaskModal({
   const beneficiaryName = beneficiaries.find(b => b.id === form.beneficiary_id)?.name ?? "Unknown";
 
   const handleSave = async () => {
-    try{
-      await updateTask(); 
-      onClose();   
-    } catch {}     
+    const { success } = await updateTask(); 
+    if(success){
+      onClose();  
+    };
   };
 
   const handleClose = () => {

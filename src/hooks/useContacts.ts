@@ -10,14 +10,14 @@ export interface Contact {
   street_address: string | null;
   postcode: string | null;
   region_id: string | null;
-  adults: number | null;
-  children_gt16: number | null;
-  children_lt16: number | null;
+  adults?: number | null;
+  children_gt16?: number | null;
+  children_lt16?: number | null;
   infant?: boolean;
   allergies?: boolean;
   vegetarian?: boolean;
   hallal?: boolean;
-  status: "pending" | "active" | "inactive" | "banned";
+  status: "pending" | "active" | "inactive" | "banned" | "merged";
   notes: string | null;
   created_at?: string;
   owner_id?: string;
@@ -32,7 +32,7 @@ export interface ContactDuplicate {
   street_address: string | null;
   postcode: string | null;
   region_id: string | null;
-  status: string;
+  status: "pending" | "active" | "inactive" | "banned" | "merged";
   notes: string | null;
   created_at?: string;
   owner_id?: string;
@@ -63,11 +63,11 @@ export interface UseContactsReturn {
     street_address: string | null;
     postcode: string | null;
     region_id: string | null;
-    adults: number | null;
-    children_gt16: number | null;
-    children_lt16: number | null;
+    adults?: number | null;
+    children_gt16?: number | null;
+    children_lt16?: number | null;
     notes: string | null;
-    status: string; //@"pending" | "active" | "inactive" | "banned";
+    status: "pending" | "active" | "inactive" | "banned" | "merged";
     user_id: string;
     owner_id?: string;
   }) => Promise<{ success: boolean; error?: string }>;
@@ -149,10 +149,10 @@ export const useContacts = (
       });
 
     if (exactErr) throw exactErr;
-
+ 
     if (exact && exact.length > 0) {
       setIsExact(true);
-      return exact.slice(0, 4);
+      return exact.slice(0, 4) as ContactDuplicate[];
     }
 
     const { data: fuzzy, error: fuzzyErr } = await supabase
@@ -168,7 +168,7 @@ export const useContacts = (
     if (fuzzyErr) throw fuzzyErr;
 
     setIsExact(false);
-    return fuzzy?.slice(0, 4) ?? [];
+    return fuzzy?.slice(0, 4) as ContactDuplicate[] ?? [];
   };
 
   const createContact = useCallback(
@@ -203,7 +203,7 @@ export const useContacts = (
         console.error('Contacts insert', rpcError);
         return { success: false, error: rpcError.message };
       }
-      toast({ title: 'Success', description: 'Contact created successfully' });
+      //toast({ title: 'Success', description: 'Contact created successfully' });
       return { success: true };
     },
     [toast]
@@ -246,7 +246,7 @@ export const useContacts = (
         if (toastUpdateEnabled) toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
         return { success: false, error: rpcError.message };
       }
-      if (toastUpdateEnabled) toast({ title: 'Success', description: 'Contact updated successfully' });
+      //if (toastUpdateEnabled) toast({ title: 'Success', description: 'Contact updated successfully' });
       fetch();
       return { success: true };
       
@@ -258,7 +258,7 @@ export const useContacts = (
     setLoading(true);
     setError(undefined);
     try{
-      const { error: rpcErr } = await supabase.rpc('merge_contacts', {
+      const { data, error: rpcErr } = await supabase.rpc('merge_contacts', {
         p_primary: primaryId,
         p_secondary: secondaryId,
       });
@@ -269,6 +269,7 @@ export const useContacts = (
       const error = err as { message?: string };
       console.error('Merge error', err);
       setError(error.message); 
+      toast({ title: 'Error', description: error.message || 'Failed to merge', variant: 'destructive' });
       return { success: false, error: error.message };
     } finally {
     setLoading(false);
@@ -278,10 +279,10 @@ export const useContacts = (
   const deleteContact = useCallback(
     async (id: string) => {
       try {
-        const { error: rpcErr } = await supabase.rpc('delete_contact', { p_id: id });
+        const { data, error: rpcErr } = await supabase.rpc('delete_contact', { p_id: id });
         if (rpcErr) throw rpcErr;
 
-        await fetch();
+        if(data) await fetch();
         // toast({ title: 'Success', description: 'Contact deleted successfully' });
 
         return { success: true };

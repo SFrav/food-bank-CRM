@@ -31,7 +31,7 @@ export function useCalendar() {
       const end = endOfMonth(date).toISOString();
       const { data, error } = await supabase.rpc('get_calendar', { start_date: start, end_date: end });
       if (error) throw error;
-      setEvents((data || []).map((a: any) => ({ //Calendar type has a conflict on status
+      setEvents((data as Calendar[] || []).map((a) => ({
         id: a.id,
         subject: a.subject || (a.entry_type ? a.entry_type.replace('_', ' ') : 'Task'),
         starts_at: a.scheduled_at,
@@ -57,7 +57,7 @@ export function useCalendar() {
     try {
       setEvents((prev) => prev.filter((ev) => ev.id !== id));
 
-      const { error } = await supabase.rpc('delete_calendar', { p_id: id });
+      const { data, error } = await supabase.rpc('delete_calendar', { p_id: id });
       if (error) throw error;
       toast({ title: 'Deleted', description: 'Calendar entry removed' });
 

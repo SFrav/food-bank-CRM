@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 //import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ArrowRightLeft, Maximize2, Minimize } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+// import { useToast } from '@/hooks/useToast';
 import { useContacts, Contact } from '@/hooks/useContacts';
 import { useRegions } from '@/hooks/useRegions';
 import { cn } from '@/lib/utils';
@@ -39,12 +39,12 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
 }) => {
   if (!initialPrimary || !initialSecondary) return null;
   const { mergeContacts } = useContacts();
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
   const [primary, setPrimary] = useState<Contact>(initialPrimary);
   const [secondary, setSecondary] = useState<Contact>(initialSecondary);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { regions } = useRegions();
 
   useEffect(() => {
@@ -69,16 +69,16 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
   };
 
   const handleMerge = async () => {
-    setLoading(true);
+    setIsLoading(true);
     const { success, error } = await mergeContacts(primary.id, secondary.id);
-    setLoading(false);
     if (!success) {
-      toast({ title: 'Error', description: error ?? 'Merge failed', variant: 'destructive' });
+      // toast({ title: 'Error', description: error ?? 'Merge failed', variant: 'destructive' });
       return;
     }
-    toast({ title: 'Success', description: 'Contacts merged' });
+    // toast({ title: 'Success', description: 'Contacts merged' });
     onMerged();
     onClose();
+    setIsLoading(false);
   };
 
   return (
@@ -217,11 +217,11 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
         </div>
 
         <DialogFooter className="flex justify-end p-4 gap-2 border-t">
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleMerge} disabled={loading}>
-            {loading ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : 'Merge'}
+          <Button onClick={handleMerge} disabled={isLoading}>
+            {isLoading ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : 'Merge'}
           </Button>
         </DialogFooter>
       </DialogContent>

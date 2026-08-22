@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import { useContacts, Contact } from '@/hooks/useContacts';
+import { useContacts, Contact, ContactDuplicate } from '@/hooks/useContacts';
 import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
 import { useDivisions, Division } from '@/hooks/useDivisions';
@@ -38,7 +38,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { createContact, checkDuplicates, isExactMatch } = useContacts();
   const [checkingDup, setCheckingDup] = useState(false);
-  const [duplicateCandidates, setDuplicateCandidates] = useState<Contact[] | null>(null);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<ContactDuplicate[] | null>(null);
   const [dupExact, setDupExact] = useState(false);
   const lastFormDataKey = useRef<string | null>(null);
   const lastDuplicates = useRef<Contact[] | null>(null);
@@ -54,7 +54,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     adults: number;
     children_gt16: number;
     children_lt16: number;
-    status: "pending" | "active" | "inactive" | "banned";
+    status: "pending" | "active" | "inactive" | "banned" | "merged";
     owner_id: string;
     notes: string;
   }>({
@@ -415,7 +415,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             </div>            
           
           <div>
-            <Label htmlFor="region">Region *</Label>
+            <Label htmlFor="region">Region*</Label>
             <Select
               required={true}
               value={formData.region_id || "none"}
@@ -439,7 +439,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
           
           <PermissionGuard permission="canAssignBeneficiaries"> 
           <div>
-            <Label htmlFor="branch">Branch *</Label>
+            <Label htmlFor="branch">Branch*</Label>
             <Select
               required={true}
               value={formData.owner_id || "none"}

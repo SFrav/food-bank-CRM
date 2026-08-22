@@ -25,4 +25,4 @@ Look and feel:
 - [Other tabs - support services, calendar and tasks](assets/Other-tabs.gif)
 - [Settings for users - profile, preferences and security](assets/Other-settings.gif)
 
-Repo limitation: Core SQL logic of adding allotment for beneficiary after approval has been removed. Table policies also removed.
+Repo limitation: Core SQL logic of adding allotment for beneficiary after approval has been removed.

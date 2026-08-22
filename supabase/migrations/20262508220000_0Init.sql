@@ -1004,7 +1004,7 @@ BEGIN
 END;
 $$;
 
-
+-- Admin helpers
 -- Prevent infinite recurrsion for admin CRUD on users. For use within the DB
 CREATE OR REPLACE FUNCTION "public"."get_my_profile"() RETURNS TABLE("role" "text", "entity_id" "uuid", "division_id" "uuid")
     LANGUAGE "sql" STABLE SECURITY DEFINER
@@ -1091,21 +1091,18 @@ $$;
 
 
 -- User management
-CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
-    AS $$
---REMOVED
-$$;
+-- CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
+--     LANGUAGE "plpgsql" SECURITY DEFINER
+--     SET "search_path" TO 'public', 'auth'
+--     AS $$
 
-CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
+
+-- CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
+--     LANGUAGE "plpgsql"
+--     SET "search_path" TO 'public'
+--     AS $$
 BEGIN
---REMOVED
-END;
-$$;
+
 
 CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
   "p_profile_id" "uuid", 
@@ -1238,8 +1235,27 @@ $$;
 
 -- User profile access for user RPCs
 CREATE OR REPLACE FUNCTION "public"."user_get_profile"()
-RETURNS record
+RETURNS TABLE(
+  id uuid,
+  user_id uuid,
+  full_name text,
+  email text,
+  phone text,
+  role text,
+  entity_id uuid,
+  entity text,
+  division_id uuid,
+  division text,
+  region_id uuid,
+  region text,
+  manager_id uuid,
+  user_status text,
+  is_active BOOLEAN,
+  created_at timestamp with time zone,
+  updated_at timestamp with time zone   
+)
 LANGUAGE sql STABLE
+SET "search_path" TO 'public'
 SECURITY INVOKER
 AS $$
   SELECT
@@ -1256,7 +1272,7 @@ AS $$
     up.region_id,
     r.name      AS region,
     up.manager_id,
-    up.status,
+    up.status as user_status,
     up.is_active,
     up.created_at,
     up.updated_at       
@@ -1272,10 +1288,10 @@ CREATE OR REPLACE FUNCTION "public"."user_update_profile"(
   p_user_id uuid, 
   p_full_name text, 
   p_phone text)
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
-SET "search_path" TO 'public', 'auth'
+SET "search_path" TO 'public'
 AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -1286,6 +1302,7 @@ BEGIN
       phone = coalesce(p_phone, phone),
       updated_at = now()
   WHERE user_id = p_user_id;
+  RETURN FOUND;
 END;
 $$;
 
@@ -1336,7 +1353,7 @@ CREATE OR REPLACE FUNCTION public.update_region(
   p_code text,
   p_is_active boolean
 )
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SET search_path TO 'public'
 AS $$
@@ -1349,11 +1366,12 @@ BEGIN
          code = COALESCE(p_code, code),
          is_active = COALESCE(p_is_active, is_active)
   WHERE  id = p_id;
+  RETURN FOUND;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.delete_region(p_id uuid)
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public', 'auth'
@@ -1364,6 +1382,7 @@ BEGIN
     END IF;
   DELETE FROM public.regions
   WHERE id = p_id;
+  RETURN FOUND;
 END;
 $$;
 
@@ -1430,22 +1449,25 @@ RETURNS TABLE (
   notes text,
   created_at timestamp with time zone
 )
-LANGUAGE sql
-SET "search_path" TO 'public'
+LANGUAGE plpgsql
 SECURITY INVOKER
+SET "search_path" TO 'public'
 AS $$
+BEGIN
   IF auth.uid() IS NULL THEN
-      RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
-    END IF;
+    RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
+  END IF;
+  RETURN QUERY 
   SELECT
-    id, name, email, phone, street_address, postcode, region_id, 
-    adults_count AS adults, children_gt16, children_lt16, infant, 
-    allergies, vegetarian, hallal, 
-    status, updated_by AS user_id, owner_id, notes, created_at
-  FROM public.contacts
+    c.id, c.name, c.email, c.phone, c.street_address, c.postcode, c.region_id, 
+    c.adults_count AS adults, c.children_gt16, c.children_lt16, c.infant, 
+    c.allergies, c.vegetarian, c.hallal, 
+    c.status::text, c.updated_by AS user_id, c.owner_id, c.notes, c.created_at
+  FROM public.contacts as c
   ORDER BY name ASC, email ASC
   OFFSET 0
-  LIMIT ALL
+  LIMIT ALL;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_contacts_queue(p_order_desc boolean DEFAULT true)
@@ -1471,10 +1493,11 @@ RETURNS TABLE (
   created_at timestamp with time zone,
   attended_at timestamp with time zone
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 SET "search_path" TO 'public'
 SECURITY DEFINER --@debug to security invoker
 AS $$
+BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
   END IF;
@@ -1501,6 +1524,7 @@ AS $$
     attended_at
   FROM public.contacts_queue
   ORDER BY attended_at ASC;  
+END;
 $$;
 
 
@@ -1633,7 +1657,7 @@ CREATE OR REPLACE FUNCTION "public"."update_contact"(
   p_owner_id uuid DEFAULT NULL,
   p_notes text DEFAULT ''
 )
-RETURNS jsonb
+RETURNS public.contacts --@Return row for greedy update if needed (only for contact related tables)
 LANGUAGE plpgsql
 SECURITY DEFINER --@Debug to invoker
 SET "search_path" TO 'public'
@@ -1676,10 +1700,10 @@ BEGIN
     RAISE EXCEPTION 'No contact found with id %', p_id;
   END IF;
   PERFORM log_audit_event('UPDATE', 'contacts', p_id, old_row, row_to_json(new_row)::jsonb);
-  r := jsonb_build_object('success', true);
-  RETURN r;
+
+  RETURN new_row;
 EXCEPTION WHEN others THEN
-  RAISE EXCEPTION 'Update failed';
+  RAISE;
 END;
 $$;
 
@@ -1797,7 +1821,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."delete_contact"(p_id uuid)
-RETURNS jsonb
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET "search_path" TO 'public'
@@ -1817,9 +1841,9 @@ BEGIN
   RETURNING jsonb_build_object('success', true) INTO r;
   PERFORM log_audit_event('DELETE', 'contacts', p_id, old_row, NULL);
 
-  RETURN r;
+  RETURN FOUND;
 EXCEPTION WHEN others THEN
-  RAISE EXCEPTION 'Delete failed: %', SQLERRM;
+  RAISE;
 END;
 $$;
 
@@ -1832,13 +1856,11 @@ $$;
 ------
 --------
 --------
-CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
-LANGUAGE "plpgsql" SECURITY INVOKER
-SET "search_path" TO 'public'
-AS $$
---REMOVED
-END;
-$$;
+-- CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
+-- LANGUAGE "plpgsql" SECURITY INVOKER --@Debug to invoker
+-- SET "search_path" TO 'public'
+-- AS $$
+
 --------
 --------
 ------
@@ -1910,20 +1932,16 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.delete_contact_note(p_note_id uuid)
-RETURNS boolean
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
-DECLARE
-  v_deleted boolean;
 BEGIN
 --@restrict to non-volunteer?
   DELETE FROM public.contacts_notes
-  WHERE id = p_note_id
-  RETURNING true INTO v_deleted;
-
-  RETURN COALESCE(v_deleted, false);
+  WHERE id = p_note_id;
+  RETURN FOUND;
 END;
 $$;
 
@@ -1992,7 +2010,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") RETURNS BOOLEAN
   LANGUAGE "plpgsql" SECURITY INVOKER
   SET "search_path" TO 'public'
   AS $$
@@ -2016,10 +2034,11 @@ BEGIN
        SET attended = TRUE
      WHERE id = p_id
        AND attended = FALSE;
+    RETURN FOUND;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") RETURNS BOOLEAN
   LANGUAGE "plpgsql" SECURITY INVOKER
   SET "search_path" TO 'public'
   AS $$
@@ -2042,7 +2061,7 @@ BEGIN
     UPDATE public.contacts_allotment
        SET serving = NOT serving
      WHERE id = p_id;
-    RETURN;
+    RETURN FOUND;
 END;
 $$;
 
@@ -2059,7 +2078,7 @@ $$;
 -- $$;
 
 CREATE OR REPLACE FUNCTION public.mark_allotment_served(p_id uuid)
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path TO 'public'
@@ -2106,6 +2125,7 @@ BEGIN
      WHERE id = v_contact_id
        AND status = 'active'::beneficiary_enum;
   END IF;
+  RETURN FOUND;
 END;
 $$;
 
@@ -2133,7 +2153,7 @@ $$;
 
 
 -- Dashboard
-CREATE OR REPLACE FUNCTION public.get_division_summary(
+CREATE OR REPLACE FUNCTION "public"."get_division_summary"(
   p_entity_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
@@ -2144,13 +2164,15 @@ RETURNS TABLE (
   referrers bigint,
   workforce bigint
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
+BEGIN
   IF auth.uid() IS NULL THEN
    RAISE EXCEPTION 'Only authenticated users can view division summaries';
   END IF;
+  RETURN QUERY
   SELECT
     d.id,
     d.name,
@@ -2206,6 +2228,7 @@ AS $$
   WHERE (p_entity_id IS NOT NULL AND d.entity_id = p_entity_id)
      OR (p_entity_id IS NULL AND up_user.user_id IS NOT NULL) 
      OR (up_user.role = 'referrer'); --@link referrers to all relevant entities
+END;
 $$;
 
 
@@ -2299,7 +2322,7 @@ CREATE OR REPLACE FUNCTION public.update_division(
   p_entity_id   uuid,
   p_head_id     uuid DEFAULT NULL
 )
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SET search_path TO 'public'
 AS $$
@@ -2336,11 +2359,12 @@ BEGIN
   WHERE  id = p_id
   RETURNING * INTO new_row;
   PERFORM log_audit_event('UPDATE', 'divisions', p_id, old_row, row_to_json(new_row)::jsonb);
+  RETURN FOUND;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.delete_division(p_id uuid)
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public', 'auth'
@@ -2360,6 +2384,7 @@ BEGIN
   DELETE FROM public.divisions
   WHERE id = p_id;
   PERFORM log_audit_event('DELETE', 'divisions', p_id, old_row, NULL);
+  RETURN FOUND;
 END;
 $$;
 
@@ -2372,9 +2397,9 @@ AS $$
 DECLARE
   other_manager uuid;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Only authenticated users can update division manager';
-  END IF;
+  -- IF auth.uid() IS NULL THEN --@ Restore when not using seed data
+  --   RAISE EXCEPTION 'Only authenticated users can update division manager';
+  -- END IF;
   --Manager added / moved to a division
   IF NEW.role = 'manager' AND NEW.is_active AND NEW.division_id IS NOT NULL THEN
     UPDATE public.divisions
@@ -2520,11 +2545,13 @@ CREATE OR REPLACE FUNCTION public.create_calendar(
     p_status      text,
     p_notes       text,
     p_created_by  uuid
-) RETURNS void
+) RETURNS uuid
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path TO 'public'
 AS $$
+DECLARE
+  new_id uuid;
 BEGIN
     IF auth.uid() IS NULL THEN
       RAISE EXCEPTION 'Only authenticated users can add events';
@@ -2537,12 +2564,14 @@ BEGIN
         p_entry_type, P_subject, p_location, p_beneficiary_id, p_pic_id,
         p_scheduled_at, p_status, p_notes,
         p_created_by, NOW(), NOW()
-    );
+    )
+    RETURNING id INTO new_id;
+    RETURN new_id;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.create_calendar_bulk(events jsonb)
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path TO 'public'
@@ -2573,6 +2602,7 @@ BEGIN
         NOW()
     );
   END LOOP;
+  RETURN FOUND;
 END;
 $$;
 
@@ -2586,7 +2616,7 @@ CREATE OR REPLACE FUNCTION public.update_calendar(
     p_scheduled_at timestamptz,
     p_status      text,
     p_notes       text
-) RETURNS void
+) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path TO 'public'
@@ -2607,13 +2637,14 @@ BEGIN
         notes         = p_notes,
         updated_at    = NOW()
     WHERE id = p_id;
+    RETURN FOUND;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.update_calendar_status(
     p_id          uuid,
     p_status      text
-) RETURNS void
+) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path TO 'public'
@@ -2631,7 +2662,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.delete_calendar(
     p_id uuid
-) RETURNS void
+) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET "search_path" TO "public"
@@ -2641,6 +2672,7 @@ BEGIN
       RAISE EXCEPTION 'Only authenticated users can delete events and tasks';
     END IF;
     DELETE FROM public.calendar WHERE id = p_id;
+    RETURN FOUND;
 END;
 $$;
 
@@ -2869,10 +2901,11 @@ RETURNS TABLE(
   is_read boolean,
   created_at timestamptz
 )
-LANGUAGE sql 
+LANGUAGE plpgsql 
 SECURITY INVOKER
-SET search_path TO 'public', 'auth'
+SET search_path TO 'public'
 AS $$
+BEGIN
   IF auth.uid() IS NULL THEN
       RAISE EXCEPTION 'Only authenticated users can view notifications';
     END IF;
@@ -2898,6 +2931,7 @@ AS $$
     AND (p_include_read OR NOT nu.is_read)
     AND (us.setting_key IS NULL OR us.setting_value = 'true')
   ORDER BY nu.created_at DESC;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.calendar_notify_delete()
@@ -2951,7 +2985,7 @@ $$;
 
 
 -- Notification read and timed delete
-CREATE OR REPLACE FUNCTION "public"."mark_notification_read"("p_id" "uuid") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."mark_notification_read"("p_id" "uuid") RETURNS BOOLEAN
   LANGUAGE "plpgsql" SECURITY DEFINER
   SET "search_path" TO 'public'
   AS $$
@@ -2964,11 +2998,12 @@ BEGIN
      WHERE notification_id = p_id
        AND user_id = auth.uid()
        AND is_read = FALSE;
+    RETURN FOUND;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."mark_all_notifications_read"()
-  RETURNS "void"
+  RETURNS BOOLEAN
   LANGUAGE "plpgsql" SECURITY DEFINER
   SET "search_path" TO 'public'
   AS $$
@@ -2980,11 +3015,12 @@ BEGIN
        SET is_read = TRUE, read_at = NOW()
      WHERE user_id = auth.uid()
        AND is_read = FALSE;
+    RETURN FOUND;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."mark_notifications_read_by_type"(p_type public.notification_type_enum, p_org_role text DEFAULT NULL)
-  RETURNS "void"
+  RETURNS BOOLEAN
   LANGUAGE "plpgsql" SECURITY DEFINER
   SET "search_path" TO 'public'
   AS $$
@@ -3002,6 +3038,7 @@ BEGIN
              WHERE type = p_type
                AND (p_org_role IS NULL OR org_role = p_org_role)
        );
+    RETURN FOUND;
 END;
 $$;
 
@@ -3038,9 +3075,6 @@ LANGUAGE sql
 SET "search_path" TO 'public'
 SECURITY INVOKER
 AS $$
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Only authenticated users can view services';
-  END IF;
   SELECT
     id, name, org_type, service, address, region_id, website, phone, email, approval_status, is_active, notes, created_by
   FROM organisations
@@ -3084,7 +3118,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."delete_organisation"(p_id uuid)
-RETURNS void
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public', 'auth'
@@ -3095,6 +3129,7 @@ BEGIN
   END IF;
   DELETE FROM public.organisations
   WHERE id = p_id;
+  RETURN FOUND;
 END;
 $$;
 
@@ -3182,37 +3217,506 @@ EXECUTE FUNCTION public.calendar_notify_insert();
 -- Policies and RLS
 --
 
+
 ALTER TABLE "public"."audit_logs" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "audit_logs_select" ON "public"."audit_logs" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum"]))))));
+
+CREATE POLICY "audit_logs_insert" ON "public"."audit_logs" FOR INSERT TO "authenticated" WITH CHECK (("user_id" = (select auth.uid())));
+
+CREATE POLICY "audit_logs_delete" ON "public"."audit_logs" FOR DELETE USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum"]))))));
 
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY contacts_select ON public.contacts
+FOR SELECT TO authenticated
+USING (
+  owner_id = (select auth.uid())
+  OR EXISTS (
+    SELECT 1
+    FROM public.user_profiles up
+    WHERE up.user_id = (select auth.uid())
+      AND (up.role::text = 'admin'
+      OR (
+       up.role::text IN ('head', 'manager', 'referrer')
+      AND up.region_id = contacts.region_id 
+      ))
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM public.user_profiles up
+    JOIN public.user_profiles up_owner
+      ON up_owner.user_id = contacts.owner_id
+    WHERE up.user_id = (select auth.uid())
+      AND (
+        (up.role::text IN ('head', 'manager', 'referrer') AND up.region_id = up_owner.region_id)
+        OR (up.role::text IN ('branch_manager','staff') AND up.entity_id = up_owner.entity_id)
+        OR (up.role::text = 'volunteer' AND up.entity_id = up_owner.entity_id AND up.division_id = up_owner.division_id)
+      )
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM public.contacts_referrer cr
+    WHERE cr.contact_id = contacts.id
+      AND cr.referrer_id = auth.uid()
+  )
+);
+
+CREATE POLICY contacts_insert ON public.contacts
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.user_profiles up
+      WHERE up.user_id = (select auth.uid())
+        AND up.role::text IN ('admin', 'head', 'manager', 'referrer', 'branch_manager', 'staff')
+    )
+  );
+
+CREATE POLICY contacts_update ON public.contacts
+  FOR UPDATE TO authenticated
+  USING (
+    owner_id = (select auth.uid())
+    OR EXISTS (
+      SELECT 1
+      FROM public.user_profiles up
+      JOIN public.user_profiles up_owner
+        ON up_owner.user_id = contacts.owner_id
+      WHERE up.user_id = (select auth.uid())
+        AND (
+          (up.role::text IN ('admin', 'head', 'manager', 'referrer'))
+          OR (up.role::text IN ('branch_manager','staff') AND up.entity_id = up_owner.entity_id)
+          OR (up.role::text = 'volunteer' AND up.entity_id = up_owner.entity_id AND up.division_id = up_owner.division_id)
+        )
+    )
+  )
+  WITH CHECK (
+    owner_id = (select auth.uid())
+    OR EXISTS (
+      SELECT 1
+      FROM public.user_profiles up
+      JOIN public.user_profiles up_owner
+        ON up_owner.user_id = contacts.owner_id
+      WHERE up.user_id = (select auth.uid())
+        AND (
+          (up.role::text IN ('admin', 'head', 'manager', 'referrer'))
+          OR (up.role::text IN ('branch_manager','staff') AND up.entity_id = up_owner.entity_id)
+          OR (up.role::text = 'volunteer' AND up.entity_id = up_owner.entity_id AND up.division_id = up_owner.division_id)
+        )
+    )
+  );
+
+CREATE POLICY contacts_delete ON public.contacts
+  FOR DELETE TO authenticated
+  USING (
+    owner_id = (select auth.uid())
+    OR EXISTS (
+      SELECT 1
+      FROM public.user_profiles up
+      JOIN public.user_profiles up_owner
+        ON up_owner.user_id = contacts.owner_id
+      WHERE up.user_id = (select auth.uid())
+        AND (
+          up.role::text = 'admin'
+          OR (up.role::text IN ('head', 'manager','branch_manager','staff') AND up.entity_id = up_owner.entity_id)
+          OR (up.role::text = 'volunteer' AND up.entity_id = up_owner.entity_id AND up.division_id = up_owner.division_id)
+        )
+    )
+  );
+
+
 ALTER TABLE "public"."contacts_referrer" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "contacts_referrer_select" ON "public"."contacts_referrer" 
+FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "contacts_referrer_insert" ON "public"."contacts_referrer" 
+FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.user_profiles up
+  WHERE ((up.user_id = (select auth.uid())) AND (up.role::text IN ('admin', 'referrer', 'head', 'manager', 'branch_manager', 'staff', 'volunteer') ))))); --= ANY (ARRAY['admin'::"public"."role_enum", 'referrer'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum", 'volunteer'::"public"."role_enum"])
+
+CREATE POLICY "contacts_referrer_update" ON "public"."contacts_referrer" 
+FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND (up.role::text IN ('admin', 'referrer', 'head', 'manager', 'branch_manager', 'staff', 'volunteer')))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND (up.role::text IN ('admin', 'referrer', 'head', 'manager', 'branch_manager', 'staff', 'volunteer'))))));
+
+CREATE POLICY "contacts_referrer_delete" ON "public"."contacts_referrer" 
+FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
+
+
 ALTER TABLE "public"."contacts_allotment" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "contacts_allotment_select" ON "public"."contacts_allotment" 
+FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "contacts_allotment_insert" ON "public"."contacts_allotment" 
+FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'referrer', 'manager', 'branch_manager', 'staff') )))));
+
+CREATE POLICY "contacts_allotment_update" ON "public"."contacts_allotment" 
+FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager', 'branch_manager', 'staff', 'volunteer')))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager', 'branch_manager', 'staff', 'volunteer'))))));
+
+CREATE POLICY "contacts_allotment_delete" ON "public"."contacts_allotment" 
+FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text = 'admin')))));
+
 
 ALTER TABLE "public"."contacts_notes" ENABLE ROW LEVEL SECURITY;
 
+-- CREATE POLICY "contacts_notes_select" ON "public"."contacts_notes" 
+-- FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "contacts_notes_select" ON "public"."contacts_notes"
+FOR SELECT TO "authenticated"
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.contacts c
+    WHERE c.id = contacts_notes.contact_id
+      -- AND (
+        -- c.owner_id = (select auth.uid())
+        OR EXISTS (
+          SELECT 1
+          FROM public.user_profiles up
+          WHERE up.user_id = (select auth.uid())
+            AND (up.role::text = 'admin'
+            OR (
+             up.role::text IN ('head', 'manager')
+            AND up.region_id = c.region_id
+            ))
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.user_profiles up
+          JOIN public.user_profiles up_owner
+            ON up_owner.user_id = c.owner_id
+          WHERE up.user_id = (select auth.uid())
+            AND (
+              (up.role::text IN ('head', 'manager') AND up.region_id = up_owner.region_id)
+              OR (up.role::text IN ('branch_manager','staff') AND up.entity_id = up_owner.entity_id)
+              OR (up.role::text = 'volunteer' AND up.entity_id = up_owner.entity_id AND up.division_id = up_owner.division_id)
+            )
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.contacts_referrer cr
+          WHERE cr.contact_id = c.id
+            AND cr.referrer_id = auth.uid()
+        )
+      -- )
+  )
+);
+
+CREATE POLICY "contacts_notes_insert" ON "public"."contacts_notes" 
+FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'referrer', 'head', 'manager', 'branch_manager', 'staff', 'volunteer') )))));
+
+CREATE POLICY "contacts_notes_update" ON "public"."contacts_notes" 
+FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'referrer', 'head', 'manager', 'branch_manager', 'staff', 'volunteer')))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'referrer', 'head', 'manager', 'branch_manager', 'staff', 'volunteer'))))));
+
+CREATE POLICY "contacts_notes_delete" ON "public"."contacts_notes" 
+FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text = 'admin')))));
+  
+
 ALTER TABLE "public"."divisions" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "divisions_delete" ON "public"."divisions" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
+
+CREATE POLICY "divisions_insert" ON "public"."divisions" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
+
+CREATE POLICY "divisions_select" ON "public"."divisions" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))) OR ("head_id" IN ( SELECT "user_profiles"."id"
+   FROM "public"."user_profiles"
+  WHERE ("user_profiles"."user_id" = (select auth.uid())))) OR ("entity_id" IN ( SELECT "user_profiles"."entity_id"
+   FROM "public"."user_profiles"
+  WHERE (("user_profiles"."user_id" = (select auth.uid())) AND ("user_profiles"."role" = 'head'::"public"."role_enum")))) OR ("id" IN ( SELECT "user_profiles"."division_id"
+   FROM "public"."user_profiles"
+  WHERE ("user_profiles"."user_id" = (select auth.uid()))))));
+
+CREATE POLICY "divisions_update" ON "public"."divisions" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
 
 ALTER TABLE "public"."entities" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "entities_select" ON "public"."entities" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "entities_insert" ON "public"."entities" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
+
+CREATE POLICY "entities_update" ON "public"."entities" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
+
+CREATE POLICY "entities_delete" ON "public"."entities" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = 'admin'::"public"."role_enum")))));
+
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
+
+-- CREATE POLICY "notifications_select" ON public.notifications
+-- FOR SELECT TO authenticated
+-- USING (
+--    EXISTS (
+--      SELECT 1
+--      FROM public.user_profiles up
+--      WHERE up.user_id = auth.uid()
+--        AND up.role = 'admin'
+--    )
+--    OR
+--    EXISTS (
+--      SELECT 1
+--      FROM public.notifications_user nu
+--      WHERE nu.notification_id = id
+--        AND nu.user_id = auth.uid()
+--    )
+-- );
+
+CREATE POLICY "notifications_select" ON public.notifications
+FOR SELECT TO authenticated
+USING (TRUE);
+
+CREATE POLICY "notifications_insert" ON public.notifications
+FOR INSERT TO authenticated
+WITH CHECK (true);
+
+CREATE POLICY "notifications_update" ON public.notifications
+FOR UPDATE TO authenticated
+USING (false); --restricted - no one can update
+
+CREATE POLICY "notifications_delete" ON public.notifications
+FOR DELETE TO authenticated
+USING (false); --restricted - only automatic deletes after time period
+
+-- CREATE POLICY "notifications_insert" ON public.notifications
+-- FOR INSERT TO authenticated
+-- WITH CHECK (
+--   (user_id = auth.uid() AND type = 'dm')
+--   OR (org_role IS NOT NULL AND type = 'alert')
+-- );
+
+-- CREATE POLICY "notifications_update" ON public.notifications
+-- FOR UPDATE TO authenticated
+-- USING (
+--   (user_id = auth.uid() AND type = 'dm')
+--   OR (org_role IS NOT NULL AND type = 'alert')
+-- )
+-- WITH CHECK (
+--   (user_id = auth.uid() AND type = 'dm')
+--   OR (org_role IS NOT NULL AND type = 'alert')
+-- );
 
 ALTER TABLE "public"."notifications_user" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY notifications_user_select ON public.notifications_user
+FOR SELECT TO authenticated
+USING (user_id = (select auth.uid()));
+
+CREATE POLICY notifications_user_insert ON public.notifications_user
+FOR INSERT TO authenticated
+WITH CHECK (true); --@permissive to all authenticated
+
+CREATE POLICY notifications_user_update ON public.notifications_user
+FOR UPDATE TO authenticated
+USING (false);
+
+
 ALTER TABLE "public"."organisations" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "organisations_select" ON "public"."organisations" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "organisations_insert" ON "public"."organisations" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'referrer'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum", 'volunteer'::"public"."role_enum"]))))));
+
+CREATE POLICY "organisations_update" ON "public"."organisations" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'referrer'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum", 'volunteer'::"public"."role_enum"])))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'referrer'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum", 'volunteer'::"public"."role_enum"]))))));
+
+CREATE POLICY "organisations_delete" ON "public"."organisations" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum", 'manager'::"public"."role_enum", 'referrer'::"public"."role_enum", 'branch_manager'::"public"."role_enum", 'staff'::"public"."role_enum"]))))));
 
 ALTER TABLE "public"."calendar" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY calendar_select ON public.calendar FOR SELECT TO authenticated USING ( EXISTS (
+      SELECT 1
+      FROM public.user_profiles up
+      WHERE up.user_id = (select auth.uid())
+        AND up.role = ANY(
+          ARRAY['admin','head','manager','branch_manager','staff', 'volunteer', 'referrer']::public.role_enum[]
+        )
+    )
+  );
+
+CREATE POLICY calendar_insert ON public.calendar FOR INSERT TO authenticated WITH CHECK (created_by = (select auth.uid()));
+
+CREATE POLICY calendar_update ON public.calendar FOR UPDATE TO authenticated USING ( EXISTS (
+      SELECT 1
+      FROM public.user_profiles up_user
+      LEFT JOIN public.user_profiles up_creator 
+        ON up_creator.user_id = calendar.created_by
+      WHERE up_user.user_id = auth.uid()
+      AND (
+        up_user.role IN ('admin', 'head')
+        OR (
+          up_user.role IN ('manager', 'branch_manager', 'staff')
+          AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
+        )
+        OR calendar.created_by = (select auth.uid())
+      )
+    )
+  )
+  WITH CHECK ( EXISTS (
+      SELECT 1
+      FROM public.user_profiles up_user
+      LEFT JOIN public.user_profiles up_creator 
+        ON up_creator.user_id = calendar.created_by
+      WHERE up_user.user_id = auth.uid()
+      AND (
+        up_user.role IN ('admin', 'head')
+        OR (
+          up_user.role IN ('manager', 'branch_manager', 'staff')
+          AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
+        )
+        OR calendar.created_by = (select auth.uid())
+      )
+    )
+  );
+
+CREATE POLICY calendar_delete ON public.calendar FOR DELETE TO authenticated USING ( EXISTS (
+      SELECT 1
+      FROM public.user_profiles up_user
+      LEFT JOIN public.user_profiles up_creator 
+        ON up_creator.user_id = calendar.created_by
+      WHERE up_user.user_id = auth.uid()
+      AND (
+        -- Admin & Head: Can delete anything
+        up_user.role IN ('admin', 'head')
+        OR (
+          up_user.role IN ('manager', 'branch_manager', 'staff')
+          AND (up_user.entity_id = up_creator.entity_id OR up_creator.entity_id IS NULL)
+        )
+        OR calendar.created_by = (select auth.uid())
+      )
+    )
+  );
+
+
 ALTER TABLE "public"."system_settings" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "system_settings_select" ON "public"."system_settings" FOR SELECT TO "authenticated" USING (true);
+
+ALTER TABLE "public"."user_settings" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_settings_select" ON "public"."user_settings" FOR SELECT USING (((select auth.uid()) = "user_id"));
+
+CREATE POLICY "user_settings_update" ON "public"."user_settings" FOR UPDATE USING (((select auth.uid()) = "user_id"));
+
+CREATE POLICY "user_settings_insert" ON "public"."user_settings" FOR INSERT WITH CHECK (("user_id" = (select auth.uid())));
+
+-- CREATE POLICY "user_settings_delete" ON "public"."user_settings" USING (("public"."get_my_role"() = 'admin'::"text"));
+--@
+
 ALTER TABLE "public"."entity_settings" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "entity_settings_select" ON "public"."entity_settings" 
+FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "entity_settings_insert" ON "public"."entity_settings" 
+FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager') )))));
+
+CREATE POLICY "entity_settings_update" ON "public"."entity_settings" 
+FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager')))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager'))))));
+
+CREATE POLICY "entity_settings_delete" ON "public"."entity_settings" 
+FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text = 'admin')))));
 
 ALTER TABLE "public"."division_settings" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "division_settings_select" ON "public"."division_settings" 
+FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "division_settings_insert" ON "public"."division_settings" 
+FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager', 'branch_manager') )))));
+
+CREATE POLICY "division_settings_update" ON "public"."division_settings" 
+FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager', 'branch_manager')))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager', 'branch_manager'))))));
+
+CREATE POLICY "division_settings_delete" ON "public"."division_settings" 
+FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text = 'admin')))));
 
 ALTER TABLE "public"."regions" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "regions_select" ON "public"."regions" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "regions_update" ON "public"."regions" FOR UPDATE TO "authenticated" USING (( (EXISTS ( SELECT 1
+   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
+  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text"))))))) WITH CHECK (( (EXISTS ( SELECT 1
+   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
+  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text")))))));
+
+CREATE POLICY "regions_delete" ON "public"."regions" FOR DELETE TO "authenticated" USING (((SELECT "role" FROM "public"."get_my_profile"()) = 'admin'::"text"));
+
 ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_profiles_select" ON "public"."user_profiles" FOR SELECT TO "authenticated" USING ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
+   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
+  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("me"."entity_id" = "user_profiles"."entity_id")) OR (("me"."role" = ANY (ARRAY['manager'::"text", 'branch_manager'::"text", 'staff'::"text", 'volunteer'::"text"])) AND ("me"."entity_id" = "user_profiles"."entity_id") AND ("me"."division_id" = "user_profiles"."division_id")))))));
+
+CREATE POLICY "user_profiles_update" ON "public"."user_profiles" FOR UPDATE TO "authenticated" USING ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
+   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
+  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("me"."entity_id" = "user_profiles"."entity_id"))))))) WITH CHECK ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
+   FROM "public"."get_my_profile"() "me"("role", "entity_id", "division_id")
+  WHERE (("me"."role" = 'admin'::"text") OR (("me"."role" = 'head'::"text") AND ("me"."entity_id" = "user_profiles"."entity_id")))))));
+
+CREATE POLICY "user_profiles_delete" ON "public"."user_profiles" FOR DELETE TO "authenticated" USING (((SELECT "role" FROM "public"."get_my_profile"()) = 'admin'::"text"));
 
 --
 --Grants 

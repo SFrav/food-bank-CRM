@@ -57,8 +57,10 @@ export default function AddEventBulkModal({
   const handleSave = async () => {
     if (!user) return;
 
-    await createEvent();
-    onClose();
+    const { success } = await createEvent();
+    if(success) {
+      onClose();
+    };
   };
 
   const handleClose = () => {

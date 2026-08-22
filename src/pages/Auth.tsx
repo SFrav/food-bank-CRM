@@ -7,13 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/useToast';
 
 
 const Auth = () => {
   const navigate = useNavigate();
   const { signIn, signUp, user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [formData, setFormData] = useState({ email: '', password: '', fullName: '' });
@@ -51,7 +52,7 @@ const Auth = () => {
     setLoading(true);
     const { error } = await signIn(formData.email, formData.password);
     if (error) {
-      toast.error(error.message);
+      toast({ title: 'Error', description: error.message || 'Failed to sign-in', variant: 'destructive' });
     } else {
       justSignedIn.current = true;
     }
@@ -63,7 +64,7 @@ const Auth = () => {
     setLoading(true);
     const { error } = await signUp(formData.email, formData.password, formData.fullName); //use redirect argument to If required. Default is "/".
     if (error) {
-      toast.error(error.message);
+      toast({ title: 'Error', description: error.message || 'Sign-up failed', variant: 'destructive' });
     } else {
       justSignedUp.current = true;
       setShowPendingModal(true);

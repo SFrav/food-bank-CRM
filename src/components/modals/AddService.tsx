@@ -33,7 +33,7 @@ interface AddServiceModalProps {
 }
 
 export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}: AddServiceModalProps) {
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const {createService} = useServices();
   const { regions } = useRegions();
   
@@ -55,9 +55,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
   });
 
   const handleSubmit = useCallback(async () => {
-    if (!formData.name.trim()) return;
+    if(!formData.name.trim()) return;
 
-    setLoading(true);
+    setIsLoading(true);
     const newService: Service = {
       id: '', 
       name: formData.name.trim(),
@@ -81,17 +81,13 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
       created_at: '',     
     };
 
-    await createService(newService);
-
-    // refetch();
-
-    // Reset & close
-    handleReset();
-    onOpenChange(false);
-    onServiceAdded();
-
-    setLoading(false);
-
+    const { success, error } = await createService(newService);
+    if(success){
+      handleReset();
+      onOpenChange(false);
+      onServiceAdded();
+    };
+    setIsLoading(false);
   }, [createService]);
 
   const handleReset = () => {
@@ -124,8 +120,13 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
     'Other'
   ];
 
+  const handleClose = () => {
+    onOpenChange(false);
+    handleReset();
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
@@ -324,15 +325,15 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
               handleReset();
               onOpenChange(false);
             }}
-            disabled={loading}
+            disabled={isLoading}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={!formData.name.trim() || loading}
+            disabled={!formData.name.trim() || isLoading}
           >
-            {loading ? 'Creating...' : 'Create service'}
+            {isLoading ? 'Creating...' : 'Create service'}
           </Button>
         </div>
       </DialogContent>

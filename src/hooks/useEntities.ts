@@ -73,7 +73,7 @@ export const useEntities = () => {
     }
 
     try {
-      const { data: success, error: rpcError } = await supabase.rpc('admin_update_entity', {
+      const { data, error: rpcError } = await supabase.rpc('admin_update_entity', {
         p_entity_id: id,
         p_name: updates.name || null,
         p_code: updates.code || null,
@@ -90,12 +90,12 @@ export const useEntities = () => {
       // }
 
       await fetchEntities();
-      return { success, error: null };
+      return { success: true, error: null };
       // return { data, error: null };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error updating entity:', error);
-      return { data: null, error: error.message };
+      return { success: false, error: error.message };
     }
   };
 
@@ -105,7 +105,7 @@ export const useEntities = () => {
     }
 
     try {
-      const { data: success, error: rpcError } = await supabase.rpc('admin_delete_entity', {
+      const { data, error: rpcError } = await supabase.rpc('admin_delete_entity', {
         p_entity_id: id
       });
 
@@ -119,11 +119,11 @@ export const useEntities = () => {
       // }
 
       await fetchEntities();
-      return { error: null };
+      return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error deleting entity:', err);
-      return { error: error.message };
+      return { success: false, error: error.message };
     }
   };
 

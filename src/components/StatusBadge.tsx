@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface BadgeProps {
-  role: 'active' | 'inactive' | 'pending' | 'banned';
+  role: 'active' | 'inactive' | 'pending' | 'banned' | 'merged';
   className?: string;
 }
 

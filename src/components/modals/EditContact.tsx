@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
 import { useDivisions, Division } from '@/hooks/useDivisions';
+import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import ContactEditAllotment from '@/components/modals/subcomponents/EditContactAllotment';
 import ContactEditForm from '@/components/modals/subcomponents/EditContactForm';
 
@@ -35,7 +36,7 @@ export interface FormData {
   adults: number;
   children_gt16: number;
   children_lt16: number;
-  status: "pending" | "active" | "inactive" | "banned";
+  status: "pending" | "active" | "inactive" | "banned" | "merged";
   owner_id: string;
   notes_new: string;
 }
@@ -77,6 +78,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const { profile } = useProfile();
   const { regions } = useRegions();
   const { divisions } = useDivisions();
+  const { settingsMap, loading: settingsLoading, fetchSettings} = useDivisionSettings();
   const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { deleteContact, updateContact, refetch: fetchContacts } = useContacts();
   const { notes, fetch: fetchNotes } = useContactNotes(contact?.id ?? null);
@@ -121,6 +123,11 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   // if (!user || !profile) return null;
 
+  const divisionSettings = settingsMap[profile?.division_id || ''] ?? {};
+  const dayOffset = parseInt(divisionSettings.day_offset ?? '-1', 10);
+  const hourOffset = parseInt(divisionSettings.hour_offset ?? '-1', 10);
+  const exclWeeks = parseInt(divisionSettings.exclusion_weeks ?? '-1', 10);
+
   useEffect(() => {
     // if (!isOpen) return;
     if (contact && isOpen) {
@@ -133,6 +140,12 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     setLocalContact(contact);
     if (isServing) setShowAllotment(isServing); 
   }, [contact, isOpen, isServing, restoredFormData, profile, divisions, newAllotmentType, user?.id]);
+
+  useEffect(() => {
+    if (profile?.division_id && !settingsMap[profile.division_id]) {
+      fetchSettings(profile.division_id);
+    }
+  }, [profile?.division_id, fetchSettings, settingsMap]);
 
   const loadDivsRegion = (_dId: string): Division[] => {
     return divsRegion;
@@ -174,8 +187,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   const handleMarkAttended = async (entryId: string) => {
     if (!entryId) return;
-    await markAttendance(entryId);
-    await fetchAllotment();
+    const { success } = await markAttendance(entryId);
+    if(success) await fetchAllotment();
   };
 
   const handleMarkServing = async (entryId: string) => {
@@ -209,34 +222,37 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     if (type === '' || !user?.id) return;
 
     const note = type === 'referral' ? 'Rescheduled visit' : 'Approved drop‑in';
-    await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
-    await fetchAllotment();
-
-    setNewAllotmentType('');
+    const { success } = await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
+    if(success){
+      await fetchAllotment();
+      setNewAllotmentType('');
+    };
   };
 
   const handleToggleInfant = async () => {
     if (!localContact) return;
     const updated = { ...localContact, infant: !localContact.infant };
-    await updateContact(updated);
+    const { success } = await updateContact(updated);
+    if(success){
     setLocalContact(updated);
     fetchContacts(false);
+    };
     // onContactUpdated(); 
   };
 
   const handleToggleAllergies = async () => {
     if (!localContact) return;
     const updated = { ...localContact, allergies: !localContact.allergies };
-    await updateContact(updated);
-    setLocalContact(updated);
+    const { success } = await updateContact(updated);
+    if(success) setLocalContact(updated);
     // onContactUpdated();
   };
 
   const handleToggleVegetarian = async () => {
     if (!localContact) return;
     const updated = { ...localContact, vegetarian: !localContact.vegetarian };
-    await updateContact(updated);
-    setLocalContact(updated);
+    const { success } = await updateContact(updated);
+    if(success) setLocalContact(updated);
 
     // onContactUpdated();
   };
@@ -244,14 +260,20 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleToggleHallal = async () => {
     if (!localContact) return;
     const updated = { ...localContact, hallal: !localContact.hallal };
-    await updateContact(updated);
-    setLocalContact(updated);
+    const { success } = await updateContact(updated);
+    if(success) setLocalContact(updated);
   };
 
   const handleSubmit = async (e?: React.SubmitEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (!contact) return;
     setIsLoading(true);
+    if(formData.status !== (contact.status) && formData.status === 'active' && (dayOffset === -1 || hourOffset === -1 || exclWeeks === -1)) {
+      toast({ title: 'Error', description: 'Division settings of opening day, opening hours and exclusion period must be set before approving beneficiary', variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { success, error } = await updateContact({
         id: contact.id,

@@ -9,9 +9,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Edit, Save, X, RefreshCw, Trash2, Users, Loader2 } from 'lucide-react';
 import { useDivisions, Division } from '@/hooks/useDivisions';
 import { useEntities } from '@/hooks/useEntities';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/useToast';
 
 export const DivisionDepartmentManagement = () => {
+  const { toast } = useToast();
   const { divisions, loading, createDivision, updateDivision, deleteDivision, refetch } = useDivisions();
   const { entities } = useEntities();
   
@@ -41,20 +42,23 @@ export const DivisionDepartmentManagement = () => {
   // Division handlers
   const handleCreateDivision = async () => {
     if (!newDivisionName.trim()) {
-      toast.error('Branch name is required');
+      toast({ title: 'Error', description: 'Branch name is required', variant: 'destructive' });
       return;
     }
     setCreatingDivision(true);
     try {
       const entityId = newDivisionEntityId && newDivisionEntityId !== 'none' ? newDivisionEntityId : null;
-      await createDivision(newDivisionName.trim(), entityId);
+      const { success, error } = await createDivision(newDivisionName.trim(), entityId);
+      if(!success) {
+        // toast.error(error ?? 'Failed to create branch');
+      return;
+      }
       setNewDivisionName('');
       setNewDivisionEntityId('');
-      toast.success('Branch created successfully');
       syncOrgUnits();
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to create branch');
+      // toast.error(error.message || 'Failed to create branch');
     } finally {
       setCreatingDivision(false);
     }
@@ -68,7 +72,7 @@ export const DivisionDepartmentManagement = () => {
 
   const handleSaveDivision = async (id: string) => {
     if (!editingDivisionName.trim()) {
-      toast.error('Branch name is required');
+      toast({ title: 'Error', description: 'Branch name is required', variant: 'destructive' });
       return;
     }
     setUpdatingDivision(id);
@@ -77,18 +81,22 @@ export const DivisionDepartmentManagement = () => {
         editingDivisionEntityId && editingDivisionEntityId !== null
           ? editingDivisionEntityId
           : null;
-      await updateDivision(id, 
+      const { success, error } = await updateDivision(
+        id, 
         editingDivisionName.trim(),
         entityId,
       );
+      if(!success) {
+        // toast.error(error ?? 'Failed to create branch');
+      return;
+      }
       setEditingDivisionId(null);
       setEditingDivisionName('');
       setEditingDivisionEntityId('');
-      toast.success('Branch updated successfully');
       syncOrgUnits();
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to update branch');
+      // toast.error(error.message || 'Failed to update branch');
     } finally {
       setUpdatingDivision(null);
     }
@@ -104,12 +112,15 @@ export const DivisionDepartmentManagement = () => {
     //if (!confirm(`Delete division "${name}"? This cannot be undone.`)) return;
     setDeletingDivision(id);
     try {
-      await deleteDivision(id);
-      toast.success('Branch deleted successfully');
+      const { success, error } = await deleteDivision(id);
+      if(!success) {
+        // toast.error(error ?? 'Failed to create branch');
+      return;
+      }
       syncOrgUnits();
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast.error(error.message || 'Failed to delete branch');
+      // toast.error(error.message || 'Failed to delete branch');
     } finally {
       setDeletingDivision(null);
     }
@@ -166,7 +177,7 @@ export const DivisionDepartmentManagement = () => {
             </div>
             <Button className="w-12"  onClick={handleCreateDivision} disabled={creatingDivision}>
               {creatingDivision ? (
-                <RefreshCw className="size-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin mr-2" />
               ) : (
                 <Plus className="size-4" />
               )}

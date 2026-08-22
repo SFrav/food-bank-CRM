@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/useToast';
 
 export interface Users {
   id: string;
@@ -14,6 +15,7 @@ export interface Users {
 }
 
 export function useAdminUsers(query: string, roleFilter: string) {
+  const { toast } = useToast();
   const [users, setUsers] = useState<Users[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
@@ -127,22 +129,18 @@ export function useAdminUsers(query: string, roleFilter: string) {
         p_id: userId,
       });
 
-      if (error) {
-        console.error('RPC error:', error);
-        return { success: false, error: error.message };
+      if (data === false || error) {
+        console.error('Delete failed:', error);
+        return { success: false, error: error };
       }
-
-      // if (data?.success === false) {
-      //   console.error('Delete failed:', data.error);
-      //   return { success: false, error: data.error };
-      // }
 
       //// sessionStorage.clear();
       refetch();
-      // return { success: true, message: data?.message };
+      return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Unexpected error:', err);
+      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   };

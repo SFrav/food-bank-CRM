@@ -158,7 +158,10 @@ export default function AddEventBulkModal({
 
     setIsLoading(true);
     try {
-      await createEventBulk(events);
+      const { success, error } = await createEventBulk(events);
+      if(!success) {
+      return;
+      }
       setEvents([]);
       setFile(null);
       setFileName("");
@@ -166,11 +169,11 @@ export default function AddEventBulkModal({
     } catch (err: unknown) {
       // const error = err as { message?: string }; 
       console.error("Bulk add error:", err);
-      toast({
-        title: "Error",
-        description: "Failed to add bulk events.",
-        variant: "destructive",
-      });
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to add bulk events.",
+      //   variant: "destructive",
+      // });
     } finally {
       setIsLoading(false);
     }

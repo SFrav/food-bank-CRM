@@ -44,7 +44,7 @@ export const useContactAllotment = (contactId: string | null) => {
       setLoading(true);
       setError(undefined);
       try {
-        const { error: rpcErr } = await supabase.rpc('mark_allotment_attendance', { p_id: id});
+        const { data, error: rpcErr } = await supabase.rpc('mark_allotment_attendance', { p_id: id});
         if (rpcErr) throw rpcErr;
         setAllotment(prev => prev.map(n => (n.allotment_id === id ? { ...n, attended: true } : n)));
         setLoading(false);
@@ -89,7 +89,7 @@ export const useContactAllotment = (contactId: string | null) => {
       setLoading(true)
       setError(undefined);
       try {
-        const { error: rpcErr } = await supabase.rpc('mark_allotment_served', { p_id: id});
+        const { data, error: rpcErr } = await supabase.rpc('mark_allotment_served', { p_id: id});
         setAllotment(prev => prev.map(n => n.allotment_id === id ? { ...n, served: true } : n));
         if (rpcErr) throw rpcErr;
         await fetch();

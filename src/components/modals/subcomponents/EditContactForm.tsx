@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,12 +127,14 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
           </div>
           <PermissionGuard permission="canAssignBeneficiaries"> 
             <div className="space-y-2 w-[50%] sm:w-full">
-              <Label htmlFor="branch">Branch</Label>
+              <Label htmlFor="branch">{formData.status === 'active' ? "Branch*" : "Branch"}</Label>
               <Select
-                value={formData.owner_id || "none"}
-                onValueChange={v => {
+                required={formData.status === 'active'}
+                value={formData.status === 'active' && 
+                  !divsRegion.some(d=>d.manager_id===formData.owner_id) ? undefined : formData.owner_id}
+                onValueChange={v => {                
                   setFormData({ ...formData, owner_id: v });
-                  if (v !== "none") loadDivsRegion(v);
+                  loadDivsRegion(v);
                 }}
               >
                 <SelectTrigger>

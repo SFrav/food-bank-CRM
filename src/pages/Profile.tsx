@@ -55,9 +55,9 @@ export default function Profile() {
         //   phone: formData.phone,
         // }));
 
-        if (refetch) {
+        // if (refetch) {
           await refetch();     
-        }
+        // }
       }
     } catch (error) {
       toast({

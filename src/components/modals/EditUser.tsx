@@ -38,7 +38,7 @@ interface EditUserModalProps {
     managerId: string | null,
     regionId: string | null,
   ) => Promise<{ success: boolean; error?: string }>;
-  onDelete: (userId: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  onDelete: (userId: string) => Promise<{ success: boolean; error?: string | unknown }>;
   entities: Entity[];
   regions: Region[];
   currentUserRole: Users['role'];
@@ -54,7 +54,7 @@ const EditUserModal = ({
   const [regionId, setRegionId] = useState<string>('');
   const [entityId, setEntityId] = useState<string>('none');
   const [divisionId, setDivisionId] = useState<string>('none');
-  const [saving, setSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -92,7 +92,7 @@ const EditUserModal = ({
     (divisionId === 'none' ? null : divisionId) !== user.division_id;
 
   const handleSave = async () => {
-    setSaving(true);
+    setIsSaving(true);
 
     if (role === 'branch_manager' && divisionId !== 'none') {
       const { data, error } = await supabase.rpc('get_manager_by_division', {
@@ -100,7 +100,7 @@ const EditUserModal = ({
       });
 
       if (error || !data) {
-        setSaving(false);
+        setIsSaving(false);
         toast.error(
           "The selected division has no manager. Please assign one first."
         );
@@ -116,7 +116,7 @@ const EditUserModal = ({
       user.manager_id ?? null,
       regionId === 'none' ? null : regionId,
     );
-    setSaving(false);
+    setIsSaving(false);
     if (result.success) onClose();
   };
 
@@ -155,7 +155,7 @@ const EditUserModal = ({
               <Select
                 value={role}
                 onValueChange={(v) => setRole(v as Users['role'])}
-                disabled={saving || isSelf}
+                disabled={isSaving || isSelf}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -179,7 +179,7 @@ const EditUserModal = ({
               <Select
                 value={regionId || 'none'}
                 onValueChange={(v) => setRegionId(v === 'none' ? '' : v)}
-                disabled={saving}
+                disabled={isSaving}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
@@ -200,7 +200,7 @@ const EditUserModal = ({
             {/* Entity */}
             <div className="space-y-1">
               <Label>Entity</Label>
-              <Select value={entityId} onValueChange={setEntityId} disabled={saving}>
+              <Select value={entityId} onValueChange={setEntityId} disabled={isSaving}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select entity" />
                 </SelectTrigger>
@@ -223,7 +223,7 @@ const EditUserModal = ({
               <Select
                 value={divisionId}
                 onValueChange={setDivisionId}
-                disabled={divisionsLoading || entityId === 'none' || saving}
+                disabled={divisionsLoading || entityId === 'none' || isSaving}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select branch" />
@@ -249,7 +249,7 @@ const EditUserModal = ({
                 variant={confirmDelete ? 'destructive' : 'outline'}
                 size="sm"
                 onClick={handleDelete}
-                disabled={deleting || saving || isSelf || isAdminTarget}
+                disabled={deleting || isSaving || isSelf || isAdminTarget}
                 className="mr-auto"
               >
                 <Trash2 className="size-3.5 mr-1.5" />
@@ -261,11 +261,11 @@ const EditUserModal = ({
                 </Button>
               )}
 
-              <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+              <Button variant="outline" size="sm" onClick={onClose} disabled={isSaving}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving || !isDirty}>
-                {saving
+              <Button size="sm" onClick={handleSave} disabled={isSaving || !isDirty}>
+                {isSaving
                   ? <><div className="size-3 animate-spin border border-current border-t-transparent rounded-full mr-2" />Saving…</>
                   : <><Check className="size-3.5 mr-1.5" />Save</>
                 }

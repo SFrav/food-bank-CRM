@@ -48,8 +48,6 @@ export const AuditLogViewer = () => {
   };
 
   const handleClearLogs = async () => {
-    // const ok = window.confirm('Are you sure? This operation can not be undone.');
-    // if (!ok) return;
     try {
       await clearAuditLogs(filters);
 
@@ -182,13 +180,6 @@ export const AuditLogViewer = () => {
                 <Button onClick={handleClearFilters} variant="outline" size="sm">
                   Clear Filters
                 </Button>
-                {/* <Button onClick={refetch} variant="outline" size="sm">
-                  <RefreshCw className="size-4" />
-                </Button> */}
-                {/* <Button onClick={handleClearLogs} variant="destructive" size="sm">
-                  <Trash2 className="size-4 mr-1" />
-                  Clear Logs
-                </Button> */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button

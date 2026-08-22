@@ -115,8 +115,10 @@ export default function Calendar() {
   }, [dispatch]);
 
   const handleDeleteEvent = useCallback(async (id: string) => {
-    await deleteEvent(id);
-    dispatch({ type: 'CLOSE_DETAIL' });
+    const { success } = await deleteEvent(id);
+    if(success){
+      dispatch({ type: 'CLOSE_DETAIL' });
+    }
   }, [deleteEvent, dispatch]);
 
   useEffect(() => {

@@ -58,7 +58,7 @@ export const useEntitySettings = () => {
   ) => {
     if (!entities) return;
     try {
-      const { error } = await supabase.rpc('upsert_entity_setting', {
+      const { data, error } = await supabase.rpc('upsert_entity_setting', {
         p_entity_id: entity_id,
         p_setting_key: key,
         p_setting_value: value,

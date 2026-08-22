@@ -142,7 +142,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
     a.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: 'Success', description: 'Contacts exported to CSV!' });
+    toast({ title: 'Success', description: 'Contacts exported to CSV' });
   };
 
   // const handleQueueRefetch = useCallback(() => {

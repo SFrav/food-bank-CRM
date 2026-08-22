@@ -30,10 +30,10 @@ export default function AddTaskModal({
   const { form, setForm, createEvent: createTask, isSubmitting, } = useCalendarForm({ beneficiaries, loadContacts, onSuccess: onAdd, });
 
   const handleSave = async () => {
-    try{
-      await createTask(); 
-      onClose();       
-    } catch {} 
+    const { success } = await createTask(); 
+    if(success){
+      onClose(); 
+    };      
   };
 
   const handleClose = () => {

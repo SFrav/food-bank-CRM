@@ -18,13 +18,13 @@ export const EntityManagement = () => {
   const [newEntityCode, setNewEntityCode] = useState('');
   const [newEntityReferrer, setNewEntityReferrer] = useState(false);
   const [editingEntity, setEditingEntity] = useState<{ id: string; name: string; code: string, is_referrer: boolean } | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [deletingEntityId, setDeletingEntityId] = useState<string | null>(null);
 
   const handleCreateEntity = async () => {
     if (!newEntityName.trim()) return;
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     const { error } = await createEntity(newEntityName.trim(), newEntityCode.trim(), newEntityReferrer || undefined);
     
     if (error) {
@@ -42,21 +42,20 @@ export const EntityManagement = () => {
       setNewEntityCode('');
       setNewEntityReferrer(false);
       
-      // Trigger refresh event for Admin page to reload entities
       try {
         window.dispatchEvent(new CustomEvent('org-units-changed'));
-        console.log('✅ Entity created, refresh event dispatched');
+        console.log('Entity created, refresh event dispatched');
       } catch (e) {
         console.error('Failed to dispatch refresh event:', e);
       }
     }
-    setIsSubmitting(false);
+    setIsLoading(false);
   };
 
   const handleUpdateEntity = async () => {
     if (!editingEntity) return;
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     const { error } = await updateEntity(editingEntity.id, {
       name: editingEntity.name,
       code: editingEntity.code || undefined,
@@ -83,11 +82,12 @@ export const EntityManagement = () => {
         console.error('Failed to dispatch refresh event:', e);
       }
     }
-    setIsSubmitting(false);
+    setIsLoading(false);
   };
 
   const handleDeleteEntity = async (id: string) => {
     setDeletingEntityId(id);
+    setIsLoading(true);
     const { error } = await deleteEntity(id);
     
     if (error) {
@@ -110,6 +110,7 @@ export const EntityManagement = () => {
       }
     }
     setDeletingEntityId(null);
+    setIsLoading(false);
   };
 
   const toggleEntityStatus = async (id: string, currentStatus: boolean) => {
@@ -158,7 +159,7 @@ export const EntityManagement = () => {
           {/* Create New Entity */}
           <div className="border rounded-lg p-4">
             <h3 className="text-lg font-medium mb-4">Add New Entity</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:flex md:items-end gap-2">
               <div>
                 <Label htmlFor="entity-name">Entity Name *</Label>
                 <Input
@@ -179,21 +180,22 @@ export const EntityManagement = () => {
               </div>
               <div>
                 <Label htmlFor="entity-referrer">Is Referrer</Label>
-                <div className="flex justify-left mt-1">
+                <div className="flex items-end mt-1">
                 <Switch
                   id="entity-referrer"
+                  className="w-15 mb-3"
                   checked={newEntityReferrer}
                   onCheckedChange={checked => setNewEntityReferrer(checked)}
                 />
                 </div>
               </div>
-              <div className="flex items-end">
+              <div className="flex items-center mb-2 ml-4">
                 <Button
                   onClick={handleCreateEntity}
-                  disabled={!newEntityName.trim() || isSubmitting}
-                  className="w-12"
+                  disabled={!newEntityName.trim() || isLoading}
+                  className="w-12 h-8"
                 >
-                  {isSubmitting ? (
+                  {isLoading ? (
                     <Loader2 className="size-4 animate-spin mr-2" />
                   ) : (
                     <Plus className="size-4" />
@@ -201,6 +203,7 @@ export const EntityManagement = () => {
                   {/* Add Entity */}
                 </Button>
               </div>
+              <div></div>
             </div>
           </div>
 
@@ -275,9 +278,9 @@ export const EntityManagement = () => {
                               <Button
                                 size="sm"
                                 onClick={handleUpdateEntity}
-                                disabled={isSubmitting}
+                                disabled={isLoading}
                               >
-                                {isSubmitting ? (
+                                {isLoading ? (
                                   <Loader2 className="size-4 animate-spin" />
                                 ) : (
                                   'Save'
@@ -308,6 +311,7 @@ export const EntityManagement = () => {
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
+                                    disabled={isLoading}
                                     size="sm"
                                     variant="outline"
                                     className="text-destructive hover:bg-destructive hover:text-destructive-foreground"

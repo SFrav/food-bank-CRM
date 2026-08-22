@@ -66,7 +66,7 @@ export const useUserSettings = () => {
         if (key === 'notification_email') p_type = 'dm'; 
 
         if (p_type) {
-          const { error: rpcError } = await supabase.rpc('mark_notifications_read_by_type', {
+          const { data, error: rpcError } = await supabase.rpc('mark_notifications_read_by_type', {
             p_type,
             p_org_role: null,
           });
@@ -76,7 +76,7 @@ export const useUserSettings = () => {
           }
         }
       }
-      const { error } = await supabase.rpc('upsert_user_setting', {
+      const { data, error } = await supabase.rpc('upsert_user_setting', {
         p_user_id: user.id,
         p_setting_key: key,
         p_setting_value: value,

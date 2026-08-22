@@ -975,9 +975,9 @@ export type Database = {
           p_status: string
           p_subject: string
         }
-        Returns: undefined
+        Returns: string
       }
-      create_calendar_bulk: { Args: { events: Json }; Returns: undefined }
+      create_calendar_bulk: { Args: { events: Json }; Returns: boolean }
       create_contact: {
         Args: {
           p_address?: string
@@ -1033,12 +1033,12 @@ export type Database = {
         Args: { p_code: string; p_name: string }
         Returns: string
       }
-      delete_calendar: { Args: { p_id: string }; Returns: undefined }
-      delete_contact: { Args: { p_id: string }; Returns: Json }
+      delete_calendar: { Args: { p_id: string }; Returns: boolean }
+      delete_contact: { Args: { p_id: string }; Returns: boolean }
       delete_contact_note: { Args: { p_note_id: string }; Returns: boolean }
-      delete_division: { Args: { p_id: string }; Returns: undefined }
-      delete_organisation: { Args: { p_id: string }; Returns: undefined }
-      delete_region: { Args: { p_id: string }; Returns: undefined }
+      delete_division: { Args: { p_id: string }; Returns: boolean }
+      delete_organisation: { Args: { p_id: string }; Returns: boolean }
+      delete_region: { Args: { p_id: string }; Returns: boolean }
       get_allotment: {
         Args: { p_contact_id: string }
         Returns: {
@@ -1357,23 +1357,22 @@ export type Database = {
         }
         Returns: string
       }
-      mark_all_notifications_read: { Args: never; Returns: undefined }
-      mark_allotment_attendance: { Args: { p_id: string }; Returns: undefined }
-      mark_allotment_served: { Args: { p_id: string }; Returns: undefined }
-      mark_allotment_serving: { Args: { p_id: string }; Returns: undefined }
-      mark_notification_read: { Args: { p_id: string }; Returns: undefined }
+      mark_all_notifications_read: { Args: never; Returns: boolean }
+      mark_allotment_attendance: { Args: { p_id: string }; Returns: boolean }
+      mark_allotment_served: { Args: { p_id: string }; Returns: boolean }
+      mark_allotment_serving: { Args: { p_id: string }; Returns: boolean }
+      mark_notification_read: { Args: { p_id: string }; Returns: boolean }
       mark_notifications_read_by_type: {
         Args: {
           p_org_role?: string
           p_type: Database["public"]["Enums"]["notification_type_enum"]
         }
-        Returns: undefined
+        Returns: boolean
       }
       merge_contacts: {
         Args: { p_primary: string; p_secondary: string }
         Returns: undefined
       }
-      toggle_allotment_serving: { Args: { p_id: string }; Returns: undefined }
       update_calendar: {
         Args: {
           p_beneficiary_id: string
@@ -1386,11 +1385,11 @@ export type Database = {
           p_status: string
           p_subject: string
         }
-        Returns: undefined
+        Returns: boolean
       }
       update_calendar_status: {
         Args: { p_id: string; p_status: string }
-        Returns: undefined
+        Returns: boolean
       }
       update_contact: {
         Args: {
@@ -1413,7 +1412,35 @@ export type Database = {
           p_user_id?: string
           p_vegetarian?: boolean
         }
-        Returns: Json
+        Returns: {
+          adults_count: number | null
+          allergies: boolean | null
+          children_gt16: number | null
+          children_lt16: number | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          hallal: boolean | null
+          id: string
+          infant: boolean | null
+          name: string
+          notes: string | null
+          owner_id: string | null
+          phone: string | null
+          postcode: string | null
+          region_id: string | null
+          status: Database["public"]["Enums"]["beneficiary_enum"]
+          street_address: string | null
+          updated_at: string | null
+          updated_by: string | null
+          vegetarian: boolean | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "contacts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_division: {
         Args: {
@@ -1422,7 +1449,7 @@ export type Database = {
           p_id: string
           p_name: string
         }
-        Returns: undefined
+        Returns: boolean
       }
       update_region: {
         Args: {
@@ -1431,7 +1458,7 @@ export type Database = {
           p_is_active: boolean
           p_name: string
         }
-        Returns: undefined
+        Returns: boolean
       }
       upsert_division_setting: {
         Args: {
@@ -1461,10 +1488,31 @@ export type Database = {
         }
         Returns: undefined
       }
-      user_get_profile: { Args: never; Returns: Record<string, unknown> }
+      user_get_profile: {
+        Args: never
+        Returns: {
+          created_at: string
+          division: string
+          division_id: string
+          email: string
+          entity: string
+          entity_id: string
+          full_name: string
+          id: string
+          is_active: boolean
+          manager_id: string
+          phone: string
+          region: string
+          region_id: string
+          role: string
+          updated_at: string
+          user_id: string
+          user_status: string
+        }[]
+      }
       user_update_profile: {
         Args: { p_full_name: string; p_phone: string; p_user_id: string }
-        Returns: undefined
+        Returns: boolean
       }
     }
     Enums: {

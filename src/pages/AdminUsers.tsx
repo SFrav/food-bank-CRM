@@ -12,7 +12,7 @@ import { PermissionGuard } from '@/components/PermissionGuard';
 import { useRegions } from '@/hooks/useRegions';
 import { useEntities } from '@/hooks/useEntities';
 import { useDivisions } from '@/hooks/useDivisions';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/useToast';
 
 const EditUserModal = lazy(() =>
   import('@/components/modals/EditUser')
@@ -22,6 +22,7 @@ type RoleFilter = 'all' | 'admin' | 'head' | 'manager' | 'referrer' | 'branch_ma
 
 export default function AdminUsers() {
   const { profile } = useProfile();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const { users, loading: usersLoading, refetch, updateUserProfile, deleteUser } = useAdminUsers(searchQuery, roleFilter);
@@ -54,9 +55,9 @@ export default function AdminUsers() {
     const result = await updateUserProfile(userId, role as Users['role'], entityId, divisionId, managerId, regionId);
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
     if (result.success) {
-      toast.success('User updated successfully');
+      // toast({description: 'User updated successfully', variant: 'default'});
     } else {
-      toast.error(result.error || 'Failed to update user');
+      toast({ title: 'Error', description: result.error || 'Failed to update user', variant: 'destructive' });
     }
     return result;
   }, [updateUserProfile]);
@@ -67,12 +68,11 @@ export default function AdminUsers() {
     setSelectedUser(null);
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
     if (!result.success) {
-      toast.error('Failed to delete user: ' + (result.error || 'Unknown error'));
+      return result;
     } else {
-      toast.success('User deleted successfully');
     }
     return result;
-  }, [deleteUser]);
+  }, [deleteUser, refetch]);
 
 
   return (

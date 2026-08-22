@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from './useProfile';
+import { useToast } from '@/hooks/useToast';
 
 export interface Region {
   id: string;
@@ -14,6 +15,7 @@ export interface Region {
 
 export const useRegions = () => {
   const { isAdmin } = useProfile();
+  const { toast } = useToast();
   const [regions, setRegions] = useState<Region[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined | null>(undefined);
@@ -53,6 +55,7 @@ export const useRegions = () => {
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(error);
+      toast({ title: 'Error', description: 'Failed to create region', variant: 'destructive' });
       return { data: null, error: error.message };
     }
   };
@@ -80,6 +83,7 @@ export const useRegions = () => {
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error(err)
+      toast({ title: 'Error', description: 'Failed to update region', variant: 'destructive' });
       return { data: null, error: error.message };
     }
   };
@@ -89,7 +93,7 @@ export const useRegions = () => {
       throw new Error('Only admins can delete regions');
     }
     try {
-      const { error } = await supabase.rpc('delete_region', {
+      const { data, error } = await supabase.rpc('delete_region', {
         p_id: id
       });
       if (error) throw error;
@@ -98,6 +102,7 @@ export const useRegions = () => {
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Delete error', err);
+       toast({ title: 'Error', description: 'Failed to delete region', variant: 'destructive' });
       return { error: error.message };
     }
   };

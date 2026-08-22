@@ -56,7 +56,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAsRead = useCallback(async (id: string) => {
     try {
-      const { error: rpcErr } = await supabase.rpc('mark_notification_read', { p_id: id });
+      const { data, error: rpcErr } = await supabase.rpc('mark_notification_read', { p_id: id });
       // Optimistic UI update
       if (rpcErr) throw rpcErr;
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
@@ -72,7 +72,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const { error: rpcErr } = await supabase.rpc('mark_all_notifications_read');
+      const { data, error: rpcErr } = await supabase.rpc('mark_all_notifications_read');
       if (rpcErr) throw rpcErr;
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       return { success: true };
@@ -94,7 +94,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     p_calendar_id: string | null = null
   ) => {
     try {
-      const { error } = await supabase.rpc('create_notification', {
+      const { data, error } = await supabase.rpc('create_notification', {
         p_title,
         p_message,
         p_link,

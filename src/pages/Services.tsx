@@ -28,9 +28,11 @@ const Services = () => {
   }, [refetch]);
 
   const handleDeleteService = useCallback(async (serviceId: string) => {
-    await deleteService(serviceId);
-    setSelectedService(null);
-    await refetch();
+    const { success, error } = await deleteService(serviceId);
+    if(success){
+      setSelectedService(null);
+      await refetch();
+    };
   }, [deleteService, refetch]);
 
   return (

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from './useProfile';
 
+type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+
 export interface AuditLog {
   id: string;
   entity_id: string | null;
@@ -54,7 +56,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
 
       const { data, error, count } = await supabase
         .rpc('get_audit_logs', {
-          p_filters: filters,
+          p_filters: filters as unknown as Json,
           p_page: page,
           p_page_size: pageSize,
         });
@@ -117,7 +119,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       setError(null);
 
       const { data, error } = await supabase.rpc('admin_clear_audit_logs', {
-        p_filters: filters as unknown,
+        p_filters: filters as unknown as Json,
       });
 
       if (error) throw error;

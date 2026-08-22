@@ -70,8 +70,10 @@ export default function EditEventModal({
     
   const handleSave = async () => {
     if (!event) return;
-    await updateEvent();
-    onClose();
+    const { success } = await updateEvent();
+    if(success){
+      onClose();
+    };
   };
 
   return (

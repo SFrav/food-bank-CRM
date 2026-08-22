@@ -51,7 +51,7 @@ export const useDivisionSettings = () => {
   ) => {
     if (!divisions) return;
     try {
-      const { error } = await supabase.rpc('upsert_division_setting', {
+      const { data, error } = await supabase.rpc('upsert_division_setting', {
         p_division_id: division_id,
         p_setting_key: key,
         p_setting_value: value,

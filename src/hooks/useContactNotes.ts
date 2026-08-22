@@ -33,7 +33,7 @@ export const useContactNotes = (contactId: string | null) => {
   const delete_note = useCallback(
     async (noteId: string) => {
       try{
-        const { error } = await supabase.rpc('delete_contact_note', {
+        const { data, error } = await supabase.rpc('delete_contact_note', {
           p_note_id: noteId,
         });
         if (error) throw error;

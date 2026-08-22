@@ -175,14 +175,14 @@ useEffect(() => {
   });
 
   const handleUpdateStatus = async (id: string, newStatus: TaskStatus) => {
-    await updateStatus(id, newStatus);
-    await loadTasks();
+    const { success, error } = await updateStatus(id, newStatus);
+    if(!error || success) await loadTasks();
   };
 
   const handleDeleteTask = async (eventId: string) => {
     try {
-      await deleteTask(eventId);
-      await loadTasks();
+      const { success, error } = await deleteTask(eventId);
+      if(!error || success) await loadTasks();
     } catch (error) {
       console.error('Error deleting event:', error);
     }

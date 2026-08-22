@@ -47,7 +47,7 @@ export function useDivisionSummary(
   return { 
     divisionSummary, 
     loading, 
-    // error, 
+    error, 
     refetch: fetchDivisions 
   };
 }
