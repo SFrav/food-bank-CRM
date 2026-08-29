@@ -52,7 +52,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  }, [user]); //, toast
+  }, [user, setLoading]);
 
   const markAsRead = useCallback(async (id: string) => {
     try {
@@ -68,7 +68,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return { success: false, error: error.message };
       // Rollback optimistic update if needed, though DB sync will fix it eventually
     }
-  }, [toast]);
+  }, []);
 
   const markAllAsRead = useCallback(async () => {
     try {
@@ -82,7 +82,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       toast({ title: 'Error', description: 'Could not mark all as read.', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  }, [toast]);
+  }, []);
 
   const createNotification = async (
     p_title: string,

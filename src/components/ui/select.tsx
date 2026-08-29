@@ -13,7 +13,7 @@ const SelectValue = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
 >(({ placeholder, className, children, ...props }, ref) => {
   return (
-    <>
+    <div>
       <style>{`
         [data-placeholder] > span {
           color: #6b7280;         
@@ -28,7 +28,7 @@ const SelectValue = React.forwardRef<
       >
         {children}
       </SelectPrimitive.Value>
-    </>
+    </div>
   );
 });
 

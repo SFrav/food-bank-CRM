@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,6 +130,10 @@ export const DivisionDepartmentManagement = () => {
     await refetch();
   };
 
+  const handleNewDivisionName = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewDivisionName(e.target.value);}, []);
+
+  const handleClearFilter = useCallback(() => setFilterEntityId('all'), []);
+
   return (
     <Card>
       <CardHeader>
@@ -160,7 +164,7 @@ export const DivisionDepartmentManagement = () => {
               <Input
                 placeholder="Enter branch name..."
                 value={newDivisionName}
-                onChange={(e) => setNewDivisionName(e.target.value)}
+                onChange={handleNewDivisionName}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateDivision()}
               />
               <Select value={newDivisionEntityId} onValueChange={setNewDivisionEntityId}>
@@ -197,7 +201,7 @@ export const DivisionDepartmentManagement = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={() => setFilterEntityId('all')}>Reset</Button>
+            <Button variant="outline" size="sm" onClick={handleClearFilter}>Reset</Button>
           </div>
 
           {/* Branch Table */}
@@ -250,16 +254,16 @@ export const DivisionDepartmentManagement = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {editingDivisionId === division.id ? (
-                          <>
+                          <div>
                             <Button size="sm" onClick={() => handleSaveDivision(division.id)} disabled={updatingDivision === division.id}>
                               {updatingDivision === division.id ? <RefreshCw className="size-3 animate-spin" /> : <Save className="size-3" />}
                             </Button>
                             <Button size="sm" variant="outline" onClick={handleCancelDivision} disabled={updatingDivision === division.id}>
                               <X className="size-3" />
                             </Button>
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div>
                             <Button size="sm" variant="outline" onClick={() => handleEditDivision(division)} disabled={updatingDivision === division.id || deletingDivision === division.id}>
                               <Edit className="size-3" />
                             </Button>
@@ -298,7 +302,7 @@ export const DivisionDepartmentManagement = () => {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>                      
-                          </>
+                          </div>
                         )}
                       </div>
                     </TableCell>

@@ -107,6 +107,7 @@ const NotificationsPage: React.FC = () => {
       setTargetRole(null);
     }
   };  
+  
   const getTypeBadgeVariant = (type: Notification['type']) => {
     switch (type) {
       case 'alert': return 'destructive';

@@ -50,7 +50,7 @@ export function useCalendar() {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   const deleteEvent = useCallback(async (id: string) => {
     if (!user) return;
@@ -68,7 +68,7 @@ export function useCalendar() {
       toast({ title: 'Error', description: 'Failed to delete calendar entry', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  }, [user, toast, fetchEvents]);
+  }, [user]);
 
   return { events, 
     loading, 

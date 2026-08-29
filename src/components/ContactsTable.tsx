@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Search, Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { ContactRow } from '@/components/ContactRow';
 import { AddContactModal } from '@/components/modals/AddContact';
 import { MergeContactModal } from '@/components/modals/MergeContact';
 import { useContacts, Contact } from '@/hooks/useContacts';
@@ -16,6 +17,7 @@ import { useDivisions } from '@/hooks/useDivisions';
 import { useDivisionSettings, DivisionSettings } from '@/hooks/useDivisionSettings';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
+import { CheckedState } from '@radix-ui/react-checkbox';
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -55,11 +57,14 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
 
   const divisionSettings = settingsMap[profile?.division_id || ''] ?? {};
   const dayOffset = parseInt(divisionSettings.day_offset ?? '-1', 10);
-  const todayIndex = (new Date().getDay() + 6) % 7; 
+  const todayIndex = useMemo(() => { return (new Date().getDay() + 6) % 7;}, []); 
   const dayServing = todayIndex === dayOffset;
 
+  const stableRefetch = useCallback((q: boolean) => refetch(q), [refetch]);
+  const stableFetchSettings = useCallback((id: string) => fetchSettings(id), [fetchSettings]);
+
   useEffect(() => {
-    if (!profile || selected.size !== 2) return;
+    if (selected.size !== 2) return;
     const ids = Array.from(selected);
     const primary = contacts.find(c => c.id === ids[0]) ?? null;
     const secondary = contacts.find(c => c.id === ids[1]) ?? null;
@@ -69,25 +74,22 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
       setMergeDialogOpen(true);
       // setSelected(new Set());
     }
-    if (profile?.division_id && !settingsMap[profile.division_id]) {
-      fetchSettings(profile.division_id);
-    }
-  }, [profile, selected, contacts, refetch, fetchSettings]); 
+  }, [selected, contacts, stableRefetch]); 
 
   useEffect(() => {
     if (profile?.division_id && !settingsMap[profile.division_id]) {
       fetchSettings(profile.division_id);
     }
-  }, [profile?.division_id, fetchSettings, settingsMap]);
+  }, [profile?.division_id, stableFetchSettings]);
 
-  const toggleSelection = (id: string, checked: boolean) => {
-    setSelected(prev => {
-      const newSet = new Set(prev);
-      if (checked) newSet.add(id);
-      else newSet.delete(id);
-      return newSet;
-    });
-  };
+  // const toggleSelection = (id: string, checked: boolean) => {
+  //   setSelected(prev => {
+  //     const newSet = new Set(prev);
+  //     if (checked) newSet.add(id);
+  //     else newSet.delete(id);
+  //     return newSet;
+  //   });
+  // };
 
   const totalContacts = useMemo(() => {
     return contacts.filter(contact => {
@@ -97,8 +99,9 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
     })
   }, [contacts])
 
+  const orgDivIds = useMemo(() => new Set(divisions.map(d => d.manager_id).filter(Boolean)), [divisions]);  
+
   const filteredContacts = useMemo(() => {
-    const orgDivIds = new Set(divisions.map(d => d.manager_id).filter(Boolean));
     const search = searchTerm.trim().toLowerCase();
 
     return contacts.filter(contact => {
@@ -123,7 +126,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
       }
       return true; 
     });
-  }, [searchTerm, filterTermStatus, filterTermBranch, contacts, divisions]);
+  }, [searchTerm, filterTermStatus, filterTermBranch, contacts, orgDivIds]);
 
   const exportToCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Notes', 'Created At'];
@@ -145,20 +148,35 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
     toast({ title: 'Success', description: 'Contacts exported to CSV' });
   };
 
-  // const handleQueueRefetch = useCallback(() => {
-  //   refetch(filterQueue)
-  // }, [refetch, filterQueue]);
-
-  // const handleNameInit = (searchTerm: string) => {
+  // const handleNameInit = useMemo(() => {
   //   if (searchTerm.length > 6) return searchTerm; 
   //   return '';
-  // };
-  const handleNameInit = useMemo(() => {
-    if (searchTerm.length > 6) return searchTerm; 
-    return '';
-  }, [searchTerm]);
+  // }, [searchTerm]);
 
-  const handleAddRefetch = () => {
+  const handleNameInit = searchTerm.length > 6 ? searchTerm : '';
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setSearchTerm(e.target.value); setSelected(new Set());}, [])
+  const handleBranchChange = useCallback((e: string) => {setFilterTermBranch(e); setSelected(new Set());}, [])
+  const handleStatusChange = useCallback((e: string) => {setFilterTermStatus(e); setSelected(new Set());}, [])
+  const handleQueueChange = useCallback((checked: boolean) => {setFilterQueue(checked); refetch(checked);}, [refetch])
+  const handleSearchClear = useCallback(() => {setSearchTerm(''); setFilterTermStatus('all'); setFilterTermBranch('all')}, [])
+  
+
+  const handleOpenAdd = useCallback(() => {setIsAddModalOpen(true)}, [])
+  const handleCloseAdd = useCallback(() => {setIsAddModalOpen(false)}, [])
+  const handleOpenMerge = useCallback(() => {setMergeDialogOpen(true)}, [])
+  const handleCloseMerge = useCallback(() => {setMergeDialogOpen(false)}, [])
+  
+  const handleCheckedMerge = useCallback((checked: CheckedState, id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (checked && next.size < 2) next.add(id);
+      else if (!checked) next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleAdd = () => {
     refetch(filterQueue);
     setSearchTerm('');
   }
@@ -183,7 +201,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                 <Input
                   placeholder="Search by name, email or status …"
                   value={searchTerm}
-                  onChange={(e) => {setSearchTerm(e.target.value); setSelected(new Set());}}
+                  onChange={handleSearchChange}
                   className="pl-10 w-full sm:w-[300px]"
                 />
               </div>
@@ -192,7 +210,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                   <label className="text-sm">Branch:</label>
                   <Select 
                     value={filterTermBranch} 
-                    onValueChange={(e) => {setFilterTermBranch(e); setSelected(new Set());}} 
+                    onValueChange={handleBranchChange} 
                   >
                     <SelectTrigger className="w-full sm:w-[120px] sm:h-[15px]">
                       <SelectValue placeholder="Branch filter" />
@@ -214,7 +232,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                   <label className="text-sm">Status:</label>
                   <Select
                     value={filterTermStatus} 
-                    onValueChange={(e) => {setFilterTermStatus(e); setSelected(new Set());}} //setFilterTermStore(e);
+                    onValueChange={handleStatusChange} 
                   >
                     <SelectTrigger className="w-full sm:w-[120px] sm:h-[15px]">
                       <SelectValue placeholder="Status filter" />
@@ -234,10 +252,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                     <label className="text-sm">Queue:</label>
                     <Switch
                       id="queue"
-                      onCheckedChange={checked => {
-                        setFilterQueue(checked);
-                        refetch(checked);
-                      }}
+                      onCheckedChange={handleQueueChange}
                     />
                   </div>
                 </PermissionGuard>
@@ -246,7 +261,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
             <div className="sm:flex gap-1">
               {filterTermStatus === 'all' && searchTerm.length > 2 && (
               <Button className="w-[50%] sm:w-full" 
-                onClick={() => setIsAddModalOpen(true)}>
+                onClick={handleOpenAdd}>
                 <Plus className="size-4 mr-0" />Add Beneficiary
               </Button>
               )}
@@ -292,66 +307,15 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                 </TableHeader>
                 <TableBody>
                   {filteredContacts.map((c, index) => (
-                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEditContact(c)}>
-                        {!filterQueue && filteredContacts.length >1 ? ( 
-                      <TableCell className="font-medium">
-                      <PermissionGuard permission="canMergeBeneficiaries">
-                        <div onClick={e => e.stopPropagation()}>
-                          <Checkbox
-                            checked={selected.has(c.id)}
-                            onCheckedChange={(checked) => {
-                              if (!checked && selected.has(c.id)) toggleSelection(c.id, false);
-                              else if (checked && selected.size < 2) toggleSelection(c.id, true);}}
-                          />
-                          </div>
-                        </PermissionGuard>
-                      </TableCell>
-                        ) : (
-                      <TableCell className="font-medium size-4">
-                        {index + 1}
-                      </TableCell>
-                       )}
-                      <TableCell className="sm:table-cell sm:max-w-[100px] sm:line-clamp-2">{c.name}</TableCell>
-                      <TableCell className="sm:table-cell sm:max-w-[125px] line-clamp-2">
-                        {c.email ? (
-                          // <a
-                          //   href={`mailto:${c.email}`}
-                          //   className="text-primary hover:underline"
-                          //   onClick={(e) => e.stopPropagation()}
-                          // >
-                            <span>{c.email}</span>
-                          // </a>
-                        ) : (
-                          <span className="text-muted-foreground">&hellip;</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="sm:table-cell sm:max-w-[80px]">
-                        {c.phone ? (
-                          // <a
-                          //   href={`tel:${c.phone}`}
-                          //   className="text-primary hover:underline"
-                          //   onClick={(e) => e.stopPropagation()}
-                          // >
-                            <span>{c.phone}</span>
-                          // </a>
-                        ) : (
-                          <span className="text-muted-foreground">&hellip;</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="sm:table-cell sm:max-w-[200px]">
-                        {c.status ? ( <StatusBadge role={c.status}/> 
-                        ) : (<span className="text-muted-foreground">&hellip;</span>)}
-                      </TableCell>
-                        <TableCell className="text-xs text-muted-foreground pl-3 pr-3 sm:table-cell sm:max-w-[120px]">
-                          {c.notes ? (
-                            <span className=" line-clamp-2" title={c.notes}>
-                              {c.notes}
-                            </span>
-                          ) : (
-                            <span className="line-clamp-2" > &hellip; </span>
-                          )}
-                        </TableCell>
-                    </TableRow>
+                     <ContactRow
+                        contact={c}
+                        index={index}
+                        selected={selected}
+                        filterQueue={filterQueue}
+                        totalCount={filteredContacts.length}
+                        onCheckedChange={handleCheckedMerge}
+                        onEdit={onEditContact}
+                      /> 
                   ))}
                 </TableBody>
               </Table>
@@ -365,9 +329,9 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
               </span>
               {selected.size === 2 ? (
                 <Button 
-                  onClick={() => setMergeDialogOpen(true)}>Merge selected</Button>
+                  onClick={handleOpenMerge}>Merge selected</Button>
               ) : (
-                <Button variant="ghost" size="sm" onClick={() => {setSearchTerm(''); setFilterTermStatus('all'); setFilterTermBranch('all')}}>Clear search</Button>
+                <Button variant="ghost" size="sm" onClick={handleSearchClear}>Clear search</Button>
               )
               }              
               
@@ -377,7 +341,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
             <span>
               No contacts match your search
             </span>
-          {searchTerm && selected.size !==2  && <Button variant="ghost" size="sm" onClick={() => {setSearchTerm(''); setFilterTermStatus('all'); setFilterTermBranch('all')}}>Clear search</Button>} 
+          {searchTerm && selected.size !==2  && <Button variant="ghost" size="sm" onClick={handleSearchClear}>Clear search</Button>} 
             </div>
         )}
         </CardContent>
@@ -387,12 +351,12 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
         isOpen={isAddModalOpen}
         nameInit={handleNameInit}
         onDuplicateFound={onDuplicateAdd}
-        onClose={() => setIsAddModalOpen(false)}
-        onContactAdded={handleAddRefetch}
+        onClose={handleCloseAdd}
+        onContactAdded={handleAdd}
       />
       <MergeContactModal
         isOpen={mergeDialogOpen}
-        onClose={() => setMergeDialogOpen(false)}
+        onClose={handleCloseMerge}
         onMerged={handleMerged}
         primary={primaryMerge ?? ({} as Contact)}
         secondary={secondaryMerge ?? ({} as Contact)}

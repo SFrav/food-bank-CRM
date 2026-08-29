@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,30 +45,29 @@ export default function AddEventBulkModal({
       const formatted = format(selectedDate, "yyyy-MM-dd'T'HH:mm");
       setForm((prev) => ({ ...prev, scheduled_at: formatted }));
     }
-  }, [selectedDate, setForm]);
+  }, [isOpen, selectedDate]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  }, []);
+
+  const handleClose = () => {
+    onClose();
+    setForm((prev) => ({ ...prev, subject: '' }));
+    // setForm((prev) => ({ ...prev, scheduled_at: '' }));
+    setForm((prev) => ({ ...prev, location: '' }));
+    setForm((prev) => ({ ...prev, notes: '' }));
+  }
 
   const handleSave = async () => {
     if (!user) return;
 
     const { success } = await createEvent();
     if(success) {
-      onClose();
+      handleClose();
     };
   };
-
-  const handleClose = () => {
-    onClose();
-    setForm((prev) => ({ ...prev, subject: '' }));
-    setForm((prev) => ({ ...prev, location: '' }));
-    setForm((prev) => ({ ...prev, description: '' }));
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -98,9 +97,10 @@ export default function AddEventBulkModal({
             <Label htmlFor="scheduled-at">Scheduled Date & Time *</Label>
             <Input
               id="scheduled-at"
+              name="scheduled_at"
               type="datetime-local"
               value={form.scheduled_at}
-              onChange={(e) => setForm((prev) => ({...prev, scheduled_at: e.target.value, })) }
+              onChange={handleInputChange}
             />
             </div>
           </div>
@@ -137,7 +137,7 @@ export default function AddEventBulkModal({
             >
               Cancel
             </Button>
-            <Button type="button" disabled={isSubmitting} onClick={handleSave}>
+             <Button type="button" disabled={isSubmitting} onClick={handleSave}> 
               {isSubmitting ? "Adding…" : "Add Event"}
             </Button>
           </div>

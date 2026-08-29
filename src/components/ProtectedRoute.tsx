@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   //   return <Navigate to="/pending" replace />;
   // }
 
-  return <>{children}</>;
+  return <div>{children}</div>;
 };
 
 export default ProtectedRoute;

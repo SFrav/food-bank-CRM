@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,12 @@ export default function AddTaskModal({
   onAdd,
 }: AddTaskProps) {
   const { form, setForm, createEvent: createTask, isSubmitting, } = useCalendarForm({ beneficiaries, loadContacts, onSuccess: onAdd, });
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }, []);
+    // e => setForm({ ...form, scheduled_at: e.target.value })
 
   const handleSave = async () => {
     const { success } = await createTask(); 
@@ -86,9 +93,10 @@ export default function AddTaskModal({
             <Label htmlFor="scheduled-at">Scheduled Date & Time *</Label>
             <Input
               id="scheduled-at"
+              name="scheduled_at"
               type="datetime-local"
               value={form.scheduled_at}
-              onChange={e => setForm({ ...form, scheduled_at: e.target.value })}
+              onChange={handleInputChange}
             />
           </div>
 
@@ -113,8 +121,9 @@ export default function AddTaskModal({
             <Label htmlFor="notes">Notes</Label>
             <Textarea
               id="notes"
+              name="notes"
               value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Add notes about the task..."
               rows={3}
             />

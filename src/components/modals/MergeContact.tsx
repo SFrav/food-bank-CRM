@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 //import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -39,19 +40,20 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
 }) => {
   if (!initialPrimary || !initialSecondary) return null;
   const { mergeContacts } = useContacts();
+  const { regions } = useRegions();
   // const { toast } = useToast();
 
   const [primary, setPrimary] = useState<Contact>(initialPrimary);
   const [secondary, setSecondary] = useState<Contact>(initialSecondary);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { regions } = useRegions();
+  const [showMergeWarning, setShowMergeWarning] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     setPrimary(initialPrimary);
     setSecondary(initialSecondary);
-  }, [initialPrimary, initialSecondary]);
+  }, [isOpen, initialPrimary, initialSecondary]);
 
   const toggle = () => {
     setPrimary(prev => {
@@ -68,20 +70,53 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
     return match?.name ?? id;
   };
 
-  const handleMerge = async () => {
-    setIsLoading(true);
-    const { success, error } = await mergeContacts(primary.id, secondary.id);
-    if (!success) {
-      // toast({ title: 'Error', description: error ?? 'Merge failed', variant: 'destructive' });
-      return;
-    }
-    // toast({ title: 'Success', description: 'Contacts merged' });
-    onMerged();
-    onClose();
-    setIsLoading(false);
-  };
+   const hasNearMatch = (a: Contact, b: Contact): boolean => {
+     const norm = (s: string | null) => s?.trim().toLowerCase() || '';
+     if (norm(a.email) === norm(b.email)) return true;
+
+     const getLastName = (n: string | null) => n?.split(' ').pop()?.toLowerCase() || '';
+     const isSimilar = (s1: string, s2: string) => {
+       if (s1 === s2) return true;
+       if (s1.includes(s2) || s2.includes(s1)) return true;
+       const len = Math.max(s1.length, s2.length);
+       if (len === 0) return true;
+       let matches = 0;
+       for (let i = 0; i < Math.min(s1.length, s2.length); i++) if (s1[i] === s2[i]) matches++;
+       return matches / len > 0.75;
+     };
+
+     return isSimilar(norm(a.name), norm(b.name)) || isSimilar(getLastName(a.name), getLastName(b.name));
+   };
+
+   const executeMerge = async () => {
+     setIsLoading(true);
+     const { success, error } = await mergeContacts(primary.id, secondary.id);
+     setIsLoading(false);
+     if (!success) {
+      //  toast({ title: 'Error', description: error ?? 'Merge failed', variant: 'destructive' });
+     } else {
+      //  toast({ title: 'Success', description: 'Contacts merged' });
+       onMerged();
+       onClose();
+     }
+   };
+
+   const handleMerge = () => {
+     if (!hasNearMatch(primary, secondary)) {
+       setShowMergeWarning(true);
+     } else {
+       executeMerge();
+     }
+   };
+
+   const handleViewSize = useCallback(() => setIsFullScreen(prev => !prev), []);
+
+   const handleReviewMerge = useCallback(() => setShowMergeWarning(false), []);
+
+   const handleApproveMerge = useCallback(() => { setShowMergeWarning(false);  executeMerge; } ,[]);
 
   return (
+    <div>
     <Dialog open={isOpen} onOpenChange={o => (o ? undefined : onClose())}>
       <DialogContent
         className={cn(
@@ -97,7 +132,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
           </div>
           <div className="flex gap-2 truncate align-right">
             <button
-              onClick={() => setIsFullScreen(prev => !prev)}
+              onClick={handleViewSize}
               title={isFullScreen ? 'Restore' : 'Maximise'}
               className="absolute right-9.5 top-4.5 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
               aria-label={isFullScreen ? 'Restore window' : 'Maximise window'}
@@ -156,7 +191,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
                     </Label>
                   <Input
                     id={field}
-                    value={primary[field] as string ?? ''}
+                    value={String(primary[field] ?? '')}
                     disabled
                     // onChange={e =>
                     //   setPrimary(prev => ({ ...prev, [field]: e.target.value }))
@@ -201,7 +236,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
                     </Label>
                   <Input
                     id={field}
-                    value={secondary[field] as string ?? ''}
+                    value={String(secondary[field] ?? '')}
                     disabled
                     // onChange={e =>
                     //   setPrimary(prev => ({ ...prev, [field]: e.target.value }))
@@ -226,5 +261,22 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    <AlertDialog open={showMergeWarning} onOpenChange={setShowMergeWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogDescription>
+              These records do not have matching names or email addresses. Are you sure that you want to merge? 
+          </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleReviewMerge}>Review</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApproveMerge}>
+              Merge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      </div>
   );
 };

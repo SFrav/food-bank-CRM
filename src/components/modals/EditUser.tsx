@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Check, Trash2, X } from 'lucide-react';
 import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,8 @@ const EditUserModal = ({
     if (result.success) onClose();
   };
 
+  const handleConfirmDelete = useCallback(() => setConfirmDelete(false), []);
+
   return (
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[525px] max-h-[90dvh] overflow-y-auto">
@@ -256,7 +258,7 @@ const EditUserModal = ({
                 {confirmDelete ? '' : ''} {/* confirmDelete ? 'Confirm' : 'Delete' */}
               </Button>
               {confirmDelete && (
-                <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
+                <Button variant="ghost" size="sm" onClick={handleConfirmDelete}>
                   <X className="size-3.5 mr-1" />  
                 </Button>
               )}

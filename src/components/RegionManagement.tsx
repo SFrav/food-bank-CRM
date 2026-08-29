@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,12 @@ export const RegionManagement = () => {
     }
   };
 
+  const handleNewRegionName = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewRegionName(e.target.value);}, []);
+  const handleNewRegionCode = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewRegionCode(e.target.value);}, []);
+  const handleEditRegionName = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setEditingName(e.target.value);}, []);
+  const handleEditRegionCode = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setEditingCode(e.target.value);}, []);
+    
+
   const handleDelete = async (id: string, name: string) => { //@Revise to alert
     // if (!confirm(`Are you sure you want to delete the region "${name}"? This action cannot be undone.`)) {
     //   return;
@@ -129,13 +135,13 @@ export const RegionManagement = () => {
           <Input
             placeholder="Enter region name..."
             value={newRegionName}
-            onChange={(e) => setNewRegionName(e.target.value)}
+            onChange={handleNewRegionName}
             className="flex-2"
           />
           <Input
             placeholder="Code"
             value={newRegionCode}
-            onChange={(e) => setNewRegionCode(e.target.value.toUpperCase())}
+            onChange={handleNewRegionCode}
             className="flex-1 max-w-[100px]"
             maxLength={6}
           />
@@ -178,7 +184,7 @@ export const RegionManagement = () => {
                       {editingId === region.id ? (
                         <Input
                           value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
+                          onChange={handleEditRegionName}
                         />
                       ) : (
                         <span className="font-medium">{region.name}</span>
@@ -188,7 +194,7 @@ export const RegionManagement = () => {
                       {editingId === region.id ? (
                         <Input
                           value={editingCode}
-                          onChange={(e) => setEditingCode(e.target.value.toUpperCase())}
+                          onChange={handleEditRegionCode}
                           className="max-w-[80px]"
                           maxLength={6}
                         />
@@ -213,7 +219,7 @@ export const RegionManagement = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {editingId === region.id ? (
-                          <>
+                          <div>
                             <Button
                               size="sm"
                               onClick={() => handleSave(region.id)}
@@ -233,9 +239,9 @@ export const RegionManagement = () => {
                             >
                               <X className="size-3" />
                             </Button>
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div>
                             <Button
                               size="sm"
                               variant="outline"
@@ -283,7 +289,7 @@ export const RegionManagement = () => {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>                      
-                          </>
+                          </div>
                         )}
                       </div>
                     </TableCell>

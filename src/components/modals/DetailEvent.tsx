@@ -10,7 +10,7 @@ interface CalendarEvent {
   starts_at: string;
   ends_at?: string | null;
   location?: string | null;
-  description?: string | null;
+  notes?: string | null;
   type?: string | null;
   status?: "scheduled" | "done" | "cancelled";
   created_at: string;
@@ -102,13 +102,13 @@ export default function EventDetailModal({
           )}
 
           {/* Description */}
-          {event.description && (
+          {event.notes && (
             <div className="flex items-start gap-2 text-sm">
               <FileText className="size-4 text-muted-foreground mt-0.5" />
               <div className="flex-1">
                 <div className="font-medium mb-1">Description</div>
                 <div className="text-muted-foreground whitespace-pre-wrap">
-                  {event.description}
+                  {event.notes}
                 </div>
               </div>
             </div>

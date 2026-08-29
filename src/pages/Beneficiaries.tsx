@@ -44,31 +44,11 @@ export default function Contacts() {
   const handleContactUpdated = useCallback(() => {
     refetch(filterQueue);
     // setRefreshKey(k => k + 1);
-  }, [refetch, filterQueue]);
+  }, [filterQueue]);
 
   const handleDuplicateAdd = useCallback((dup: Contact) => {
     setEditingContact(dup);
     setIsEditOpen(true);
-  }, []);
-
-  const handleEditContact = useCallback((contact: Contact) => {
-    const existing = minimised.find(m => m.contact.id === contact.id);
-    if (existing) {
-      handleRestore(contact.id);
-      return;
-    }
-    setRestoredFormData(null);
-    setEditingContact(contact);
-    setIsEditOpen(true);
-  }, [minimised]);
-
-  const handleMinimise = useCallback((contact: Contact, isDirty: boolean, formData: ContactFormData) => {
-    setIsEditOpen(false);
-    setMinimised(prev => {
-      const without = prev.filter(m => m.contact.id !== contact.id);
-      const capped = without.length >= MAX_MINIMISED ? without.slice(1) : without;
-      return [...capped, { contact, isDirty, savedFormData: formData }];
-    });
   }, []);
 
   const handleRestore = useCallback((id: string) => {
@@ -80,9 +60,29 @@ export default function Contacts() {
     setIsEditOpen(true);
   }, [minimised]);
 
+  const handleEditContact = useCallback((contact: Contact) => {
+    const existing = minimised.find(m => m.contact.id === contact.id);
+    if (existing) {
+      handleRestore(contact.id);
+      return;
+    }
+    setRestoredFormData(null);
+    setEditingContact(contact);
+    setIsEditOpen(true);
+  }, [minimised, handleRestore]);
+
+  const handleMinimise = useCallback((contact: Contact, isDirty: boolean, formData: ContactFormData) => {
+    setIsEditOpen(false);
+    setMinimised(prev => {
+      const without = prev.filter(m => m.contact.id !== contact.id);
+      const capped = without.length >= MAX_MINIMISED ? without.slice(1) : without;
+      return [...capped, { contact, isDirty, savedFormData: formData }];
+    });
+  }, [setMinimised]);
+
   const handleDiscard = useCallback((id: string) => {
     setMinimised(prev => prev.filter(m => m.contact.id !== id));
-  }, []);
+  }, [setMinimised]);
 
   const handleClose = useCallback(() => {
     setIsEditOpen(false);

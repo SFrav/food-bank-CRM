@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ interface ContactEditAllotmentProps {
   handleToggleVegetarian: () => Promise<void>;
   handleToggleHallal: () => Promise<void>;
   handleAddAllotment: (v: string) => Promise<void>;
-  loadingAllotment: boolean;
+  loadingAllotment: boolean; 
   allotment: ContactAllotment[];
   newAllotmentType: string;
   // setNewAllotmentType: React.Dispatch<React.SetStateAction<string>>;
@@ -82,7 +82,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     if (div && !settingsMap[div]) {
       fetchSettings(div);
     }
-  }, [contact, divisions, fetchSettings, settingsMap]);
+  }, [contact, divisions, fetchSettings]);
 
   const displayedAllotment = useMemo(() => {
     if (!allotment) return [];
@@ -104,6 +104,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     n.setHours(0, 0, 0, 0);
     return n;
   };
+
   const isRecent = (dateStr: string): boolean => {
     const d = normalizeDate(dateStr);
     const n = new Date(); 
@@ -113,21 +114,30 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     return d >= n && d <= limit;
   };
 
-  const currentAllotment = (() => {
-    const recent = allotment
-      .filter(entry => isRecent(entry.date))
-      .sort((a, b) => normalizeDate(b.date).getTime() - normalizeDate(a.date).getTime());
-    return recent[0] ?? null;
-  })();
+  const today = useMemo(() => new Date().toLocaleDateString('en-GB'), []);
 
-  const today = new Date().toLocaleDateString('en-GB');
+  // const enrichedAllotments = useMemo(() => allotment.map(a => ({ ...a, _d: normalizeDate(a.date) })), [allotment]);
 
-  const isServed = allotment.some(
-    entry => entry.served && new Date(entry.date).toLocaleDateString('en-GB') === today
-  );
+  //  const currentAllotment = useMemo(() => {
+  //    const recent = enrichedAllotments
+  //      .filter(a => {
+  //        const n = new Date(); n.setHours(0,0,0,0);
+  //        const limit = new Date(n); limit.setDate(n.getDate() + 2);
+  //        return a._d >= n && a._d <= limit;
+  //      })
+  //      .sort((a, b) => b._d.getTime() - a._d.getTime());
+  //    return recent[0] ?? null;
+  //  }, [enrichedAllotments]);
+
+  //  const isServed = useMemo(() => {
+  //    return enrichedAllotments.some(a => a.served && new Date(a.date).toLocaleDateString('en-GB') === today);
+  //  }, [enrichedAllotments, today]);
+
+  const handleShowScope = useCallback((v: string) => {setShowAll(v === 'all')}, []);
+  
 
   return (
-    <>
+    <div>
     <div className="flex items-center justify-between px-4 py-2 border-b">
       <div className="flex items-center gap-2">
         <span className="font-sm">{contact?.name ?? 'Contact'}</span>
@@ -135,7 +145,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
         </div>
           <Select
             value={showAll ? 'all' : 'current'}
-            onValueChange={v => setShowAll(v === 'all')}
+            onValueChange={handleShowScope}
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Filter" />
@@ -231,32 +241,11 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   
     <form className="space-y-4">
       <div className="min-h-[50dvh]">
-        {loadingAllotment ? (
-          <p>Loading allotments</p>
-        ) : (
-          <>
+          <div>
             {displayedAllotment.length === 0 ? (
               <p>No recent allotment</p>
             ) : (
-            <div className="grid grid-cols-4 text-sm text-center gap-0 mb-2 max-w-[400px] py-4   border-b">
-              {/* {!isServed && displayedAllotment.length > 0 ? (
-              <div className="flex gap-2">
-                <label className="text-sm">Serving: </label>
-                <Switch
-                  checked={currentAllotment?.serving ?? false}
-                  disabled={currentAllotment?.serving ?? false}
-                  onCheckedChange={async () => {
-                    if (!currentAllotment) return;
-                    await handleMarkServing(currentAllotment.allotment_id);
-                  }}
-                />
-              </div>      
-              ): (
-              <div className="flex gap-2">
-                <label className="text-sm text-muted">Serving: </label>
-                <p className="invisible"> switch hidden </p>
-              </div>
-              )}         */}
+            <div className="grid grid-cols-4 text-sm text-center gap-0 mb-2 max-w-[400px] py-4 border-b">
               <p className="invisible">  </p>
               <span> Attended </span>
               <span> Serving </span>
@@ -282,6 +271,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                     {todayMatch && (
                       <Checkbox
                         checked={entry.attended ?? false}
+                        disabled={loadingAllotment}
                         onCheckedChange={() => !entry.attended && handleMarkAttended(entry.allotment_id)}
                       />
                     )}
@@ -290,7 +280,8 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                     {todayMatch && (
                       <Checkbox
                         checked={entry.serving ?? false}
-                        onCheckedChange={async () => {
+                        disabled={loadingAllotment}
+                        onCheckedChange={() => {
                           // if (entry.serving) return;
                           handleMarkServing(entry.allotment_id);
                         }}
@@ -307,7 +298,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                         <Checkbox
                           checked={entry.served ?? false}
                           onCheckedChange={() => !entry.served && handleMarkServed(entry.allotment_id)}
-                          disabled={!(entry.serving)}
+                          disabled={!(entry.serving) && loadingAllotment}
                         />
                       ) : (
                         // If not in the 5‑day window, show the checkbox disabled
@@ -323,7 +314,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
               <Select
                 value={newAllotmentType}
                 onValueChange={v => handleAddAllotment(v)}
-                // disabled={true}
+                disabled={loadingAllotment}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select type" />
@@ -334,11 +325,10 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                 </SelectContent>
               </Select>
             </div>
-          </>
-        )}
+          </div>
       </div>
     </form>
-    </>
+    </div>
   );
 };
 

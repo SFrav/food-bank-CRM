@@ -63,7 +63,7 @@ export const EntitySettingsTable = () => {
                           onValueChange={v => updateSetting(entity.id, 'referrer_request', v)}
                         >
                           <SelectTrigger className="w-[100px]">
-                            <SelectValue placeholder="Select day" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="head">Head</SelectItem>
@@ -78,7 +78,7 @@ export const EntitySettingsTable = () => {
                             onValueChange={v => updateSetting(entity.id, 'contact_notify', v)}
                           >
                             <SelectTrigger className="w-[100px]">
-                              <SelectValue placeholder="Select day" />
+                              <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="head">Head</SelectItem>
@@ -93,7 +93,7 @@ export const EntitySettingsTable = () => {
                             onValueChange={v => updateSetting(entity.id, 'contact_ban', v)}
                           >
                             <SelectTrigger className="w-[100px]">
-                              <SelectValue placeholder="Select day" />
+                              <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="head">Head</SelectItem>
@@ -110,7 +110,7 @@ export const EntitySettingsTable = () => {
                             onValueChange={v => updateSetting(entity.id, 'contact_ban', v)}
                           >
                             <SelectTrigger className="w-[100px]">
-                              <SelectValue placeholder="Select day" />
+                              <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="head">Head</SelectItem>

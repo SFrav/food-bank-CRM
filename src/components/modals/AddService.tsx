@@ -54,7 +54,29 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
     region_id: ''
   });
 
-  const handleSubmit = useCallback(async () => {
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }, []);
+
+  const handleServiceChange = useCallback((v: string) => setFormData(prev => (
+      {...prev, service: v})
+    ), []);
+
+  const handleInputAddressChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, address: {...prev.address, [name]: value }}));
+    }, []);
+
+  const handleRegionChange = useCallback((v: string) => {
+    setFormData(prev =>({ ...prev, region_id: v }));
+    setFormData(prev => ({...prev, address: {...prev.address, city: regions.find(r=>r.id===v)?.name ?? prev.address.city}}));
+    }, [regions]);
+
+
+  const handleSubmit = useCallback(async (e?: React.SubmitEvent<HTMLFormElement>) => {
+    e?.preventDefault();
     if(!formData.name.trim()) return;
 
     setIsLoading(true);
@@ -70,7 +92,7 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
         postcode: formData.address.postcode.trim(),
         country: formData.address.country.trim(),
       },
-      region_id: formData.region_id,
+      region_id: formData.region_id || null,
       website: formData.website.trim() || null,
       phone: formData.phone.trim() || null,
       email: formData.email.trim() || null,
@@ -88,7 +110,7 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
       onServiceAdded();
     };
     setIsLoading(false);
-  }, [createService]);
+  }, [createService, formData]);
 
   const handleReset = () => {
     setFormData({
@@ -120,10 +142,15 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
     'Other'
   ];
 
+  const handleCancel = () => {
+    handleReset();
+    onOpenChange(false);
+  };
+
   const handleClose = () => {
     onOpenChange(false);
     handleReset();
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -134,7 +161,7 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
           </DialogTitle>
           <DialogDescription> </DialogDescription>
         </DialogHeader>
-        
+        <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
           {/* Basic Information */}
           <div className="space-y-4">
@@ -146,8 +173,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
               </Label>
               <Input 
                 id="name"
+                name="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                onChange={handleInputChange}
                 placeholder={'Enter service name'}
               />
             </div>
@@ -157,8 +185,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
             <div className="space-y-2">
               <Label htmlFor="service">Service</Label>
               <Select 
+                name="service"
                 value={formData.service} 
-                onValueChange={(value) => setFormData(prev => ({...prev, service: value}))}
+                onValueChange={handleServiceChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select service" />
@@ -177,8 +206,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
               <Label htmlFor="website">Website</Label>
               <Input 
                 id="website"
+                name="website"
                 value={formData.website}
-                onChange={(e) => setFormData(prev => ({...prev, website: e.target.value}))}
+                onChange={handleInputChange}
                 placeholder="https://example.com"
               />
             </div>
@@ -187,8 +217,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
               <Label htmlFor="phone">Phone</Label>
               <Input 
                 id="phone"
+                name="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({...prev, phone: e.target.value}))}
+                onChange={handleInputChange}
                 placeholder="+44 7000 111 000"
               />
             </div>
@@ -197,9 +228,10 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
               <Label htmlFor="email">Email</Label>
               <Input 
                 id="email"
+                name="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                onChange={handleInputChange}
                 placeholder="contact@service.com"
               />
             </div>
@@ -217,25 +249,21 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
                 <Label htmlFor="street">Street Address</Label>
                 <Input 
                   id="street"
+                  name="street"
                   value={formData.address.street}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev, 
-                    address: {...prev.address, street: e.target.value}
-                  }))}
+                  onChange={handleInputAddressChange}
                   placeholder="Street address"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
               <div className="max-w-[200px]">
-                <Label htmlFor="region">Region *</Label>
+                <Label htmlFor="region">Region*</Label>
                 <Select
                   required={true}
-                  value={formData.region_id || "none"}
-                  onValueChange={v => {
-                    setFormData({ ...formData, region_id: v });
-                    setFormData(prev => ({...prev, address: {...prev.address, city: regions.find(r=>r.id===v)?.name ?? prev.address.city}}))
-                  }}
+                  disabled={false}
+                  value={formData.region_id || ""}
+                  onValueChange={handleRegionChange}
                 >
                   <SelectTrigger >
                     <SelectValue placeholder="Select Region"/>
@@ -265,11 +293,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
                   <Label htmlFor="state">State/Province</Label>
                   <Input 
                     id="state"
+                    name="state"
                     value={formData.address.state}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev, 
-                      address: {...prev.address, state: e.target.value}
-                    }))}
+                    onChange={handleInputAddressChange}
                     placeholder="State"
                   />
                 </div>
@@ -280,11 +306,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
                   <Label htmlFor="postcode">Postal Code</Label>
                   <Input 
                     id="postcode"
+                    name="postcode"
                     value={formData.address.postcode}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev, 
-                      address: {...prev.address, postcode: e.target.value}
-                    }))}
+                    onChange={handleInputAddressChange}
                     placeholder="Postcode"
                   />
                 </div>
@@ -292,11 +316,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
                   <Label htmlFor="country">Country</Label>
                   <Input 
                     id="country"
+                    name="country"
                     value={formData.address.country}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev, 
-                      address: {...prev.address, country: e.target.value}
-                    }))}
+                    onChange={handleInputAddressChange}
                     placeholder="Country"
                   />
                 </div>
@@ -310,8 +332,9 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
           <Label htmlFor="notes">Notes</Label>
           <Textarea 
             id="notes"
+            name="notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({...prev, notes: e.target.value}))}
+            onChange={handleInputChange}
             placeholder="Additional notes about this service..."
             rows={3}
           />
@@ -321,21 +344,20 @@ export default function AddServiceModal({ isOpen, onOpenChange, onServiceAdded}:
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 pt-6 gap-3">
           <Button 
             variant="outline" 
-            onClick={() => {
-              handleReset();
-              onOpenChange(false);
-            }}
+            onClick={handleCancel}
             disabled={isLoading}
           >
             Cancel
           </Button>
           <Button 
-            onClick={handleSubmit} 
+            type="submit"
+            // onClick={handleSubmit} 
             disabled={!formData.name.trim() || isLoading}
           >
             {isLoading ? 'Creating...' : 'Create service'}
           </Button>
         </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

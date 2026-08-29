@@ -17,7 +17,7 @@ export interface ContactAllotment {
 export const useContactAllotment = (contactId: string | null) => {
   const [allotment, setAllotment] = useState<ContactAllotment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | boolean | undefined>();
+  const [error, setError] = useState<boolean | undefined>();
   const { toast } = useToast();
 
   const fetch = useCallback(async () => {
@@ -32,12 +32,12 @@ export const useContactAllotment = (contactId: string | null) => {
         } catch (err: unknown) {
           const error = err as { message?: string }; 
           console.error(err);
-          setError(error.message || 'Failed to load allotment');
+          setError(true); //error.message || 'Failed to load allotment');
           toast({ title: 'Error', description: error.message || 'Failed to load allotment', variant: 'destructive' });
         } finally {
         setLoading(false);
       }
-    }, [toast, contactId]);
+    }, [contactId]);
 
   const markAttendance = useCallback(
     async (id: string) => {
@@ -47,8 +47,7 @@ export const useContactAllotment = (contactId: string | null) => {
         const { data, error: rpcErr } = await supabase.rpc('mark_allotment_attendance', { p_id: id});
         if (rpcErr) throw rpcErr;
         setAllotment(prev => prev.map(n => (n.allotment_id === id ? { ...n, attended: true } : n)));
-        setLoading(false);
-        await fetch();
+        // await fetch();
         setError(false);
         return { success: true };
       } catch (err: unknown) { 
@@ -60,7 +59,7 @@ export const useContactAllotment = (contactId: string | null) => {
       } finally {
         setLoading(false);
       }
-    }, [fetch]);
+    }, [contactId]);
 
   const markAllotmentServing = useCallback(
     async (id: string) => {
@@ -82,7 +81,7 @@ export const useContactAllotment = (contactId: string | null) => {
       } finally {
         setLoading(false);
       }
-    }, [fetch]);
+    }, [contactId]);
 
   const markServed = useCallback(
     async (id: string) => {
@@ -92,7 +91,7 @@ export const useContactAllotment = (contactId: string | null) => {
         const { data, error: rpcErr } = await supabase.rpc('mark_allotment_served', { p_id: id});
         setAllotment(prev => prev.map(n => n.allotment_id === id ? { ...n, served: true } : n));
         if (rpcErr) throw rpcErr;
-        await fetch();
+        // await fetch();
         setError(false);
         return { success: true };
       } catch (err: unknown) { 
@@ -104,7 +103,7 @@ export const useContactAllotment = (contactId: string | null) => {
       } finally {
         setLoading(false);
       }
-    }, [fetch]);
+    }, [contactId]);
 
   const insertDiscretionary = useCallback(
     async (
@@ -123,7 +122,7 @@ export const useContactAllotment = (contactId: string | null) => {
           p_note: note,
         }
       ).single();
-      setLoading(false);
+      
       if (rpcErr) throw rpcErr;
       if (rpcErr) {
         console.error('Error inserting allotment:', rpcErr);
@@ -132,14 +131,15 @@ export const useContactAllotment = (contactId: string | null) => {
       }
       await fetch();
       // toast({ title: 'Success', description: 'Visit approved' });
+      setLoading(false);
       return { success: true };
     },
-    [fetch]
+    [contactId]
   );
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+  }, [contactId]);
 
   return { 
     allotment, 

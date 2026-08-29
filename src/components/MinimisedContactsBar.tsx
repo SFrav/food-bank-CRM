@@ -50,7 +50,7 @@ const MinimisedContactsBar: React.FC<MinimisedContactsBarProps> = ({
   };
 
   return (
-    <>
+    <div>
       <div className="fixed bottom-0 right-6 flex flex-col sm:flex-row sm:grid sm:grid-cols-1 gap-0 z-50 h-auto">
         {minimised.map(({ contact, isDirty }) => (
           <div
@@ -105,7 +105,7 @@ const MinimisedContactsBar: React.FC<MinimisedContactsBarProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };
 

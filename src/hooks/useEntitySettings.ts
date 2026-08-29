@@ -49,7 +49,7 @@ export const useEntitySettings = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   const updateSetting = useCallback(async (
     entity_id: string, 
@@ -76,7 +76,7 @@ export const useEntitySettings = () => {
       });
       return { success: false, error: err };
     }
-  }, [fetchSettings, toast]);
+  }, [fetchSettings]);
 
   return { 
     settingsMap, 

@@ -72,7 +72,7 @@ export default function TaskSelected({
       done: "bg-emerald-50 text-emerald-700 border-emerald-200",
       cancelled: "bg-red-50 text-red-700 border-red-200",
     };
-    return variants[status as keyof typeof variants] ?? variants.scheduled;
+    return variants[type as keyof typeof variants] ?? variants.scheduled;
   };
 
   const TaskIcon = getTaskIcon(task.entry_type);
@@ -116,7 +116,7 @@ export default function TaskSelected({
 
         <div className="flex items-center gap-2 ml-4">
           {task.status === "scheduled" && (
-            <>
+            <div>
               <Button
                 variant="outline"
                 size="sm"
@@ -133,7 +133,7 @@ export default function TaskSelected({
                 <XCircle className="size-3 mr-1" />
                 Cancel
               </Button>
-            </>
+            </div>
           )}
           <Button variant="outline" size="sm" onClick={onEdit}>
             <Edit className="size-3" />

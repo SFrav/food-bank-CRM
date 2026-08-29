@@ -103,7 +103,6 @@ export const useContacts = (
         .rpc(fn, { p_order_desc: orderDesc });
       if (err) throw err;
       setContacts(data as Contact[] ?? []);
-
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Contacts fetch error', err);
@@ -112,16 +111,16 @@ export const useContacts = (
     } finally {
       setLoading(false);
     }
-  }, [toast, orderDesc]);
+  }, [orderDesc]);
 
   useEffect(() => {
     fetch(false);
-  }, [fetch]); //, tick
+  }, []); //, tick
 
   const refetch = useCallback(async (filterQueue: boolean = false) => {
     // setTick(prev => prev + 1);
     await fetch(filterQueue);
-  }, [fetch]);
+  }, []);
 
   const checkDuplicates = async (params: {
     email?: string | null;
@@ -196,17 +195,18 @@ export const useContacts = (
         p_owner_id: c.owner_id,
       }).single();
 
-      setLoading(false);
       if (rpcError) throw rpcError;
       if (rpcError) {
         toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
         console.error('Contacts insert', rpcError);
+        setLoading(false);
         return { success: false, error: rpcError.message };
       }
       //toast({ title: 'Success', description: 'Contact created successfully' });
+      setLoading(false);
       return { success: true };
     },
-    [toast]
+    []
   );
 
   const updateContact = useCallback(
@@ -239,19 +239,20 @@ export const useContacts = (
         p_notes: c.notes,
       }).single();
     
-      setLoading(false);
       if (rpcError) throw rpcError;
 
       if (rpcError) {
         if (toastUpdateEnabled) toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
+        setLoading(false);
         return { success: false, error: rpcError.message };
       }
       //if (toastUpdateEnabled) toast({ title: 'Success', description: 'Contact updated successfully' });
       fetch();
+      setLoading(false);
       return { success: true };
       
     },
-    [toast, fetch]
+    []
   );
 
   const mergeContacts = async (primaryId: string, secondaryId: string) => {
@@ -279,10 +280,10 @@ export const useContacts = (
   const deleteContact = useCallback(
     async (id: string) => {
       try {
-        const { data, error: rpcErr } = await supabase.rpc('delete_contact', { p_id: id });
+        const { error: rpcErr } = await supabase.rpc('delete_contact', { p_id: id });
         if (rpcErr) throw rpcErr;
 
-        if(data) await fetch();
+        await fetch();
         // toast({ title: 'Success', description: 'Contact deleted successfully' });
 
         return { success: true };
@@ -294,7 +295,7 @@ export const useContacts = (
         return { success: false, error: error.message };
       }
     },
-    [fetch, toast]
+    []
   );
 
   return {

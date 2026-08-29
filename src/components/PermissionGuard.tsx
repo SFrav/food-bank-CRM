@@ -34,7 +34,7 @@ export const PermissionGuard = ({
     return null;
   }
 
-  return <>{children}</>;
+  return <div>{children}</div>;
 };
 
 // Convenience component for inline permission checking

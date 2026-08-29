@@ -42,7 +42,7 @@ export const useDivisionSettings = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   const updateSetting = useCallback(async (
     division_id: string, 
@@ -70,7 +70,7 @@ export const useDivisionSettings = () => {
       });
       return { success: false, error: error.message };
     }
-  }, [fetchSettings, toast]);
+  }, [fetchSettings]);
 
   // useEffect(() => {
   //   fetchSettings();

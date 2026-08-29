@@ -14,6 +14,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
 import { useDivisions, Division } from '@/hooks/useDivisions';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { DuplicateContactCard } from '@/components/modals/subcomponents/AddContactDuplicate';
 
 
 interface AddContactModalProps {
@@ -40,9 +41,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const [checkingDup, setCheckingDup] = useState(false);
   const [duplicateCandidates, setDuplicateCandidates] = useState<ContactDuplicate[] | null>(null);
   const [dupExact, setDupExact] = useState(false);
-  const lastFormDataKey = useRef<string | null>(null);
-  const lastDuplicates = useRef<Contact[] | null>(null);
-  const lastExactMatch = useRef<boolean | null>(null);
+  // const lastFormDataKey = useRef<string | null>(null);
+  // const lastDuplicates = useRef<Contact[] | null>(null);
+  // const lastExactMatch = useRef<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
@@ -80,18 +81,30 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     setDivsRegion(divs);
     if (!isOpen || nameInit ==='' || formData.name !== '') return;
     setFormData(prev => ({ ...prev, name: nameInit }));
-  }, [isOpen, formData.region_id, formData.name, nameInit, divisions]);
+  }, [profile, isOpen, formData.region_id, formData.name, nameInit, divisions]);
 
-  // const loadDivsRegion = (dId: string): Division[] => {
-  //   return divsRegion;
-  // };
+  useEffect(() => {
+    if (!isOpen) {
+      setDuplicateCandidates(null);
+      setDupExact(false);
+    }
+  }, [isOpen]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     setDuplicateCandidates(null);
     setDupExact(false);
-  };
+  }, []);
+
+  const handleRegionChange = useCallback((v: string) => setFormData(prev => (
+    {...prev, region_id: v})
+  ), []);
+  
+  
+  const handleDivisionChange = useCallback((v: string) => setFormData(prev => (
+    {...prev, owner_id: v})
+  ), [divsRegion]);
 
   const resetForm = () => {
     setFormData({
@@ -115,14 +128,6 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const runDuplicateCheck = useCallback(async () => {
     if (!user) return false;
     setCheckingDup(true);
-    const currentKey = JSON.stringify(formData);
-    if (lastFormDataKey.current === currentKey && lastDuplicates.current !== null) {
-    setDuplicateCandidates(lastDuplicates.current);
-    setDupExact(lastExactMatch.current ?? false);
-    return lastDuplicates.current.length > 0;
-  }
-
-  setCheckingDup(true);
     try {
       const duplicates = await checkDuplicates({
         email: formData.email?.trim() || null,
@@ -132,45 +137,25 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         postcode: formData.postcode?.trim() || null,
       });
 
-      lastFormDataKey.current = currentKey;
-      lastDuplicates.current = duplicates;
-      lastExactMatch.current = duplicates.length === 1 && isExactMatch;
-      if (duplicates.length === 0) {
-        return false; 
-      }
-
-      if (duplicates.length === 1) {
-        setDuplicateCandidates(duplicates);
-        if ((duplicates.find(c => c.name === formData.name)) && (duplicates.find(c => c.street_address === formData.street_address)) && 
-          (duplicates.find(c => c.postcode === formData.postcode)) || 
-          duplicates.find(c => c.email === formData.email) ||
-          duplicates.find(c => c.phone === formData.phone) &&
-          isExactMatch
-        ) setDupExact(true);
-        // onDuplicateFound(duplicates[0]); 
-        // onClose();
-        // resetForm();
-        return true;
-      }
-
       setDuplicateCandidates(duplicates);
-      setDupExact(false);
-      return true;
+
+      if (duplicates.length === 0) return false;
+      if (duplicates.length === 1) {
+        const dup = duplicates[0];
+        const matchesTriad = dup.name === formData.name && dup.street_address === formData.street_address && dup.postcode === formData.postcode;
+        const matchesEmail = dup.email === formData.email;
+        const matchesPhone = dup.phone === formData.phone;
+        if ((matchesTriad || matchesEmail || matchesPhone) && isExactMatch) setDupExact(true);
+      }
+      return duplicates.length > 0;
     } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error('Duplicate check error', error);
-      return true; 
+      console.error('Duplicate check error', err);
+      return true;
     } finally {
       setCheckingDup(false);
     }
-  }, [
-    checkDuplicates,
-    formData,
-    onClose,
-    onDuplicateFound,
-    isExactMatch,
-    user,
-  ]);
+  }, [user, formData, checkDuplicates, isExactMatch]);
+
 
   const createNewAnyway = async () => {
     setIsLoading(true);
@@ -261,6 +246,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     }
   };
 
+  const handleDuplicateCandidates = useCallback(() => {setDuplicateCandidates(null)}, [])
+  
   const handleClose = () => {
     // setFormData({
     //   name: '',
@@ -295,46 +282,13 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               {dupExact ? "The following contact already contains information that must be unique."  : 
               "Existing contacts match some of the information you entered. Choose one to edit, or create a new contact."}
             </p>
-{/* Existing contacts match some of the information you entered. Choose one to edit, or create a new contact. */}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {duplicateCandidates.map((c) => (
-                <Card
-                  key={c.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => {
-                    onDuplicateFound(c);
-                    handleClose();
-                  }}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <User className="size-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{c.name}</h3>
-                        
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <span>{c.street_address}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <span>{c.postcode}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="size-4 flex-shrink-0" />
-                        <span>{c.phone ?? '…'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground max-w-[150px]">
-                        <Mail className="size-4 flex-shrink-0" />
-                        <span className="line-clamp-1">{c.email ?? '…'}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <DuplicateContactCard
+                  contact={c}
+                  onSelect={() => { onDuplicateFound(c); handleClose(); }}
+                />  
               ))}
             </div>
             <div>
@@ -343,7 +297,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             </p>
             </div>
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setDuplicateCandidates(null)}>
+              <Button variant="outline" onClick={handleDuplicateCandidates}>
                 Back to form
               </Button>
               <Button onClick={createNewAnyway} disabled={dupExact}> 
@@ -419,16 +373,13 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             <Select
               required={true}
               value={formData.region_id || "none"}
-              onValueChange={v => {
-                setFormData({ ...formData, region_id: v });
-                //// if (v !== "none") loadDivsRegion(v);
-              }}
+              onValueChange={handleRegionChange}
             >
               <SelectTrigger >
                 <SelectValue placeholder="Select Region"/>
               </SelectTrigger>
               <SelectContent>
-                {regions.filter((d) => d.is_active === true).map(re => (
+                {regions.filter((r) => r.is_active === true).map(re => (
                   <SelectItem key={re.id} value={re.id}>
                     {re.name}
                   </SelectItem>
@@ -439,14 +390,10 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
           
           <PermissionGuard permission="canAssignBeneficiaries"> 
           <div>
-            <Label htmlFor="branch">Branch*</Label>
+            <Label htmlFor="branch">Branch</Label>
             <Select
-              required={true}
               value={formData.owner_id || "none"}
-              onValueChange={v => {
-                setFormData({ ...formData, owner_id: v });
-                //if (v !== "none") loadDivsRegion(v);
-              }}
+              onValueChange={handleDivisionChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Branch" />

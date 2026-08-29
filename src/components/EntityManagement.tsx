@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,6 +136,11 @@ export const EntityManagement = () => {
     }
   };
 
+  const handleNewEntityName = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewEntityName(e.target.value);}, []);
+  const handleNewEntityCode = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewEntityCode(e.target.value);}, []);
+
+  const handleCancelSave = useCallback(() => setEditingEntity(null), []);
+
   if (loading) {
     return (
       <Card>
@@ -165,7 +170,7 @@ export const EntityManagement = () => {
                 <Input
                   id="entity-name"
                   value={newEntityName}
-                  onChange={(e) => setNewEntityName(e.target.value)}
+                  onChange={handleNewEntityName}
                   placeholder="e.g., Acme Corp"
                 />
               </div>
@@ -174,7 +179,7 @@ export const EntityManagement = () => {
                 <Input
                   id="entity-code"
                   value={newEntityCode}
-                  onChange={(e) => setNewEntityCode(e.target.value)}
+                  onChange={handleNewEntityCode}
                   placeholder="e.g., ACME"
                 />
               </div>
@@ -274,7 +279,7 @@ export const EntityManagement = () => {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           {editingEntity?.id === entity.id ? (
-                            <>
+                            <div>
                               <Button
                                 size="sm"
                                 onClick={handleUpdateEntity}
@@ -289,13 +294,13 @@ export const EntityManagement = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setEditingEntity(null)}
+                                onClick={handleCancelSave}
                               >
                                 Cancel
                               </Button>
-                            </>
+                            </div>
                           ) : (
-                            <>
+                            <div>
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -341,7 +346,7 @@ export const EntityManagement = () => {
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
-                            </>
+                            </div>
                           )}
                         </div>
                       </TableCell>

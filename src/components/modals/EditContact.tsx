@@ -76,10 +76,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { regions } = useRegions();
-  const { divisions } = useDivisions();
+  const { regions, loading: loadingRegions } = useRegions();
+  const { divisions, loading: loadingDivisions } = useDivisions();
   const { settingsMap, loading: settingsLoading, fetchSettings} = useDivisionSettings();
-  const [divsRegion, setDivsRegion] = useState<Division[]>([]);
+  // const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { deleteContact, updateContact, refetch: fetchContacts } = useContacts();
   const { notes, fetch: fetchNotes } = useContactNotes(contact?.id ?? null);
   const { allotment, markAttendance, markAllotmentServing, markServed, insertDiscretionary, 
@@ -89,7 +89,9 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   // const [adding, setAdding] = useState(false);
   const [localContact, setLocalContact] = useState<Contact | null>(contact);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<FormData>(emptyForm);
+  const [formData, setFormData] = useState<FormData>(() =>
+    contact && isOpen ? (restoredFormData ?? formFromContact(contact)) : emptyForm
+  );
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // const [showMinimiseWarning, setShowMinimiseWarning] = useState(false);
@@ -115,7 +117,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       formData.children_gt16 !== (contact.children_gt16 ?? 0) ||
       formData.children_lt16 !== (contact.children_lt16 ?? 0) ||
       formData.status !== (contact.status ?? 'pending') ||
-      formData.owner_id !== (contact.owner_id ?? '') ||
+      (formData.owner_id !== (contact.owner_id ?? '') && formData.owner_id !== '') ||
       formData.notes_new !== '' || 
       servingOngoing
     );
@@ -129,32 +131,40 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const exclWeeks = parseInt(divisionSettings.exclusion_weeks ?? '-1', 10);
 
   useEffect(() => {
-    // if (!isOpen) return;
-    if (contact && isOpen) {
-      setFormData(restoredFormData ?? formFromContact(contact));
-      setConfirmDelete(false);
-    }
-    if (!profile) return;
-    const divs = divisions.filter((d) => d.region_id === profile.region_id);
-    setDivsRegion(divs);
+    if (!contact || !isOpen) return;
+    setConfirmDelete(false);
     setLocalContact(contact);
-    if (isServing) setShowAllotment(isServing); 
-  }, [contact, isOpen, isServing, restoredFormData, profile, divisions, newAllotmentType, user?.id]);
+    if (isServing) setShowAllotment(isServing);
+  }, [contact, isOpen, isServing]);
 
   useEffect(() => {
+    if (!profile) return;
+    // const divs = divisions.filter((d) => d.region_id === profile.region_id);
+    // setDivsRegion(divs);
     if (profile?.division_id && !settingsMap[profile.division_id]) {
       fetchSettings(profile.division_id);
     }
-  }, [profile?.division_id, fetchSettings, settingsMap]);
+  }, [profile, divisions]);
 
-  const loadDivsRegion = (_dId: string): Division[] => {
-    return divsRegion;
-  };
+  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === profile?.region_id), [divisions, profile]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const handleRegionChange = useCallback((v: string) => setFormData(prev => (
+    {...prev, region_id: v})
+  ), [setFormData]);
+
+  const handleDivisionChange = useCallback((v: string) => setFormData(prev => (
+    {...prev, owner_id: v})
+  ), [setFormData, divsRegion]);
+
+  const handleStatusChange = useCallback((v: Contact["status"]) => setFormData(prev => (
+    {...prev, status: v})
+  ), [setFormData]);
+
 
   const handleMinimiseClick = () => {
     if (currentMinimisedCount >= maxMinimised) {
@@ -170,7 +180,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     onMinimise(contact, isDirty, formData);
   };
 
-  const handleDelete = useCallback(async () => {
+  const handleDelete = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
       return;
@@ -182,13 +192,13 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     if (!success) return;
     onClose();
     onContactUpdated();
-  }, [contact, confirmDelete, deleteContact, onContactUpdated, onClose]);
+  };
 
 
   const handleMarkAttended = async (entryId: string) => {
     if (!entryId) return;
     const { success } = await markAttendance(entryId);
-    if(success) await fetchAllotment();
+    // if(success) await fetchAllotment();
   };
 
   const handleMarkServing = async (entryId: string) => {
@@ -196,11 +206,11 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       const { success, error } = await markAllotmentServing(entryId);
       if(!success) {
         setServingOngoing(false);
-        await fetchAllotment();
+        // await fetchAllotment();
         return;
       }
       setServingOngoing(true);
-      await fetchAllotment();
+      // await fetchAllotment();
       
   };
 
@@ -208,12 +218,12 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     if (!entryId) return;
     const { success, error } = await markServed(entryId);
     if(!success) {
-      await fetchAllotment();
+      // await fetchAllotment();
       return;
     }
     onContactUpdated();
     setServingOngoing(false);
-    await fetchAllotment();
+    // await fetchAllotment();
   };
 
   const handleAddAllotment = async (type: "referral" | "drop_in" | "") => {
@@ -224,8 +234,9 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     const note = type === 'referral' ? 'Rescheduled visit' : 'Approved drop‑in';
     const { success } = await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
     if(success){
-      await fetchAllotment();
+      // await fetchAllotment();
       setNewAllotmentType('');
+      await fetchNotes();
     };
   };
 
@@ -288,7 +299,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         children_lt16: formData.children_lt16 || null,
         status: formData.status || 'inactive',
         user_id: user.id,
-        owner_id: formData.owner_id || null,
+        owner_id: formData.owner_id === '' ? contact.owner_id : formData.owner_id || null,
         notes: formData.notes_new.trim() || null 
       });
       if (!success) return;
@@ -305,6 +316,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     }
   };
 
+  const handleShowAllotment = useCallback(() => setShowAllotment(prev => !prev), []);
+
   const handleClose = () => {
     setFormData(emptyForm);
     setIgnoreCloseWarning(false);
@@ -319,9 +332,12 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     setNewAllotmentNote('');
     onClose();
   };
+
+  const handleUnsavedStay = useCallback(() => { setShowUnsavedCloseWarning(false); }, []);
+  const handleUnsavedDiscard = useCallback(() => { setShowUnsavedCloseWarning(false); handleClose(); }, [handleClose]);
  
   return (
-    <>
+    <div>
       <Dialog
         open={isOpen}
         onOpenChange={o => {
@@ -352,7 +368,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAllotment(prev => !prev)}
+                  onClick={handleShowAllotment}
                   className="absolute right-11 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity disabled:opacity-30"
                   title="Toggle between allotment and contact details"
                   // disabled={contact?.status !== 'active'}  
@@ -378,7 +394,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
               handleToggleVegetarian={handleToggleVegetarian}
               handleToggleHallal={handleToggleHallal}
               handleAddAllotment={handleAddAllotment}
-              loadingAllotment={loadingAllotment}
+              loadingAllotment={loadingAllotment} //@disabled in hook to avoid UI flicker on load
               allotment={allotment}
               newAllotmentType={newAllotmentType}
               // setNewAllotmentType={setNewAllotmentType}
@@ -391,10 +407,15 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
           ) : (
             <ContactEditForm
               formData={formData}
-              setFormData={setFormData}
-              handleInputChange={handleInputChange}
+              // setFormData={setFormData}
+              onInputChange={handleInputChange}
+              onRegionChange={handleRegionChange}
+              onDivisionChange={handleDivisionChange}
+              onStatusChange={handleStatusChange}
               handleSubmit={handleSubmit}
               isLoading={isLoading}
+              isLoadingRegions={loadingRegions}
+              isLoadingDivisions={loadingDivisions}
               isDirty={isDirty}
               confirmDelete={confirmDelete}
               deleting={deleting}
@@ -407,7 +428,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
               contact={contact}
               regions={regions}
               divsRegion={divsRegion}
-              loadDivsRegion={loadDivsRegion}
               notes={notes}
               handleDelete={handleDelete}
               setConfirmDelete={setConfirmDelete}
@@ -455,14 +475,14 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowUnsavedCloseWarning(false)}>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setShowUnsavedCloseWarning(false); handleClose(); }}>
+            <AlertDialogCancel onClick={handleUnsavedStay}>Stay</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnsavedDiscard}>
               Discard
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };
 

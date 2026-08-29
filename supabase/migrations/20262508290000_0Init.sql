@@ -1091,18 +1091,22 @@ $$;
 
 
 -- User management
--- CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
---     LANGUAGE "plpgsql" SECURITY DEFINER
---     SET "search_path" TO 'public', 'auth'
---     AS $$
+CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+--REMOVED
+END;
+$$;
 
-
--- CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
---     LANGUAGE "plpgsql"
---     SET "search_path" TO 'public'
---     AS $$
+CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
 BEGIN
-
+--REMOVED
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
   "p_profile_id" "uuid", 
@@ -1326,7 +1330,7 @@ AS $$
   ORDER BY name ASC;
 $$;
 
-CREATE OR REPLACE FUNCTION public.create_region(
+CREATE OR REPLACE FUNCTION public."create_region"(
     p_name text,
     p_code text
 ) RETURNS uuid
@@ -1347,7 +1351,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.update_region(
+CREATE OR REPLACE FUNCTION public."update_region"(
   p_id uuid,
   p_name text,
   p_code text,
@@ -1370,7 +1374,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.delete_region(p_id uuid)
+CREATE OR REPLACE FUNCTION public."delete_region"(p_id uuid)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1501,34 +1505,35 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
   END IF;
+  RETURN QUERY 
   SELECT
-    id,
-    name,
-    email,
-    phone,
-    street_address,
-    postcode,
-    region_id,
-    adults,
-    children_gt16,
-    children_lt16,
-    infant,
-    allergies,
-    vegetarian,
-    hallal,
-    status,
-    user_id,
-    owner_id,
-    notes,
-    created_at,
-    attended_at
-  FROM public.contacts_queue
+    cq.id,
+    cq.name,
+    cq.email,
+    cq.phone,
+    cq.street_address,
+    cq.postcode,
+    cq.region_id,
+    cq.adults,
+    cq.children_gt16,
+    cq.children_lt16,
+    cq.infant,
+    cq.allergies,
+    cq.vegetarian,
+    cq.hallal,
+    cq.status::text,
+    cq.user_id,
+    cq.owner_id,
+    cq.notes,
+    cq.created_at,
+    cq.attended_at
+  FROM public.contacts_queue as cq
   ORDER BY attended_at ASC;  
 END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION public.get_contact_duplicates(
+CREATE OR REPLACE FUNCTION public."get_contact_duplicates"(
     p_exact            boolean,
     p_email            text,
     p_phone            text,
@@ -1823,14 +1828,49 @@ $$;
 CREATE OR REPLACE FUNCTION "public"."delete_contact"(p_id uuid)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
 DECLARE
-  r jsonb;
-  old_row jsonb; --for audit_log
+  r                  jsonb;
+  old_row            jsonb; --for audit_log
+  v_caller_role      text;
+  v_caller_entity_id uuid;
+  v_caller_region_id uuid;
+  v_owner_id         uuid;
+  v_creator_id       uuid;
+  v_region_id        uuid;
+  v_owner_entity_id  uuid;
 BEGIN
---@Restrict to admin and head
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can delete contacts';
+  END IF;
+
+  SELECT role::text, entity_id, region_id
+  INTO v_caller_role, v_caller_entity_id, v_caller_region_id
+  FROM public.user_profiles
+  WHERE user_id = auth.uid();
+
+  SELECT owner_id , created_by, region_id
+  INTO v_owner_id, v_creator_id, v_region_id
+  FROM contacts WHERE id = p_id;    
+
+  SELECT entity_id
+  INTO v_owner_entity_id
+  FROM public.user_profiles
+  WHERE user_id = v_owner_id;
+
+IF v_caller_role IN ('admin', 'head', 'manager') THEN
+  ELSE
+    IF v_caller_role NOT IN ('branch_manager', 'staff', 'referrer') THEN
+      RAISE EXCEPTION 'Only admin, head, managers, branch managers, staff and referrers can delete contacts';
+    END IF;
+    IF (v_creator_id <> auth.uid()) OR 
+    (v_owner_entity_id <> v_caller_entity_id) OR (v_caller_region_id != v_region_id) THEN
+      RAISE EXCEPTION 'To delete, a contact must be linked to your organisation and the same region unless you are an admin, organisation head or manager';
+    END IF;
+  END IF;
+
   SELECT row_to_json(c)::jsonb
   INTO old_row
   FROM public.contacts c
@@ -1848,6 +1888,8 @@ END;
 $$;
 
 
+
+
 -- Core referral system logic - notifications, allotment and clean-up
 --
 --
@@ -1856,11 +1898,13 @@ $$;
 ------
 --------
 --------
--- CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
--- LANGUAGE "plpgsql" SECURITY INVOKER --@Debug to invoker
--- SET "search_path" TO 'public'
--- AS $$
-
+CREATE OR REPLACE FUNCTION "public"."handle_contact_status"() RETURNS "trigger"
+LANGUAGE "plpgsql" SECURITY INVOKER --@Debug to invoker
+SET "search_path" TO 'public'
+AS $$
+--REMOVED
+END;
+$$;
 --------
 --------
 ------
@@ -1909,7 +1953,7 @@ RETURNS TABLE (
   created_at timestamp with time zone
 )
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER --@debug to invoker. When set to invoker even those who created the note can't see them
 SET "search_path" TO 'public'
 AS $$
 BEGIN
@@ -2077,7 +2121,7 @@ $$;
 -- END;
 -- $$;
 
-CREATE OR REPLACE FUNCTION public.mark_allotment_served(p_id uuid)
+CREATE OR REPLACE FUNCTION public."mark_allotment_served"(p_id uuid)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -2316,7 +2360,7 @@ END;
 $$;
 
 --@ add region?   
-CREATE OR REPLACE FUNCTION public.update_division(
+CREATE OR REPLACE FUNCTION public."update_division"(
   p_id          uuid,
   p_name        text,
   p_entity_id   uuid,
@@ -2363,7 +2407,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.delete_division(p_id uuid)
+CREATE OR REPLACE FUNCTION public."delete_division"(p_id uuid)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2431,7 +2475,7 @@ $$;
 
 
 -- Calendar CRUD
-CREATE OR REPLACE FUNCTION public.get_tasks()
+CREATE OR REPLACE FUNCTION public."get_tasks"()
 RETURNS TABLE (
   id uuid,
   entry_type text,
@@ -2657,6 +2701,7 @@ BEGIN
         status        = p_status,
         updated_at    = NOW()
     WHERE id = p_id;
+    RETURN FOUND;
 END;
 $$;
 
@@ -2909,6 +2954,7 @@ BEGIN
   IF auth.uid() IS NULL THEN
       RAISE EXCEPTION 'Only authenticated users can view notifications';
     END IF;
+  RETURN QUERY
   SELECT n.id,
          n.org_role,
          n.type,
@@ -2934,7 +2980,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.calendar_notify_delete()
+CREATE OR REPLACE FUNCTION public."calendar_notify_delete"()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path TO 'public'

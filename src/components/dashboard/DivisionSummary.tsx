@@ -119,7 +119,7 @@ export function DivisionSummary() {
             <p>No divisions found for the selected entity.</p>
           </div>
         ) : (
-          <>
+          <div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="flex items-center gap-3 p-4 border rounded-lg">
                 <UserPlus className="size-8 text-primary" />
@@ -175,7 +175,7 @@ export function DivisionSummary() {
                 </TableBody>
               </Table>
             </div>
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

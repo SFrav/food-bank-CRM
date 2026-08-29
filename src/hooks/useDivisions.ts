@@ -106,7 +106,7 @@ export function useDivisions(
       return { success: false, error: error.message };
     }
   },
-  [fetchDivisions, toast]
+  [fetchDivisions]
 );
 
   return {

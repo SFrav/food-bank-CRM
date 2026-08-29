@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useCallback } from 'react'; //, lazy, Suspense
+import { useReducer, useEffect, useCallback, useMemo } from 'react'; //, lazy, Suspense
 import { CalendarView, CalendarEvent } from '@/components/CalendarView';
 import { SelectedDayEvents } from '@/components/CalendarSelected';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,7 +44,6 @@ type UIAction =
   | { type: 'CLOSE_DETAIL' }
   | { type: 'SET_CURRENT'; payload: Date | null }
   | { type: 'SET_SELECTED_DATE'; payload: Date | null }
-  | { type: 'OPEN_ADD' }
   | { type: 'OPEN_EDIT'; payload: CalendarEvent }
   | { type: 'CLOSE_EDIT'; payload: null }
   | { type: 'CLOSE_ADD' | 'OPEN_ADD' }
@@ -100,6 +99,14 @@ export default function Calendar() {
     dispatch({ type: 'SET_CURRENT', payload: newDate });
   }, [ui.currentDate]);
 
+  const handleAdd = useCallback(() => dispatch({ type: 'OPEN_ADD' }), [dispatch]);
+  const handleAddBulk = useCallback(() => dispatch({ type: 'OPEN_BULK' }), [dispatch]);
+  const handleClose = useCallback(() => dispatch({ type: 'CLOSE_ADD' }), [dispatch]);
+  const handleCloseBulk = useCallback(() => dispatch({ type: 'CLOSE_BULK' }), [dispatch]);
+  const handleCloseDetail = useCallback(() => dispatch({ type: 'CLOSE_DETAIL' }), [dispatch]);
+  const handleCloseEdit = useCallback(() => dispatch({ type: 'CLOSE_EDIT' }), [dispatch]);
+  const refetchEvents = useCallback(() => fetchEvents(ui.currentDate), [fetchEvents, ui.currentDate]);
+
   const handleDateClick = useCallback((d: Date) => {
     dispatch({ type: 'SET_SELECTED_DATE', payload: d });
     dispatch({ type: 'CLOSE_ADD' });
@@ -138,8 +145,8 @@ export default function Calendar() {
         onEventClick={handleEventClick}
         onEditClick={handleEditEvent}
         onDeleteClick={handleDeleteEvent}
-        onAdd={() => dispatch({ type: 'OPEN_ADD' })}
-        onBulkAdd={() => dispatch({ type: 'OPEN_BULK' })}
+        onAdd={handleAdd}
+        onBulkAdd={handleAddBulk}
       />
 
       <SelectedDayEvents
@@ -149,30 +156,30 @@ export default function Calendar() {
         onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
         onView={handleEventClick}
-        onAdd={() => dispatch({ type: 'OPEN_ADD' })}
+        onAdd={handleAdd}
       />
 
       {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
         <AddEventModal
           isOpen={ui.isAddOpen}
-          onClose={() => dispatch({ type: 'CLOSE_ADD' })}
+          onClose={handleClose}
           selectedDate={ui.selectedDate}
-          onAdd={() => fetchEvents(ui.currentDate)}
+          onAdd={refetchEvents}
         />
       {/* </Suspense> */}
 
       {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
         <AddEventBulkModal
           isOpen={ui.isBulkOpen}
-          onClose={() => dispatch({ type: 'CLOSE_BULK' })}
-          onAdd={() => fetchEvents(ui.currentDate)}
+          onClose={handleCloseBulk}
+          onAdd={refetchEvents}
         />
       {/* </Suspense> */}
 
       {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
         <EventDetailModal
           isOpen={ui.isDetailOpen}
-          onClose={() => dispatch({ type: 'CLOSE_DETAIL' })}
+          onClose={handleCloseDetail}
           event={ui.selectedEvent}
           onDelete={handleDeleteEvent}
         />
@@ -181,9 +188,9 @@ export default function Calendar() {
       {/* <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}> */}
         <EditEventModal
           isOpen={ui.isEditOpen}
-          onClose={() => dispatch({ type: 'CLOSE_EDIT' })}
+          onClose={handleCloseEdit}
           event={ui.selectedEvent}
-          onUpdate={() => fetchEvents(ui.currentDate)}
+          onUpdate={refetchEvents}
         />
       {/* </Suspense> */}
     </div>

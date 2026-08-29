@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Bell, Clock, AlertTriangle, Target, CheckSquare, Brain, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,16 @@ export const NotificationBell = () => {
     setIsOpen(false);
   };
 
+  const handleViewDetail = useCallback(() => {
+    navigate('/notifications');
+    setIsOpen(false);
+  }, []);
+
+  const handleViewAll = useCallback(() => {
+    navigate('/notifications');
+    setIsOpen(false);
+  }, []);
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -71,16 +81,13 @@ export const NotificationBell = () => {
             No new notifications
             <DropdownMenuItem
               className="text-center text-primary"
-              onClick={() => {
-                navigate('/notifications');
-                setIsOpen(false);
-              }}
+              onClick={handleViewDetail}
             >
               View notifications page
             </DropdownMenuItem>
           </div>
         ) : (
-          <>
+          <div>
             {bellNotifications.map(n => (
               <DropdownMenuItem key={n.id} onClick={() => handleNotificationClick(n)}>
                 <div className="flex items-start gap-2 w-full">
@@ -104,14 +111,11 @@ export const NotificationBell = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-center text-primary"
-              onClick={() => {
-                navigate('/notifications');
-                setIsOpen(false);
-              }}
+              onClick={handleViewAll}
             >
               View all notifications
             </DropdownMenuItem>
-          </>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

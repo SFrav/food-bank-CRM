@@ -51,7 +51,7 @@ export const useUserSettings = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]); //, toast
+  }, [user]); 
 
   const updateSetting = useCallback(async (key: string, value: string) => {
     if (!user) return;
@@ -96,7 +96,7 @@ export const useUserSettings = () => {
       });
       return { success: false, error: error.message };
     }
-  }, [user, toast]);
+  }, [user]);
 
   useEffect(() => {
     fetchSettings();

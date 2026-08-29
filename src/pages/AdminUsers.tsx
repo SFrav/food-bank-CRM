@@ -74,6 +74,7 @@ export default function AdminUsers() {
     return result;
   }, [deleteUser, refetch]);
 
+  const handleEditClose = useCallback(() => setSelectedUser(null), []);
 
   return (
     <div className="space-y-6">
@@ -180,7 +181,7 @@ export default function AdminUsers() {
             user={selectedUser}
             isOpen={!!selectedUser}
             usersLoading={usersLoading}
-            onClose={() => setSelectedUser(null)}
+            onClose={handleEditClose}
             onSave={saveUserRole}
             onDelete={handleDeleteUser}
             entities={entities}

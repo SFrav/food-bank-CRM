@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import { Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +15,15 @@ import { ContactNote } from '@/hooks/useContactNotes';
 
 interface ContactEditFormProps {
   formData: ContactFormData;
-  setFormData: React.Dispatch<React.SetStateAction<ContactFormData>>;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  // setFormData: React.Dispatch<React.SetStateAction<ContactFormData>>;
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onRegionChange: (v: string) => void;
+  onDivisionChange: (v: string) => void;
+  onStatusChange: (v: string) => void;
   handleSubmit: (e: React.ChangeEvent) => void; 
   isLoading: boolean;
+  isLoadingRegions: boolean;
+  isLoadingDivisions: boolean;
   isDirty: boolean;
   confirmDelete: boolean;
   deleting: boolean;
@@ -31,7 +36,6 @@ interface ContactEditFormProps {
   contact: Contact | null;
   regions: Region[];
   divsRegion: Division[];
-  loadDivsRegion: (dId: string) => Division[];
   notes: ContactNote[];
   handleDelete: () => void;
   setConfirmDelete: React.Dispatch<React.SetStateAction<boolean>>;
@@ -41,10 +45,15 @@ interface ContactEditFormProps {
 
 const ContactEditForm: React.FC<ContactEditFormProps> = ({
   formData,
-  setFormData,
-  handleInputChange,
+  // setFormData,
+  onInputChange,
+  onRegionChange,
+  onDivisionChange,
+  onStatusChange,
   handleSubmit,
   isLoading,
+  isLoadingRegions,
+  isLoadingDivisions,
   isDirty,
   confirmDelete,
   deleting,
@@ -57,31 +66,46 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
   contact,
   regions,
   divsRegion,
-  loadDivsRegion,
   notes,
   handleDelete,
   setConfirmDelete,
   setIgnoreCloseWarning,
   handleClose,
 }) => {
-  const approveEnabled = condition1 && condition2 && condition3;
+
+  const divsRegionValueCondition = useMemo(() => {
+      if (!contact || !divsRegion || !formData.status) return false; 
+      const assignedDivision = divsRegion.some(d => String(d.manager_id) === String(formData.owner_id));
+      return formData.status == 'active' && !assignedDivision;  
+  }, [contact, divsRegion, formData.status, formData.owner_id]); 
+
+  // const approveEnabled = condition1 && condition2 && condition3;
+  const approveEnabled = useMemo(() => {
+    if(!condition1 || !condition2 || !condition3) return false;
+    return true;
+  },[condition1, condition2, condition3])
+
+  const handleConfirmDelete = useCallback(() => {setConfirmDelete(false)}, []);
+
+  const handleIgnoreCloseWarning = useCallback(() => { setIgnoreCloseWarning(true); handleClose(); }, []);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name *</Label>
-          <Input id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Full name" required />
+          <Input id="name" name="name" value={formData.name} onChange={onInputChange} placeholder="Full name" required />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="Email address" />
+          <Input id="email" name="email" type="email" value={formData.email} onChange={onInputChange} placeholder="Email address" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2 w-[50%] sm:w-full">
           <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone number" />
+          <Input id="phone" name="phone" value={formData.phone} onChange={onInputChange} placeholder="Phone number" />
         </div>
         <div> </div>
         <div className="space-y-2">
@@ -90,7 +114,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             id="street_address"
             name="street_address"
             value={formData.street_address}
-            onChange={handleInputChange}
+            onChange={onInputChange}
             placeholder="Street Address"
           />
         </div>   
@@ -100,7 +124,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             id="postcode"
             name="postcode"
             value={formData.postcode}
-            onChange={handleInputChange}
+            onChange={onInputChange}
             placeholder="Post code"
           />
         </div>                 
@@ -108,45 +132,38 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             <Label htmlFor="region">Region *</Label>
             <Select
               required={true}
+              disabled={isLoadingRegions || regions.length === 0}
               value={formData.region_id || "none"}
-              onValueChange={v => {
-                setFormData({ ...formData, region_id: v });
-              }}
+              onValueChange={onRegionChange}
             >
               <SelectTrigger >
                 <SelectValue placeholder="Select Region"/>
               </SelectTrigger>
               <SelectContent>
-                {regions.filter((d) => d.is_active === true).map(re => (
-                  <SelectItem key={re.id} value={re.id}>
-                    {re.name}
-                  </SelectItem>
-                ))}
+                  {regions.filter(r => r.is_active).map(r => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
           <PermissionGuard permission="canAssignBeneficiaries"> 
             <div className="space-y-2 w-[50%] sm:w-full">
-              <Label htmlFor="branch">{formData.status === 'active' ? "Branch*" : "Branch"}</Label>
+              <Label htmlFor="branch">{formData.status === 'active' && !isLoadingDivisions ? "Branch*" : "Branch"}</Label>
               <Select
                 required={formData.status === 'active'}
-                value={formData.status === 'active' && 
-                  !divsRegion.some(d=>d.manager_id===formData.owner_id) ? undefined : formData.owner_id}
-                onValueChange={v => {                
-                  setFormData({ ...formData, owner_id: v });
-                  loadDivsRegion(v);
-                }}
+                disabled={isLoadingDivisions || divsRegion.length === 0}
+                value={divsRegionValueCondition ? '' : formData.owner_id}
+                onValueChange={onDivisionChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select Branch" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No branch selected</SelectItem>
-                  {divsRegion.map(div => (
-                    <SelectItem key={div.manager_id} value={div.manager_id}>
-                      {div.name}
-                    </SelectItem>
-                  ))}
+                    {divsRegion.map(div => (
+                      <SelectItem key={div.manager_id} value={div.manager_id}>
+                        {div.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -176,12 +193,10 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             </PermissionGuard>
             </div>
             )}      
-              <div className="flex items-center space-x-2 w-[50%] sm:w-full">
+              <div className={`flex items-center space-x-2 w-[50%] sm:w-full md:w-${contact.status == "pending" || approveEnabled ? "[25%]" : "[115%]"}`}>
                 <Select
                   value={formData.status}
-                  onValueChange={(v: Contact["status"]) => {
-                    setFormData({ ...formData, status: v });
-                  }}
+                  onValueChange={onStatusChange}
                 >
                   <SelectTrigger className="sm:w-full">
                     <SelectValue placeholder="Select Status"/>
@@ -190,8 +205,10 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
                     <SelectItem value="pending">Pending</SelectItem>
                     <PermissionGuard permission="canApproveBeneficiaries">
                     <SelectItem value="inactive">Inactive</SelectItem>
-                    {approveEnabled && (
-                    <SelectItem value="active">Approve</SelectItem>
+                    {contact.status === 'active' ?
+                      <SelectItem value="active">Active</SelectItem> : 
+                    (approveEnabled) && (
+                      <SelectItem value="active">Approve</SelectItem>
                     )}
                     </PermissionGuard>
                   </SelectContent>
@@ -223,29 +240,29 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               </div>   
               </PermissionGuard>
             </div>    
-      </div>
+        </div>
       <Label htmlFor="hh_composition">Household Composition</Label>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2 w-[30%] sm:w-full">
           <Label htmlFor="adults">Adults (≥18)</Label>
           <Input id="adults" name="adults" type='number' min={1} step={1} 
-          value={formData.adults} onChange={handleInputChange} placeholder={String(formData.adults)} />
+          value={formData.adults} onChange={onInputChange} placeholder={String(formData.adults)} />
         </div>
         <div className="space-y-2 w-[30%] sm:w-full">
           <Label htmlFor="children_gt16">Children (≥16)</Label>
           <Input id="gt16" name="children_gt16" type='number' min={0} step={1} 
-          value={formData.children_gt16} onChange={handleInputChange} placeholder="0" />
+          value={formData.children_gt16} onChange={onInputChange} placeholder="0" />
         </div>
         <div className="space-y-2 w-[30%] sm:w-full">
           <Label htmlFor="children_lt16">Children ({'<16'})</Label>
           <Input id="lt16" name="children_lt16" type='number' min={0} step={1} 
-          value={formData.children_lt16} onChange={handleInputChange} placeholder="0" />
+          value={formData.children_lt16} onChange={onInputChange} placeholder="0" />
         </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="notes">New Note</Label>
-        <Textarea id="notes_new" name="notes_new" value={formData.notes_new || ""} onChange={handleInputChange} placeholder="Additional notes..." rows={3} />
+        <Textarea id="notes_new" name="notes_new" value={formData.notes_new || ""} onChange={onInputChange} placeholder="Additional notes..." rows={3} />
       </div>
 
       {/* Footer text - case specific warnings */}
@@ -269,14 +286,14 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
           </Button>
 
           {confirmDelete && (
-            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} className="size-10" type="button">
+            <Button variant="ghost" size="sm" onClick={handleConfirmDelete} className="size-10" type="button">
               <X className="size-3.5" />
             </Button>
           )}
         </div>
 
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => { setIgnoreCloseWarning(true); handleClose(); }} disabled={isLoading}>
+          <Button type="button" variant="outline" onClick={handleIgnoreCloseWarning} disabled={isLoading}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading || !isDirty}>

@@ -75,7 +75,7 @@ export function useServices(
     fetchServices();
   }, [fetchServices]);
 
-  const createService = async (s: Service) => {
+  const createService = useCallback(async (s: Service) => {
     if(!s.region_id) {
       toast({ title: 'Error', description: 'Region must be selected', variant: 'destructive' });
        return { success: false, error: 'region not selected' };
@@ -105,7 +105,7 @@ export function useServices(
       return { success: false, error: error.message };
   }
     // return data as string;
-  };
+  }, []);
 
   const deleteService = useCallback(async (id: string) => {
     try {
@@ -123,7 +123,7 @@ export function useServices(
       toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  }, [toast, fetchServices]);
+  }, [fetchServices]);
 
   return {
     services,

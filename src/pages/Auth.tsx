@@ -41,7 +41,7 @@ const Auth = () => {
     }
 
     navigate('/', { replace: true });
-  }, [user, profile, profileLoading, navigate]);
+  }, [user, profile, profileLoading]); //, navigate
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -147,7 +147,7 @@ const Auth = () => {
                     onChange={handleInputChange} placeholder="Enter your password" required className="h-12" />
                 </label>
                 <Button type="submit" className="w-full h-12" disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />Signing in…</> : 'Sign In'}
+                  {loading ? <div><Loader2 className="mr-2 size-4 animate-spin" />Signing in…</div> : 'Sign In'}
                 </Button>
               </form>
               <p className="text-center text-sm text-muted-foreground">
@@ -175,7 +175,7 @@ const Auth = () => {
                     onChange={handleInputChange} placeholder="Create a strong password" required className="h-12" />
                 </label>
                 <Button type="submit" className="w-full h-12" disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 size-4 animate-spin" />Creating account…</> : 'Create Account'}
+                  {loading ? <div><Loader2 className="mr-2 size-4 animate-spin" />Creating account…</div> : 'Create Account'}
                 </Button>
               </form>
               <p className="text-center text-sm text-muted-foreground">

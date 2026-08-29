@@ -37,5 +37,5 @@ export const RoleBasedRoute = ({
   }
 
   console.log('Access granted - rendering children');
-  return <>{children}</>;
+  return <div>{children}</div>;
 };

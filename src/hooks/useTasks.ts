@@ -37,7 +37,7 @@ export function useTasks() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetch();
@@ -59,7 +59,7 @@ export function useTasks() {
       toast({ title: 'Error', description: error.message ?? 'Failed to update status', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  }, [toast]); 
+  }, []); 
 
   const deleteTask = useCallback(async (id: string) => {
     try {
@@ -75,7 +75,7 @@ export function useTasks() {
       toast({ title: 'Error', description: error.message ?? 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  }, [fetch, toast]); 
+  }, [fetch]); 
 
   return { 
     tasks, 

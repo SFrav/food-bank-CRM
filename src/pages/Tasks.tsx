@@ -1,4 +1,4 @@
-import { useEffect, useState, useReducer } from "react"; //, lazy, Suspense
+import { useEffect, useState, useReducer, useCallback } from "react"; //, lazy, Suspense
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -174,12 +174,17 @@ useEffect(() => {
     return matchesSearch && matchesType && matchesStatus && matchesDate;
   });
 
+  const handleOpenAdd = useCallback(() => dispatchUI({ type: ui.isAddOpen ? 'CLOSE_ADD' : 'OPEN_ADD' }), [dispatchUI, ui]);
+  const handleOpenEdit = useCallback((task: Task) => dispatchUI({ type: 'OPEN_EDIT', payload: task }), [dispatchUI]); //@ uses in-line call
+  const handleCloseAdd = useCallback(() => dispatchUI({ type: ui.isAddOpen ? 'CLOSE_ADD' : 'CLOSE_EDIT' }), [dispatchUI, ui]);
+  const handleCloseEdit = useCallback(() => dispatchUI({ type: 'CLOSE_EDIT' }), [dispatchUI]);
+
   const handleUpdateStatus = async (id: string, newStatus: TaskStatus) => {
     const { success, error } = await updateStatus(id, newStatus);
     if(!error || success) await loadTasks();
   };
 
-  const handleDeleteTask = async (eventId: string) => {
+  const handleDeleteTask = async (eventId: string) => { //@ uses in-line call
     try {
       const { success, error } = await deleteTask(eventId);
       if(!error || success) await loadTasks();
@@ -205,7 +210,7 @@ useEffect(() => {
             {thisWeekTasks.length} this week
           </Badge>
         </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => dispatchUI({ type: ui.isAddOpen ? 'CLOSE_ADD' : 'OPEN_ADD' })}>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleOpenAdd}>
             <Plus className="size-4 mr-2" />
             Add Task
           </Button>
@@ -289,7 +294,7 @@ useEffect(() => {
                 <TaskSelected
                   key={task.id}
                   task={task}
-                  onEdit={() => dispatchUI({ type: 'OPEN_EDIT', payload: task })}
+                  onEdit={() => handleOpenEdit(task)}
                   onDelete={() => handleDeleteTask(task.id)}
                   onStatusChange={handleUpdateStatus}
                 />
@@ -304,7 +309,7 @@ useEffect(() => {
           isOpen={ui.isAddOpen}
           beneficiaries={beneficiaries}
           loadContacts={loadBeneficiaries}
-          onClose={() => dispatchUI({ type: ui.isAddOpen ? 'CLOSE_ADD' : 'CLOSE_EDIT' })}
+          onClose={handleCloseAdd}
           onAdd={loadTasks}
         />
       {/* </Suspense> */}
@@ -315,7 +320,7 @@ useEffect(() => {
           task={ui.selectedTask}
           beneficiaries={beneficiaries}
           loadContacts={loadBeneficiaries}
-          onClose={() => dispatchUI({ type: "CLOSE_EDIT" })}
+          onClose={handleCloseEdit}
           onUpdate={loadTasks}
         />
       // </Suspense>

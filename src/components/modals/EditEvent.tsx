@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ interface CalendarEvent {
   starts_at: string;
   ends_at?: string | null;
   location?: string | null;
-  description?: string | null;
+  notes?: string | null;
   beneficiary_name?: string | null;
   type?: string | null;
   status?: "scheduled" | "done" | "cancelled";
@@ -45,7 +45,7 @@ export default function EditEventModal({
           beneficiary_id: '',
           scheduled_at: format(new Date(event.starts_at), "yyyy-MM-dd'T'HH:mm"),
           status: event.status ?? 'scheduled',
-          notes: event.description ?? '',
+          notes: event.notes ?? '',
           created_by: event.created_by ?? '',
           created_at: event.created_at,
         }
@@ -64,10 +64,15 @@ export default function EditEventModal({
       beneficiary_name: '',
       scheduled_at: format(new Date(event.starts_at), "yyyy-MM-dd'T'HH:mm"),
       status: event.status ?? 'scheduled',
-      notes: event.description ?? '',
+      notes: event.notes ?? '',
     });
-  }, [event, setForm]);
-    
+  }, [isOpen, event]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
   const handleSave = async () => {
     if (!event) return;
     const { success } = await updateEvent();
@@ -93,7 +98,7 @@ export default function EditEventModal({
               id="subject"
               name="subject"
               value={form.subject}
-              onChange={e => setForm({ ...form, subject: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Enter event title"
               required
             />
@@ -104,9 +109,10 @@ export default function EditEventModal({
               <Label htmlFor="scheduled-at">Scheduled Date & Time *</Label>
               <Input
                 id="scheduled-at"
+                name="scheduled_at"
                 type="datetime-local"
                 value={form.scheduled_at}
-                onChange={e => setForm({ ...form, scheduled_at: e.target.value })}
+                onChange={handleInputChange}
               />
             </div>
           </div>
@@ -117,7 +123,7 @@ export default function EditEventModal({
               id="location"
               name="location"
               value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Enter event location"
             />
           </div>
@@ -128,7 +134,7 @@ export default function EditEventModal({
               id="notes"
               name="notes"
               value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Add event details..."
               rows={3}
             />
