@@ -11,6 +11,7 @@ import { Division } from '@/hooks/useDivisions';
 import { Textarea } from '@/components/ui/textarea';
 import { ContactFormData } from '@/components/modals/EditContact';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { useProfile } from "@/hooks/useProfile";
 import { ContactNote } from '@/hooks/useContactNotes';
 
 interface ContactEditFormProps {
@@ -72,6 +73,27 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
   setIgnoreCloseWarning,
   handleClose,
 }) => {
+  const { profile } = useProfile();
+
+  const isManager = useMemo(() => {
+    if (!profile) return;
+    return ['manager', 'branch_manager'].includes(profile.role);
+  }, [profile]);
+
+  const isReferrer = useMemo(() => {
+    if (!profile) return;
+    return profile.role === 'referrer';
+  }, [profile]);
+
+  const isStaff = useMemo(() => {
+    if (!profile) return;
+    return profile.role === 'staff';
+  }, [profile]);
+
+  const isVolunteer = useMemo(() => {
+    if (!profile) return;
+    return profile.role === 'volunteer';
+  }, [profile]);
 
   const divsRegionValueCondition = useMemo(() => {
       if (!contact || !divsRegion || !formData.status) return false; 
@@ -79,11 +101,11 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
       return formData.status == 'active' && !assignedDivision;  
   }, [contact, divsRegion, formData.status, formData.owner_id]); 
 
-  // const approveEnabled = condition1 && condition2 && condition3;
-  const approveEnabled = useMemo(() => {
-    if(!condition1 || !condition2 || !condition3) return false;
-    return true;
-  },[condition1, condition2, condition3])
+  const approveEnabled = condition1 && condition2 && condition3;
+  // const approveEnabled = useMemo(() => {
+  //   if(!condition1 || !condition2 || !condition3) return false;
+  //   return true;
+  // },[condition1, condition2, condition3])
 
   const handleConfirmDelete = useCallback(() => {setConfirmDelete(false)}, []);
 
@@ -94,11 +116,18 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name *</Label>
-          <Input id="name" name="name" value={formData.name} onChange={onInputChange} placeholder="Full name" required />
+          <Input id="name" 
+            name="name" 
+            disabled={isReferrer || isStaff || isVolunteer}
+            value={formData.name} onChange={onInputChange} placeholder="Full name" required />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={formData.email} onChange={onInputChange} placeholder="Email address" />
+          <Input id="email" 
+            name="email" 
+            type="email" 
+            disabled={ isStaff || isVolunteer}
+            value={formData.email} onChange={onInputChange} placeholder="Email address" />
         </div>
       </div>
 
@@ -123,16 +152,22 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
           <Input
             id="postcode"
             name="postcode"
+            required={true}
             value={formData.postcode}
             onChange={onInputChange}
             placeholder="Post code"
           />
         </div>                 
         <div className="space-y-2 w-[50%] sm:w-full">
-            <Label htmlFor="region">Region *</Label>
+            <Label htmlFor="region">Region*</Label>
+            <Input
+              required
+              value={formData.region_id || contact.region_id}
+              aria-hidden="true"
+              className="sr-only"
+            />
             <Select
-              required={true}
-              disabled={isLoadingRegions || regions.length === 0}
+              disabled={isLoadingRegions || regions.length === 0 || isManager || isReferrer || isStaff || isVolunteer}
               value={formData.region_id || "none"}
               onValueChange={onRegionChange}
             >
@@ -149,9 +184,15 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
           <PermissionGuard permission="canAssignBeneficiaries"> 
             <div className="space-y-2 w-[50%] sm:w-full">
               <Label htmlFor="branch">{formData.status === 'active' && !isLoadingDivisions ? "Branch*" : "Branch"}</Label>
+              <Input
+                required={formData.status === 'active' && contact.status !== 'active'}
+                value={formData.owner_id}
+                aria-hidden="true"
+                className="sr-only"
+              />
               <Select
                 required={formData.status === 'active'}
-                disabled={isLoadingDivisions || divsRegion.length === 0}
+                disabled={isLoadingDivisions || divsRegion.length === 0 || isVolunteer}
                 value={divsRegionValueCondition ? '' : formData.owner_id}
                 onValueChange={onDivisionChange}
               >
@@ -169,78 +210,48 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             </div>
           </PermissionGuard>
       </div>
-      <div className="flex align-left space-x-2">
-        <div>
-          <PermissionGuard permission="canAssignBeneficiaries">
-          <label htmlFor="status" className="text-sm">Change status:</label>
+      <div>
         {contact?.status === 'pending' && (         
-            <div className="space-y-2 mb-4">
-              <PermissionGuard permission="canApproveBeneficiaries">
-              <div>
-              <div className="flex items-center space-x-2">
-                <Switch id="step1" checked={condition1} onCheckedChange={setCondition1} />
-                <span className="text-sm text-muted-foreground">The applicant is in a crisis situation</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch id="step2" checked={condition2} onCheckedChange={setCondition2} />
-                <span className="text-sm text-muted-foreground">Information about subsidised food has been provided</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch id="step3" checked={condition3} onCheckedChange={setCondition3} />
-                <span className="text-sm text-muted-foreground">Support services are working to resolve the crisis</span>
-              </div>
-              </div>
-            </PermissionGuard>
+          <PermissionGuard permission="canApproveBeneficiaries">
+            <div className="flex items-center space-x-2">
+              <Switch id="step1" checked={condition1} onCheckedChange={setCondition1} />
+              <span className="text-sm text-muted-foreground">The applicant is in a crisis situation</span>
             </div>
-            )}      
-              <div className={`flex items-center space-x-2 w-[50%] sm:w-full md:w-${contact.status == "pending" || approveEnabled ? "[25%]" : "[115%]"}`}>
-                <Select
-                  value={formData.status}
-                  onValueChange={onStatusChange}
-                >
-                  <SelectTrigger className="sm:w-full">
-                    <SelectValue placeholder="Select Status"/>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <PermissionGuard permission="canApproveBeneficiaries">
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    {contact.status === 'active' ?
-                      <SelectItem value="active">Active</SelectItem> : 
-                    (approveEnabled) && (
-                      <SelectItem value="active">Approve</SelectItem>
-                    )}
-                    </PermissionGuard>
-                  </SelectContent>
-                </Select>
-                {/* <Switch
-                  id="status"
-                  checked={formData.status === 'active'}
-                  disabled={!approveEnabled}
-                  onCheckedChange={(checked) => {
-                    if (!approveEnabled) return;               
-                    const newStatus = checked ? 'active' : 'pending';
-                    setFormData(prev => ({ ...prev, status: newStatus }));
-                  }}
-                />
-                <span className="text-sm text-muted-foreground">Approve beneficiary</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="status_decline"
-                  checked={formData.status === 'inactive'}
-                  disabled={approveEnabled}
-                  onCheckedChange={(checked) => {
-                    if (approveEnabled) return;            
-                    const newStatus = checked ? 'inactive' : 'pending';
-                    setFormData(prev => ({ ...prev, status: newStatus }));
-                  }}
-                />
-                <span className="text-sm text-muted-foreground">Decline beneficiary</span> */}
-              </div>   
+            <div className="flex items-center space-x-2">
+              <Switch id="step2" checked={condition2} onCheckedChange={setCondition2} />
+              <span className="text-sm text-muted-foreground">Information about subsidised food has been provided</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch id="step3" checked={condition3} onCheckedChange={setCondition3} />
+              <span className="text-sm text-muted-foreground">Support services are working to resolve the crisis</span>
+            </div>
+          </PermissionGuard>
+        )}           
+      </div>
+      <PermissionGuard permission="canAssignBeneficiaries">
+        <label htmlFor="status" className="text-sm">Change status:</label>
+        <div className="flex items-center space-x-2 w-[25%] sm:w-full md:w-[25%]">
+          <Select
+            value={formData.status}
+            onValueChange={onStatusChange}
+          >
+            <SelectTrigger className="sm:w-full">
+              <SelectValue placeholder="Select Status"/>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <PermissionGuard permission="canApproveBeneficiaries">
+              <SelectItem value="inactive">Inactive</SelectItem>
+              {contact.status === 'active' ?
+                <SelectItem value="active">Active</SelectItem> : 
+              (approveEnabled) && (
+                <SelectItem value="active">Approve</SelectItem>
+              )}
               </PermissionGuard>
-            </div>    
-        </div>
+            </SelectContent>
+          </Select>
+        </div>   
+      </PermissionGuard>
       <Label htmlFor="hh_composition">Household Composition</Label>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2 w-[30%] sm:w-full">

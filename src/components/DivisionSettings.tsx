@@ -31,9 +31,18 @@ export const DivisionSettingsTable = () => {
     return opts;
   }, []);
 
-  const filteredDivisions = filterEntityId === 'all'
-    ? divisions
-    : divisions.filter(t => t.entity_id === filterEntityId);
+  const entityNames: Record<string, string> = Object.fromEntries(
+    entities.filter(e => e.is_active).map(e => [e.id, e.name])
+  );
+
+  const filteredDivisions = filterEntityId === 'all' 
+    ? [...divisions].sort((a, b) => {
+        const ea = entityNames[a.entity_id ?? ''] ?? '';
+        const eb = entityNames[b.entity_id ?? ''] ?? '';
+        if (ea !== eb) return ea.localeCompare(eb);
+        return a.name.localeCompare(b.name);
+      })
+    : divisions.filter((t) => t.entity_id === filterEntityId);
 
   const rowSettings = (divisionId: string) => settingsMap[divisionId] ?? {};
 
@@ -64,7 +73,7 @@ export const DivisionSettingsTable = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Entities</SelectItem>
-                {entities.map((e) => (
+                {entities.filter(e => e.is_active).map((e) => (
                   <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -97,7 +106,7 @@ export const DivisionSettingsTable = () => {
                     <TableRow key={division.id}>
                       <TableCell>
                         <span className="text-muted-foreground">
-                          {entities.find(e => e.id === division.entity_id)?.name ?? '—'}
+                          {entities.find(e => e.id === division.entity_id && e.is_active)?.name ?? '—'}
                         </span>
                       </TableCell>
                       <TableCell>

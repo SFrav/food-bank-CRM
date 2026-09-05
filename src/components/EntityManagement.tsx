@@ -71,7 +71,7 @@ export const EntityManagement = () => {
     } else {
       toast({
         title: "Success",
-        description: "Entity updated successfully",
+        description: "Entity successfully updated",
       });
       setEditingEntity(null);
       

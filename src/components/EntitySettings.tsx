@@ -48,7 +48,7 @@ export const EntitySettingsTable = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                entities.map(entity => {
+                entities.filter(e => e.is_active).map(entity => {
                   const s = rowSettings(entity.id);
                   return (
                     <TableRow key={entity.id}>

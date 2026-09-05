@@ -31,6 +31,7 @@ export const useDivisionSettings = () => {
       });
 
       setSettingsMap(prev => ({ ...prev, [division_id]: local as DivisionSettings }));
+      return local as DivisionSettings;
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error fetching settings:', err);
@@ -39,6 +40,7 @@ export const useDivisionSettings = () => {
         description: 'Could not load division settings.',
         variant: 'destructive',
       });
+      return undefined;
     } finally {
       setLoading(false);
     }

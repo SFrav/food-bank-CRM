@@ -98,6 +98,14 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [allotment, showAll, visibleMonths]);
 
+  const lastAllotment = useMemo<ContactAllotment | undefined>(() => {
+    if (!allotment || allotment.length === 0) return undefined;
+    
+    const sortedAllotment = [...allotment].sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime(); 
+    });
+    return sortedAllotment[0] ?? undefined;
+  }, [allotment]);
 
   const normalizeDate = (d: string | Date) => {
     const n = new Date(d);
@@ -139,7 +147,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   return (
     <div>
     <div className="flex items-center justify-between px-4 py-2 border-b">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center text-sm gap-2">
         <span className="font-sm">{contact?.name ?? 'Contact'}</span>
         
         </div>
@@ -238,7 +246,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
           </div>
           
         )}
-  
+        
     <form className="space-y-4">
       <div className="min-h-[50dvh]">
           <div>
@@ -328,6 +336,22 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
           </div>
       </div>
     </form>
+    <div className="grid grid-cols-1 text-sm w-full"> 
+      {lastAllotment?.referrer_name ? (
+        <span className="sm:table-cell sm:max-w-full">
+          Last referred by: {lastAllotment?.referrer_name}
+        </span>
+      ) : (
+        <span>  </span>
+      )}
+      {lastAllotment?.approver_name ? (
+        <span className="sm:table-cell sm:max-w-full">
+          Last approved: {lastAllotment?.approver_name}
+        </span>
+      ) : (
+        <span></span>
+      )}
+    </div>
     </div>
   );
 };

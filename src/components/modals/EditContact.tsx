@@ -125,10 +125,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   // if (!user || !profile) return null;
 
-  const divisionSettings = settingsMap[profile?.division_id || ''] ?? {};
-  const dayOffset = parseInt(divisionSettings.day_offset ?? '-1', 10);
-  const hourOffset = parseInt(divisionSettings.hour_offset ?? '-1', 10);
-  const exclWeeks = parseInt(divisionSettings.exclusion_weeks ?? '-1', 10);
+  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === profile?.region_id), [divisions, profile]);
 
   useEffect(() => {
     if (!contact || !isOpen) return;
@@ -136,17 +133,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     setLocalContact(contact);
     if (isServing) setShowAllotment(isServing);
   }, [contact, isOpen, isServing]);
-
-  useEffect(() => {
-    if (!profile) return;
-    // const divs = divisions.filter((d) => d.region_id === profile.region_id);
-    // setDivsRegion(divs);
-    if (profile?.division_id && !settingsMap[profile.division_id]) {
-      fetchSettings(profile.division_id);
-    }
-  }, [profile, divisions]);
-
-  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === profile?.region_id), [divisions, profile]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -279,11 +265,31 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     e?.preventDefault();
     if (!contact) return;
     setIsLoading(true);
-    if(formData.status !== (contact.status) && formData.status === 'active' && (dayOffset === -1 || hourOffset === -1 || exclWeeks === -1)) {
-      toast({ title: 'Error', description: 'Division settings of opening day, opening hours and exclusion period must be set before approving beneficiary', variant: 'destructive' });
-      setIsLoading(false);
-      return;
-    }
+
+    if (formData.status !== (contact.status) && formData.status === 'active') {
+      const targetOwnerId = formData.owner_id === '' ? contact.owner_id : formData.owner_id;
+      if (!divsRegion.some(d => String(d.manager_id) === String(targetOwnerId))) {
+        toast({ title: 'Error', description: 'Branch must be set before approving beneficiary', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+      const targetDivId = divisions.find(d => String(d.manager_id) === String(targetOwnerId))?.id;
+      if (targetDivId) {
+        const divSettings = await fetchSettings(targetDivId);   
+        if (!divSettings) { 
+          setIsLoading(false);
+          return;
+        }
+        const dOffset = parseInt(divSettings.day_offset ?? '-1', 10);
+        const hOffset = parseInt(divSettings.hour_offset ?? '-1', 10);
+        const eWeeks = parseInt(divSettings.exclusion_weeks ?? '-1', 10);
+        if (dOffset === -1 || hOffset === -1 || eWeeks === -1) {
+          toast({ title: 'Error', description: 'Branch settings of opening day, opening hours and exclusion period must be set before approving beneficiary', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+      }
+    };
 
     try {
       const { success, error } = await updateContact({
@@ -299,7 +305,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         children_lt16: formData.children_lt16 || null,
         status: formData.status || 'inactive',
         user_id: user.id,
-        owner_id: formData.owner_id === '' ? contact.owner_id : formData.owner_id || null,
+        owner_id: formData.owner_id === '' ? contact.owner_id : formData.owner_id || profile?.user_id,
         notes: formData.notes_new.trim() || null 
       });
       if (!success) return;
@@ -336,6 +342,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleUnsavedStay = useCallback(() => { setShowUnsavedCloseWarning(false); }, []);
   const handleUnsavedDiscard = useCallback(() => { setShowUnsavedCloseWarning(false); handleClose(); }, [handleClose]);
  
+  divisions.find(d => String(d.manager_id) === String(formData.owner_id))?.id
+  
   return (
     <div>
       <Dialog
@@ -355,7 +363,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
             <div className="flex items-start justify-between">
               <div>
                 <DialogTitle>Edit Beneficiary</DialogTitle>
-                <DialogDescription>Update the beneficiary's details below.</DialogDescription>
+                <DialogDescription></DialogDescription>
               </div>
               <div className="flex gap-2 truncate align-right">
                 <button

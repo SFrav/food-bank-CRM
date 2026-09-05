@@ -162,7 +162,7 @@ export default function AdminUsers() {
                     <TableCell className="text-right text-xs text-muted-foreground">
                       {savingUsers.has(user.id)
                         ? <div className="inline-block size-3 animate-spin border border-current border-t-transparent rounded-full" />
-                        : entities.find(e => e.id === user.entity_id)?.name || '—'
+                        : entities.find(e => e.id === user.entity_id && e.is_active)?.name || '—'
                       }
                     </TableCell>
                   </TableRow>

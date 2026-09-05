@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 // import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/hooks/useAuth';
+// import { useAuth } from '@/hooks/useAuth';
 import { useContacts, Contact, ContactDuplicate } from '@/hooks/useContacts';
 import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
@@ -32,7 +32,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   onDuplicateFound,
   onContactAdded,
 }) => {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const { profile } = useProfile();
   const { regions } = useRegions();
   const { divisions } = useDivisions();
@@ -73,6 +73,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     notes: '',
   });
 
+  const activeRegions = regions.filter(r => r.is_active === true)
   // if (!user || !profile) return null;
 
   useEffect(() => {
@@ -107,6 +108,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   ), [divsRegion]);
 
   const resetForm = () => {
+    setDuplicateCandidates(null);
+    setDupExact(false);
     setFormData({
       name: '',
       email: '',
@@ -120,13 +123,11 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       status: 'pending',
       owner_id: '',
       notes: '',
-    });
-    setDuplicateCandidates(null);
-    setDupExact(false);
+    }); 
   };
 
   const runDuplicateCheck = useCallback(async () => {
-    if (!user) return false;
+    if (!profile) return false;
     setCheckingDup(true);
     try {
       const duplicates = await checkDuplicates({
@@ -154,10 +155,10 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     } finally {
       setCheckingDup(false);
     }
-  }, [user, formData, checkDuplicates, isExactMatch]);
+  }, [profile, formData, checkDuplicates, isExactMatch]);
 
 
-  const createNewAnyway = async () => {
+  const createNewAnyway = useCallback(async () => {
     setIsLoading(true);
     try {
       const { success, error } = await createContact({
@@ -172,8 +173,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         children_lt16: formData.children_lt16 || null,
         notes: formData.notes.trim() || null,
         status: formData.status,
-        user_id: user.id,
-        owner_id: formData.owner_id || null,
+        user_id: profile?.user_id,
+        owner_id: formData.owner_id || profile?.user_id,
       });
 
       if (!success) throw new Error(error);
@@ -186,19 +187,22 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [formData]);
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    if (!user) {
+    if (!profile) {
       return;
     }
+
     if (duplicateCandidates) {
       return createNewAnyway();
     }
     const duplicateFound = await runDuplicateCheck();
     if (duplicateFound) return; 
     setIsLoading(true);
+    setDuplicateCandidates(null);
+    setDupExact(false);
 
     try {
       const { success, error } = await createContact({
@@ -213,29 +217,14 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         children_lt16: formData.children_lt16 || null,
         notes: formData.notes.trim() || null,
         status: formData.status || 'pending',
-        user_id: user.id,
-        owner_id: formData.owner_id || null,
+        user_id: profile?.user_id,
+        owner_id: formData.owner_id || profile?.user_id,
       });
 
       if (!success) {
         throw new Error(error);
       }
-
-      // setFormData({
-      //   name: '',
-      //   email: '',
-      //   phone: '',
-      //   street_address: '',
-      //   postcode: '',
-      //   region_id: '',
-      //   adults: 1, 
-      //   children_gt16: 0, 
-      //   children_lt16: 0,
-      //   status: 'pending',
-      //   owner_id: '',
-      //   notes: '',
-      // });
-
+    
       onContactAdded();
       onClose();
       resetForm();
@@ -358,41 +347,47 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               />
             </div>        
             <div className="space-y-2">
-              <Label htmlFor="past">Post Code</Label>
+              <Label htmlFor="past">Post Code*</Label>
               <Input
                 id="postcode"
                 name="postcode"
+                required
                 value={formData.postcode}
                 onChange={handleInputChange}
                 placeholder="Post code"
               />
             </div>            
           
-          <div>
-            <Label htmlFor="region">Region*</Label>
-            <Select
-              required={true}
-              value={formData.region_id || "none"}
-              onValueChange={handleRegionChange}
-            >
-              <SelectTrigger >
-                <SelectValue placeholder="Select Region"/>
-              </SelectTrigger>
-              <SelectContent>
-                {regions.filter((r) => r.is_active === true).map(re => (
-                  <SelectItem key={re.id} value={re.id}>
-                    {re.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div>
+              <Label htmlFor="region">Region*</Label>
+              <Input
+                required
+                value={formData.region_id}
+                aria-hidden="true"
+                className="sr-only"
+              />
+              <Select
+                value={formData.region_id || ""}
+                onValueChange={handleRegionChange}
+              >
+                <SelectTrigger id="region">
+                  <SelectValue placeholder="Select Region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeRegions.map((re) => (
+                    <SelectItem key={re.id} value={re.id}>
+                      {re.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           
           <PermissionGuard permission="canAssignBeneficiaries"> 
           <div>
             <Label htmlFor="branch">Branch</Label>
             <Select
-              value={formData.owner_id || "none"}
+              value={formData.owner_id || ""}
               onValueChange={handleDivisionChange}
             >
               <SelectTrigger>

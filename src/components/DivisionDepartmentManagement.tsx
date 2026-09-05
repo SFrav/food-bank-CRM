@@ -34,12 +34,19 @@ export const DivisionDepartmentManagement = () => {
     }
   };
 
-  // Filter divisions by entity
+  const entityNames: Record<string, string> = Object.fromEntries(
+    entities.filter(e => e.is_active).map(e => [e.id, e.name])
+  );
+
   const filteredDivisions = filterEntityId === 'all' 
-    ? divisions 
+    ? [...divisions].sort((a, b) => {
+        const ea = entityNames[a.entity_id ?? ''] ?? '';
+        const eb = entityNames[b.entity_id ?? ''] ?? '';
+        if (ea !== eb) return ea.localeCompare(eb);
+        return a.name.localeCompare(b.name);
+      })
     : divisions.filter((t) => t.entity_id === filterEntityId);
 
-  // Division handlers
   const handleCreateDivision = async () => {
     if (!newDivisionName.trim()) {
       toast({ title: 'Error', description: 'Branch name is required', variant: 'destructive' });
@@ -167,17 +174,6 @@ export const DivisionDepartmentManagement = () => {
                 onChange={handleNewDivisionName}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateDivision()}
               />
-              <Select value={newDivisionEntityId} onValueChange={setNewDivisionEntityId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select entity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No Entity</SelectItem>
-                  {entities.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <Button className="w-12"  onClick={handleCreateDivision} disabled={creatingDivision}>
               {creatingDivision ? (
@@ -196,7 +192,7 @@ export const DivisionDepartmentManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Entities</SelectItem>
-                {entities.map((e) => (
+                {entities.filter(e => e.is_active).map((e) => (
                   <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -241,13 +237,13 @@ export const DivisionDepartmentManagement = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">No Entity</SelectItem>
-                            {entities.map((e) => (
+                            {entities.filter(e => e.is_active).map((e) => (
                               <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       ) : (
-                        <span className="text-muted-foreground">{entities.find(e => e.id === division.entity_id)?.name || '—'}</span>
+                        <span className="text-muted-foreground">{entities.filter(e => e.is_active).find(e => e.id === division.entity_id)?.name || '—'}</span>
                       )}
                     </TableCell>
                     <TableCell>{new Date(division.created_at).toLocaleDateString()}</TableCell>

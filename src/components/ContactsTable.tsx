@@ -43,7 +43,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   // const { contacts, loading, refetch } = useContacts(orderDesc); //orderDesc, filterQueue
   const { toast } = useToast();
   const { profile } = useProfile();
-  const { divisions } = useDivisions(profile?.entity_id);
+  const { divisions } = useDivisions(); //profile?.entity_id
   const { settingsMap, loading: settingsLoading, fetchSettings} = useDivisionSettings();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTermStatus, setFilterTermStatus] = useState('all');
@@ -99,9 +99,12 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
     })
   }, [contacts])
 
-  const orgDivIds = useMemo(() => new Set(divisions.map(d => d.manager_id).filter(Boolean)), [divisions]);  
+  const orgDivIds = useMemo(() => new Set(divisions.filter(d => d.entity_id === profile?.entity_id).map(d => d.manager_id).filter(Boolean)), [divisions]);  
+  const divAll = useMemo(() => new Set(divisions.map(d => d.manager_id).filter(Boolean)), [divisions]);  
 
   const filteredContacts = useMemo(() => {
+    //const { divisions: divisionsAll } = useDivisions();
+    
     const search = searchTerm.trim().toLowerCase();
 
     return contacts.filter(contact => {
@@ -111,8 +114,16 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
 
       if (filterTermStatus !== 'all' && status !== filterTermStatus) return false;
 
+      // if(filterTermBranch === 'unassigned') {
+      //   if(divAll.has(contact.owner_id)) return false;
+      // } else if (filterTermBranch !== 'all') {
+      //   if (contact.owner_id?.includes(filterTermBranch)) return false;
+      // }
+
       if (filterTermBranch === 'org-wide') {
         if (!orgDivIds.has(contact.owner_id)) return false;
+      } else if (filterTermBranch === 'unassigned') {
+        if(divAll.has(contact.owner_id)) return false;
       } else if (filterTermBranch !== 'all') {
         if (!contact.owner_id?.includes(filterTermBranch)) return false;
       }
@@ -126,7 +137,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
       }
       return true; 
     });
-  }, [searchTerm, filterTermStatus, filterTermBranch, contacts, orgDivIds]);
+  }, [searchTerm, filterTermStatus, filterTermBranch, contacts, orgDivIds, divAll]);
 
   const exportToCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Notes', 'Created At'];
@@ -217,8 +228,9 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       <SelectItem value="org-wide">Org-wide</SelectItem>
-                      {divisions.map(d => (
+                      {divisions.filter(d => d.entity_id === profile?.entity_id).map(d => (
                         <SelectItem key={d.id} value={d.manager_id}>
                           {d.name}
                           </SelectItem>
@@ -300,8 +312,9 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                     <TableHead className="sm:max-w-[125px]">Email</TableHead>
                     <TableHead className="sm:max-w-[80px]">Phone</TableHead>
                     <TableHead className="w-[200px] sm:max-w-[80px]">Status</TableHead>
-                    <TableHead className="text-right sm:max-w-[120px] ">
-                      Latest Note
+                    <TableHead className="w-[200px] sm:max-w-[80px]">Referrer</TableHead>
+                     <TableHead className="sm:max-w-[80px] "> {/*"text-right sm:max-w-[120px] " */}
+                      Last visit
                     </TableHead>
                   </TableRow>
                 </TableHeader>

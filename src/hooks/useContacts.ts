@@ -177,8 +177,8 @@ export const useContacts = (
         toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
         return { success: false, error: 'Validation failed' };
       }
-
       setLoading(true);
+      try{
       const { data, error: rpcError } = await supabase.rpc('create_contact', {
         p_name: c.name,
         p_email: c.email,
@@ -196,18 +196,18 @@ export const useContacts = (
       }).single();
 
       if (rpcError) throw rpcError;
-      if (rpcError) {
-        toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
-        console.error('Contacts insert', rpcError);
-        setLoading(false);
-        return { success: false, error: rpcError.message };
-      }
+      await fetch();
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error(err);
+      toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+      return { success: false, error: error.message };
+    } finally {
       //toast({ title: 'Success', description: 'Contact created successfully' });
       setLoading(false);
-      return { success: true };
-    },
-    []
-  );
+      }
+    }, [fetch]);
 
   const updateContact = useCallback(
     async (c: Contact) => {
@@ -216,8 +216,8 @@ export const useContacts = (
         toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
         return { success: false, error: 'Validation failed' };
       }
-
       setLoading(true);
+      try{
       const { data, error: rpcError } = await supabase.rpc('update_contact', {
         p_id: c.id,
         p_name: c.name,
@@ -240,20 +240,17 @@ export const useContacts = (
       }).single();
     
       if (rpcError) throw rpcError;
-
-      if (rpcError) {
-        if (toastUpdateEnabled) toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
-        setLoading(false);
-        return { success: false, error: rpcError.message };
-      }
-      //if (toastUpdateEnabled) toast({ title: 'Success', description: 'Contact updated successfully' });
-      fetch();
-      setLoading(false);
+      await fetch();
       return { success: true };
-      
-    },
-    []
-  );
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      console.error(err);
+      toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);  
+     }    
+    }, [fetch]);
 
   const mergeContacts = async (primaryId: string, secondaryId: string) => {
     setLoading(true);
@@ -273,7 +270,7 @@ export const useContacts = (
       toast({ title: 'Error', description: error.message || 'Failed to merge', variant: 'destructive' });
       return { success: false, error: error.message };
     } finally {
-    setLoading(false);
+      setLoading(false);
     }      
   };
 
@@ -282,21 +279,16 @@ export const useContacts = (
       try {
         const { error: rpcErr } = await supabase.rpc('delete_contact', { p_id: id });
         if (rpcErr) throw rpcErr;
-
         await fetch();
         // toast({ title: 'Success', description: 'Contact deleted successfully' });
-
         return { success: true };
       } catch (err: unknown) {
         const error = err as { message?: string };
         console.error('Delete error', err);
         toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
-
         return { success: false, error: error.message };
       }
-    },
-    []
-  );
+    }, [fetch]);
 
   return {
     contacts,
