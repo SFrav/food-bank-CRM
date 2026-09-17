@@ -44,10 +44,10 @@ export const RoleBasedSidebar = ({
           { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'System Logs', url: '/admin/logs', icon: Database },
           // { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
-          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Referral System', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
-          { title: 'System Settings', url: '/admin/settings', icon: Settings }
+          // { title: 'System Settings', url: '/admin/settings', icon: Settings }
         ];
       case 'head':
         return [
@@ -74,7 +74,7 @@ export const RoleBasedSidebar = ({
       case 'referrer':
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
-          { title: 'Referral system', url: '/referrals', icon: UserPlus },
+          { title: 'Referral System', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'Settings', url: '/settings', icon: Settings }

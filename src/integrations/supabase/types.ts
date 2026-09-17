@@ -167,6 +167,7 @@ export type Database = {
           children_lt16: number | null
           created_at: string | null
           created_by: string | null
+          delayed_days: number | null
           email: string | null
           hallal: boolean | null
           id: string
@@ -190,6 +191,7 @@ export type Database = {
           children_lt16?: number | null
           created_at?: string | null
           created_by?: string | null
+          delayed_days?: number | null
           email?: string | null
           hallal?: boolean | null
           id?: string
@@ -213,6 +215,7 @@ export type Database = {
           children_lt16?: number | null
           created_at?: string | null
           created_by?: string | null
+          delayed_days?: number | null
           email?: string | null
           hallal?: boolean | null
           id?: string
@@ -254,6 +257,7 @@ export type Database = {
           id: string
           served: boolean
           serving: boolean
+          time: string
           type: Database["public"]["Enums"]["allotment_type_enum"]
           updated_at: string
           visit_num: number | null
@@ -265,6 +269,7 @@ export type Database = {
           id?: string
           served?: boolean
           serving?: boolean
+          time: string
           type: Database["public"]["Enums"]["allotment_type_enum"]
           updated_at?: string
           visit_num?: number | null
@@ -276,11 +281,66 @@ export type Database = {
           id?: string
           served?: boolean
           serving?: boolean
+          time?: string
           type?: Database["public"]["Enums"]["allotment_type_enum"]
           updated_at?: string
           visit_num?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "allotment_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allotment_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts_days: {
+        Row: {
+          contact_id: string
+          day_of_week: number | null
+          id: string
+          is_available: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          contact_id: string
+          day_of_week?: number | null
+          id?: string
+          is_available?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          contact_id?: string
+          day_of_week?: number | null
+          id?: string
+          is_available?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conctacts_days_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conctacts_days_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts_queue"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contacts_notes: {
         Row: {
@@ -370,6 +430,114 @@ export type Database = {
           },
         ]
       }
+      countries: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      division_closed: {
+        Row: {
+          date: string | null
+          division_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          date?: string | null
+          division_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          date?: string | null
+          division_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closed_divisions_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "division_closed_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      division_open: {
+        Row: {
+          close_time: string | null
+          day_of_week: number | null
+          division_id: string
+          id: string
+          is_open: boolean
+          open_time: string | null
+        }
+        Insert: {
+          close_time?: string | null
+          day_of_week?: number | null
+          division_id: string
+          id?: string
+          is_open?: boolean
+          open_time?: string | null
+        }
+        Update: {
+          close_time?: string | null
+          day_of_week?: number | null
+          division_id?: string
+          id?: string
+          is_open?: boolean
+          open_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "division_open_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_divisions_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       division_settings: {
         Row: {
           division_id: string
@@ -392,7 +560,15 @@ export type Database = {
           setting_value?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settings_divisions_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       divisions: {
         Row: {
@@ -405,7 +581,9 @@ export type Database = {
           is_active: boolean
           manager_id: string | null
           name: string
+          postcode: string | null
           region_id: string | null
+          street_address: string | null
           updated_at: string
         }
         Insert: {
@@ -418,7 +596,9 @@ export type Database = {
           is_active?: boolean
           manager_id?: string | null
           name: string
+          postcode?: string | null
           region_id?: string | null
+          street_address?: string | null
           updated_at?: string
         }
         Update: {
@@ -431,7 +611,9 @@ export type Database = {
           is_active?: boolean
           manager_id?: string | null
           name?: string
+          postcode?: string | null
           region_id?: string | null
+          street_address?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -693,6 +875,7 @@ export type Database = {
       regions: {
         Row: {
           code: string
+          country_id: string
           created_at: string
           created_by: string | null
           id: string
@@ -702,6 +885,7 @@ export type Database = {
         }
         Insert: {
           code: string
+          country_id: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -711,6 +895,7 @@ export type Database = {
         }
         Update: {
           code?: string
+          country_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -718,7 +903,15 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "regions_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_settings: {
         Row: {
@@ -866,6 +1059,7 @@ export type Database = {
           children_gt16: number | null
           children_lt16: number | null
           created_at: string | null
+          delayed_days: number | null
           email: string | null
           hallal: boolean | null
           id: string | null
@@ -984,6 +1178,7 @@ export type Database = {
           p_adults?: number
           p_children_gt16?: number
           p_children_lt16?: number
+          p_delayed_days?: number
           p_email?: string
           p_name?: string
           p_notes?: string
@@ -996,8 +1191,25 @@ export type Database = {
         }
         Returns: string
       }
+      create_contact_days: {
+        Args: {
+          p_contact_id: string
+          p_days: Database["public"]["Tables"]["contacts_days"]["Row"][]
+        }
+        Returns: undefined
+      }
       create_division: {
-        Args: { p_entity_id: string; p_head_id?: string; p_name: string }
+        Args: {
+          p_entity_id: string
+          p_head_id?: string
+          p_name: string
+          p_postcode: string
+          p_street_address: string
+        }
+        Returns: string
+      }
+      create_division_closed: {
+        Args: { p_date: string; p_division_id: string }
         Returns: string
       }
       create_notification: {
@@ -1035,16 +1247,24 @@ export type Database = {
       }
       delete_calendar: { Args: { p_id: string }; Returns: boolean }
       delete_contact: { Args: { p_id: string }; Returns: boolean }
+      delete_contact_day_single: { Args: { p_id: string }; Returns: boolean }
+      delete_contact_days: { Args: { p_contact_id: string }; Returns: boolean }
       delete_contact_note: { Args: { p_note_id: string }; Returns: boolean }
       delete_division: { Args: { p_id: string }; Returns: boolean }
+      delete_division_closed: { Args: { p_id: string }; Returns: boolean }
       delete_organisation: { Args: { p_id: string }; Returns: boolean }
       delete_region: { Args: { p_id: string }; Returns: boolean }
       get_allotment: {
         Args: { p_contact_id: string }
         Returns: {
           allotment_id: string
+          approver_name: string
+          approver_org: string
           attended: boolean
           date: string
+          referrer_code: string
+          referrer_name: string
+          referrer_org: string
           served: boolean
           serving: boolean
           updated_at: string
@@ -1085,6 +1305,13 @@ export type Database = {
           scheduled_at: string
           status: string
           subject: string
+        }[]
+      }
+      get_contact_days: {
+        Args: { p_contact_id: string }
+        Returns: {
+          day_of_week: number
+          is_available: boolean
         }[]
       }
       get_contact_duplicates: {
@@ -1129,6 +1356,7 @@ export type Database = {
           children_gt16: number
           children_lt16: number
           created_at: string
+          delayed_days: number
           email: string
           hallal: boolean
           id: string
@@ -1154,6 +1382,7 @@ export type Database = {
           children_gt16: number
           children_lt16: number
           created_at: string
+          delayed_days: number
           email: string
           hallal: boolean
           id: string
@@ -1168,6 +1397,24 @@ export type Database = {
           street_address: string
           user_id: string
           vegetarian: boolean
+        }[]
+      }
+      get_division_closed: {
+        Args: { p_division_id: string }
+        Returns: {
+          date: string
+          division_id: string
+          id: string
+        }[]
+      }
+      get_division_open: {
+        Args: { p_division_id: string }
+        Returns: {
+          close_time: string
+          day_of_week: number
+          id: string
+          is_open: boolean
+          open_time: string
         }[]
       }
       get_division_settings: {
@@ -1200,7 +1447,9 @@ export type Database = {
           id: string
           manager_id: string
           name: string
+          postcode: string
           region_id: string
+          street_address: string
         }[]
       }
       get_entities: {
@@ -1313,6 +1562,15 @@ export type Database = {
           type: Database["public"]["Enums"]["notification_type_enum"]
         }[]
       }
+      get_user_profile_info: {
+        Args: { p_user_id: string }
+        Returns: {
+          division_id: string
+          entity_id: string
+          region_id: string
+          role: string
+        }[]
+      }
       get_user_settings: {
         Args: { p_user_id: string }
         Returns: {
@@ -1373,6 +1631,28 @@ export type Database = {
         Args: { p_primary: string; p_secondary: string }
         Returns: undefined
       }
+      perform_allotments: {
+        Args: {
+          p_allotment_weeks: number
+          p_contact_id: string
+          p_delayed_days: number
+          p_division_id: string
+          p_exclusion_weeks: number
+          p_frequency: number
+        }
+        Returns: undefined
+      }
+      perform_status_notifications: {
+        Args: {
+          p_caller_id: string
+          p_contact_id: string
+          p_contact_name: string
+          p_new_status: string
+          p_owner_id: string
+          p_postcode: string
+        }
+        Returns: undefined
+      }
       update_calendar: {
         Args: {
           p_beneficiary_id: string
@@ -1398,6 +1678,7 @@ export type Database = {
           p_allergies?: boolean
           p_children_gt16?: number
           p_children_lt16?: number
+          p_delayed_days?: number
           p_email?: string
           p_hallal?: boolean
           p_id?: string
@@ -1419,6 +1700,7 @@ export type Database = {
           children_lt16: number | null
           created_at: string | null
           created_by: string | null
+          delayed_days: number | null
           email: string | null
           hallal: boolean | null
           id: string
@@ -1448,7 +1730,13 @@ export type Database = {
           p_head_id?: string
           p_id: string
           p_name: string
+          p_postcode: string
+          p_street_address: string
         }
+        Returns: boolean
+      }
+      update_division_closed: {
+        Args: { p_date: string; p_id: string }
         Returns: boolean
       }
       update_region: {
@@ -1459,6 +1747,24 @@ export type Database = {
           p_name: string
         }
         Returns: boolean
+      }
+      upsert_contact_days: {
+        Args: {
+          p_available: boolean
+          p_contact_id: string
+          p_day_of_week: number
+        }
+        Returns: undefined
+      }
+      upsert_division_open: {
+        Args: {
+          p_close_time?: string
+          p_day_of_week: number
+          p_division_id: string
+          p_is_open: boolean
+          p_open_time?: string
+        }
+        Returns: undefined
       }
       upsert_division_setting: {
         Args: {

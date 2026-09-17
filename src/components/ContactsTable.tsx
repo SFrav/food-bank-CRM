@@ -14,7 +14,7 @@ import { AddContactModal } from '@/components/modals/AddContact';
 import { MergeContactModal } from '@/components/modals/MergeContact';
 import { useContacts, Contact } from '@/hooks/useContacts';
 import { useDivisions } from '@/hooks/useDivisions';
-import { useDivisionSettings, DivisionSettings } from '@/hooks/useDivisionSettings';
+import { useDivisionOpen } from '@/hooks/useDivisionOpen';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 import { CheckedState } from '@radix-ui/react-checkbox';
@@ -44,7 +44,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   const { toast } = useToast();
   const { profile } = useProfile();
   const { divisions } = useDivisions(); //profile?.entity_id
-  const { settingsMap, loading: settingsLoading, fetchSettings} = useDivisionSettings();
+  const { openMap, loading: openLoading, fetchOpen, } = useDivisionOpen();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTermStatus, setFilterTermStatus] = useState('all');
   const [filterTermBranch, setFilterTermBranch] = useState('all');
@@ -54,14 +54,13 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [primaryMerge, setPrimaryMerge] = useState<Contact | null>(null);
   const [secondaryMerge, setSecondaryMerge] = useState<Contact | null>(null);
+  const [isDivOpen, setIsDivOpen] = useState(false);
 
-  const divisionSettings = settingsMap[profile?.division_id || ''] ?? {};
-  const dayOffset = parseInt(divisionSettings.day_offset ?? '-1', 10);
-  const todayIndex = useMemo(() => { return (new Date().getDay() + 6) % 7;}, []); 
-  const dayServing = todayIndex === dayOffset;
-
+  const checkCurrentDayOpen = (divisionId: string, day: number) =>
+    openMap[divisionId]?.[day] ? true : false;
+  
   const stableRefetch = useCallback((q: boolean) => refetch(q), [refetch]);
-  const stableFetchSettings = useCallback((id: string) => fetchSettings(id), [fetchSettings]);
+  const stableFetchOpen = useCallback((id: string) => fetchOpen(id), [fetchOpen]);
 
   useEffect(() => {
     if (selected.size !== 2) return;
@@ -77,10 +76,11 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   }, [selected, contacts, stableRefetch]); 
 
   useEffect(() => {
-    if (profile?.division_id && !settingsMap[profile.division_id]) {
-      fetchSettings(profile.division_id);
+    if (profile?.division_id && !openMap[profile.division_id]) {
+      fetchOpen(profile.division_id);
+      setIsDivOpen(checkCurrentDayOpen(profile?.division_id, new Date().getDay()));
     }
-  }, [profile?.division_id, stableFetchSettings]);
+  }, [profile?.division_id, stableFetchOpen]);
 
   // const toggleSelection = (id: string, checked: boolean) => {
   //   setSelected(prev => {
@@ -260,7 +260,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
               </div>
               <div className="relative w-full sm:w-auto">
                 <PermissionGuard permission="canServeBeneficiaries">
-                  <div className={`flex flex-col items-end ${!dayServing ? 'invisible' : ''}`}>
+                  <div className={`flex flex-col items-end ${!isDivOpen ? 'invisible' : ''}`}>
                     <label className="text-sm">Queue:</label>
                     <Switch
                       id="queue"

@@ -33,6 +33,7 @@ export default function Contacts() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   // const [refreshKey, setRefreshKey] = useState(0);
   const [restoredFormData, setRestoredFormData] = useState<ContactFormData | null>(null);
+  const [restoredConditions, setRestoredConditions] = useState<{ c1: boolean; c2: boolean; c3: boolean } | null>(null);
   const [minimised, setMinimised] = useState<MinimisedContact[]>(loadFromStorage);
 
   const { contacts, loading, refetch } = useContacts(false);
@@ -51,11 +52,12 @@ export default function Contacts() {
     setIsEditOpen(true);
   }, []);
 
-  const handleRestore = useCallback((id: string) => {
+const handleRestore = useCallback((id: string) => {
     const entry = minimised.find(m => m.contact.id === id) as MinimisedContact;
     if (!entry) return;
     setMinimised(prev => prev.filter(m => m.contact.id !== id));
     setRestoredFormData(entry.savedFormData ?? null);
+    setRestoredConditions(entry.conditions);
     setEditingContact(entry.contact as Contact);
     setIsEditOpen(true);
   }, [minimised]);
@@ -71,12 +73,12 @@ export default function Contacts() {
     setIsEditOpen(true);
   }, [minimised, handleRestore]);
 
-  const handleMinimise = useCallback((contact: Contact, isDirty: boolean, formData: ContactFormData) => {
+  const handleMinimise = useCallback((contact: Contact, isDirty: boolean, formData: ContactFormData, conditions:  {c1: boolean; c2: boolean; c3: boolean }) => {
     setIsEditOpen(false);
     setMinimised(prev => {
       const without = prev.filter(m => m.contact.id !== contact.id);
       const capped = without.length >= MAX_MINIMISED ? without.slice(1) : without;
-      return [...capped, { contact, isDirty, savedFormData: formData }];
+      return [...capped, { contact, isDirty, savedFormData: formData, conditions }];
     });
   }, [setMinimised]);
 
@@ -88,6 +90,7 @@ export default function Contacts() {
     setIsEditOpen(false);
     setEditingContact(null);
     setRestoredFormData(null);
+    setRestoredConditions(null);
   }, []);
 
   return (
@@ -111,6 +114,7 @@ export default function Contacts() {
       />
 
       <EditContactModal
+        // key={editingContact?.id}
         isOpen={isEditOpen}
         isServing={filterQueue}
         onClose={handleClose}
@@ -118,6 +122,8 @@ export default function Contacts() {
         onMinimise={handleMinimise}
         contact={editingContact}
         restoredFormData={restoredFormData}
+        restoredConditions={restoredConditions}
+        initialConditions={editingContact ? minimised.find(m => m.contact.id === editingContact.id)?.conditions : null}
         maxMinimised={MAX_MINIMISED}
         currentMinimisedCount={minimised.length}
       />

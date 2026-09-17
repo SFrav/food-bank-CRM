@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
+import { Settings } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +17,10 @@ type AllowedRoles = "branch_manager" | "volunteer" | "staff" | "referrer" | "man
 
 export default function Dashboard() {
   const { profile } = useProfile();
+  const navigate = useNavigate();
+
+  const goTo = (path: string) => () => navigate(path);
+
   const [dateRange, setDateRange] = useState<string>("month");
 
   const role = profile?.role as AllowedRoles;
@@ -45,6 +52,28 @@ export default function Dashboard() {
       </div>
 
       <DivisionSummary />
+
+      <PermissionGuard permission="canManageDivisionOpen">
+        <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="size-5" />
+            Organisation level settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+        <div className="flex flex-col gap-2">
+          {/* <label className="text-sm font-medium text-foreground">
+            View or edit organisation level settings
+          </label> */}
+          <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
+            Edit settings
+          </Button>
+        </div>
+        </CardContent>
+        </Card>
+
+      </PermissionGuard>
 
       <PermissionGuard permission="canAccessAnalytics">
         {/* Filters Section */}
@@ -84,7 +113,6 @@ export default function Dashboard() {
           </div>
         </div>
       </PermissionGuard>
-
     </div>
   );
 }

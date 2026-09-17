@@ -131,7 +131,7 @@ export function DivisionSummary() {
               <div className="flex items-center gap-3 p-4 border rounded-lg">
                 <User className="size-8 text-green-600" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Beneficiaries</p>
+                  <p className="text-sm text-muted-foreground">Total Active Beneficiaries</p>
                   <p className="text-xl font-bold">{totalActive}</p>
                 </div>
               </div>

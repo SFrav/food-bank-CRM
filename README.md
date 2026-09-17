@@ -10,7 +10,7 @@ This project is built with:
 - Vite
 - TypeScript
 - React
-- Shadcn-ui
+- Radix-ui/Shadcn-ui
 - Tailwind CSS
 
 Look and feel:
@@ -25,4 +25,4 @@ Look and feel:
 - [Other tabs - support services, calendar and tasks](assets/Other-tabs.gif)
 - [Settings for users - profile, preferences and security](assets/Other-settings.gif)
 
-Repo limitation: Core SQL logic of adding allotment for beneficiary after approval has been removed.
+Repo limitation: Core SQL logic of user authentication removed.

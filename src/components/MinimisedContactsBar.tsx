@@ -13,6 +13,7 @@ export interface MinimisedContact {
   };
   isDirty: boolean;
   savedFormData: ContactFormData;
+  conditions: { c1: boolean; c2: boolean; c3: boolean };
 }
 
 interface MinimisedContactsBarProps {

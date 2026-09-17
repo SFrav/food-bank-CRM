@@ -1,19 +1,30 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEntities } from '@/hooks/useEntities';
 import { useEntitySettings, EntitySettings } from '@/hooks/useEntitySettings';
+import { useProfile } from "@/hooks/useProfile";
 
 export const EntitySettingsTable = () => {
+  const { profile } = useProfile();
   const { entities } = useEntities();
   const { settingsMap, fetchSettings, updateSetting } = useEntitySettings();
 
   useEffect(() => {
+    if(profile && profile?.entity_id) {
+      fetchSettings(profile.entity_id);
+      return;
+    }
     if (entities) {
       entities.forEach(d => fetchSettings(d.id));
     }
-  }, [entities, fetchSettings]);
+  }, [profile, entities, fetchSettings]);
+
+  const filteredEntities = useMemo(() => {
+      if (profile?.entity_id) return entities.filter((e) => e.id === profile.entity_id);
+      return entities;
+    }, [profile, entities]);
 
     const rowSettings = (entityId: string) => settingsMap[entityId] ?? {};
 
@@ -41,14 +52,14 @@ export const EntitySettingsTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entities.length === 0 ? (
+              {filteredEntities.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     No entities found.
                   </TableCell>
                 </TableRow>
               ) : (
-                entities.filter(e => e.is_active).map(entity => {
+                filteredEntities.filter(e => e.is_active).map(entity => {
                   const s = rowSettings(entity.id);
                   return (
                     <TableRow key={entity.id}>

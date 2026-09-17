@@ -1,18 +1,21 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { User, Phone, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { Switch } from '@/components/ui/switch';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 // import { useAuth } from '@/hooks/useAuth';
 import { useContacts, Contact, ContactDuplicate } from '@/hooks/useContacts';
+import { useContactDays } from '@/hooks/useContactDays';
 import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
 import { useDivisions, Division } from '@/hooks/useDivisions';
+import { useDivisionSettings } from '@/hooks/useDivisionSettings';
+import { useDivisionOpen } from '@/hooks/useDivisionOpen';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { DuplicateContactCard } from '@/components/modals/subcomponents/AddContactDuplicate';
 
@@ -36,8 +39,11 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const { profile } = useProfile();
   const { regions } = useRegions();
   const { divisions } = useDivisions();
+  const { openMap, fetchOpen: fetchDivisionOpenDays } = useDivisionOpen();
   const [divsRegion, setDivsRegion] = useState<Division[]>([]);
-  const { createContact, checkDuplicates, isExactMatch } = useContacts();
+  const { settingsMap, fetchSettings} = useDivisionSettings();
+  const { createContact, updateContact, checkDuplicates, isExactMatch } = useContacts();
+  const { createContactDays } = useContactDays();
   const [checkingDup, setCheckingDup] = useState(false);
   const [duplicateCandidates, setDuplicateCandidates] = useState<ContactDuplicate[] | null>(null);
   const [dupExact, setDupExact] = useState(false);
@@ -56,6 +62,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     children_gt16: number;
     children_lt16: number;
     status: "pending" | "active" | "inactive" | "banned" | "merged";
+    delayed_days: number;
     owner_id: string;
     notes: string;
   }>({
@@ -68,13 +75,24 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     adults: 1, 
     children_gt16: 0, 
     children_lt16: 0,
-    status: 'pending',
+    status: 'inactive',
+    delayed_days: 7,
     owner_id: '',
     notes: '',
   });
 
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
+
+  const [condition1, setCondition1] = useState(false);
+  const [condition2, setCondition2] = useState(false);
+  const [condition3, setCondition3] = useState(false);
+  const approveEnabled = condition1 && condition2 && condition3;
+  const referralCondition = formData.status === 'pending' || formData.status === 'active';
+  
+  const canApprove = ['head', 'manager', 'branch_manager'].includes(profile?.role ?? '');
+  const isVolunteer = profile?.role === 'volunteer';
+
   const activeRegions = regions.filter(r => r.is_active === true)
-  // if (!user || !profile) return null;
 
   useEffect(() => {
     if (!profile || !isOpen) return;
@@ -91,6 +109,39 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     }
   }, [isOpen]);
 
+  const divId = useMemo(() => {
+     return divsRegion.find(d => d.manager_id === formData.owner_id)?.id;
+   }, [divsRegion, formData.owner_id]);
+
+  const openDayArray = useMemo(() => {
+    return openMap[divId ?? ''] ?? {};
+  }, [divId, openMap]);
+
+  const maxDaysSelectable = useMemo(() => {
+    if (!divId) return 1;
+    const divSettings = settingsMap[divId] ?? {};
+    return parseInt(divSettings.frequency ?? '1', 10);
+  }, [divId, settingsMap]);
+
+  const handleDayToggle = useCallback((day: number) => {
+    setSelectedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(day)) newSet.delete(day);
+      else newSet.add(day);
+      if (newSet.size > maxDaysSelectable) return prev;
+      return newSet;
+    });
+  }, [maxDaysSelectable]);
+
+  const days = useMemo(() => {
+    return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((label, i) => {
+      const isOpenDay = openDayArray?.[i]?.is_open ?? false;
+      const isSelected = selectedDays.has(i);
+      const disabled = !isOpenDay || (isSelected ? false : selectedDays.size >= maxDaysSelectable);
+      return { label, isOpenDay, isSelected, disabled };
+    });
+  }, [openDayArray, selectedDays, maxDaysSelectable]);
+  
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -103,13 +154,22 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   ), []);
   
   
-  const handleDivisionChange = useCallback((v: string) => setFormData(prev => (
-    {...prev, owner_id: v})
-  ), [divsRegion]);
+  const handleDivisionChange = useCallback((v: string) => {setFormData(prev => (
+    {...prev, owner_id: v}))
+    const divId = divsRegion.find(d => d.manager_id === v)?.id
+    fetchDivisionOpenDays(divId);
+    fetchSettings(divId);
+    setSelectedDays(new Set());
+  }, [divsRegion]);
+
+  const handleStatusChange = useCallback((v: Contact["status"]) => setFormData(prev => (
+    {...prev, status: v})
+  ), []);
 
   const resetForm = () => {
     setDuplicateCandidates(null);
     setDupExact(false);
+    setSelectedDays(new Set());
     setFormData({
       name: '',
       email: '',
@@ -120,7 +180,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       adults: 1,
       children_gt16: 0,
       children_lt16: 0,
-      status: 'pending',
+      status: 'inactive',
+      delayed_days: 7,
       owner_id: '',
       notes: '',
     }); 
@@ -161,7 +222,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const createNewAnyway = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { success, error } = await createContact({
+      const { success, data: newContactId, error } = await createContact({
         name: formData.name,
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
@@ -172,14 +233,43 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         children_gt16: formData.children_gt16 || null,
         children_lt16: formData.children_lt16 || null,
         notes: formData.notes.trim() || null,
-        status: formData.status,
+        status: formData.status === 'active' ? 'inactive' : formData.status,
+        delayed_days: formData.delayed_days || 7,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
       });
 
       if (!success) throw new Error(error);
 
+      if (newContactId && selectedDays.size > 0) {
+        const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
+        await createContactDays(newContactId, daysToCreate);
+      }
+
+      if ( newContactId && formData.status === 'active') {
+        await updateContact({
+        id: newContactId,
+        name: null,
+        email: null,
+        phone: null,
+        street_address: null,
+        postcode: null,
+        region_id: null,
+        adults: null,
+        children_gt16: null,
+        children_lt16: null,
+        status: formData.status,
+        delayed_days: formData.delayed_days || 7,
+        user_id: null,
+        owner_id: null,
+        notes: null 
+      })
+      };
+
       onContactAdded();
+      setCondition1(false);
+      setCondition2(false);
+      setCondition3(false);
       onClose();
       resetForm();
     } catch (err: unknown) {
@@ -187,7 +277,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [formData]);
+  }, [formData, selectedDays]);
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -205,7 +295,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     setDupExact(false);
 
     try {
-      const { success, error } = await createContact({
+      const { success, data: newContactId, error } = await createContact({
         name: formData.name,
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
@@ -216,7 +306,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         children_gt16: formData.children_gt16 || null,
         children_lt16: formData.children_lt16 || null,
         notes: formData.notes.trim() || null,
-        status: formData.status || 'pending',
+        status: formData.status === 'active' ? 'inactive' : formData.status,
+        delayed_days: formData.delayed_days || 7,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
       });
@@ -225,7 +316,35 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         throw new Error(error);
       }
     
+      if (newContactId && selectedDays.size > 0) {
+        const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
+        await createContactDays(newContactId, daysToCreate);
+      }
+
+      if ( newContactId && formData.status === 'active') {
+        await updateContact({
+        id: newContactId,
+        name: null,
+        email: null,
+        phone: null,
+        street_address: null,
+        postcode: null,
+        region_id: null,
+        adults: null,
+        children_gt16: null,
+        children_lt16: null,
+        status: formData.status,
+        delayed_days: formData.delayed_days || 7,
+        user_id: null,
+        owner_id: null,
+        notes: null 
+      })
+      };
+      
       onContactAdded();
+      setCondition1(false);
+      setCondition2(false);
+      setCondition3(false);
       onClose();
       resetForm();
     } catch (error) {
@@ -252,13 +371,16 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     //   owner_id: '',
     //   notes: '',
     // });
+    setCondition1(false);
+    setCondition2(false);
+    setCondition3(false);
     onClose();
     resetForm();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-[525px]  max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Beneficiary</DialogTitle>
           {/* <DialogDescription>
@@ -351,7 +473,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               <Input
                 id="postcode"
                 name="postcode"
-                required
+                // required
                 value={formData.postcode}
                 onChange={handleInputChange}
                 placeholder="Post code"
@@ -365,6 +487,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 value={formData.region_id}
                 aria-hidden="true"
                 className="sr-only"
+                readOnly
               />
               <Select
                 value={formData.region_id || ""}
@@ -384,25 +507,85 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             </div>
           
           <PermissionGuard permission="canAssignBeneficiaries"> 
-          <div>
-            <Label htmlFor="branch">Branch</Label>
+            <div>
+              <Label htmlFor="branch">Branch</Label>
+              <Select
+                value={formData.owner_id || ""}
+                onValueChange={handleDivisionChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {divsRegion.map(div => (
+                    <SelectItem key={div.manager_id} value={div.manager_id}>
+                      {div.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </PermissionGuard>
+          <div className="flex gap-2 space-x-2 w-full sm:w-full md:w-full">
+            <div>
+            <label htmlFor="status" className="text-sm">Change status:</label>
             <Select
-              value={formData.owner_id || ""}
-              onValueChange={handleDivisionChange}
+              value={formData.status}
+              onValueChange={handleStatusChange}
+              disabled={isVolunteer}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Branch" />
+              <SelectTrigger className="sm:w-full">
+                <SelectValue placeholder="Select Status"/>
               </SelectTrigger>
               <SelectContent>
-                {divsRegion.map(div => (
-                  <SelectItem key={div.manager_id} value={div.manager_id}>
-                    {div.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active" disabled={!canApprove}>Approve</SelectItem>
               </SelectContent>
             </Select>
           </div>
-        </PermissionGuard>
+          {approveEnabled && (
+            <div>
+            <label htmlFor="delay" className="text-sm">Delay start (days):</label>
+            <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
+              value={formData.delayed_days} onChange={handleInputChange} placeholder={String(formData.delayed_days)} />
+            </div>
+            )}
+        </div>
+        {formData.owner_id && approveEnabled && (
+          <div className="grid grid-cols-7 gap-2 mt-1 border-b">
+            {days.map(({ label, isSelected, disabled }, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <label className="text-xs">{label}</label>
+                <input
+                  type="checkbox"
+                  disabled={disabled}
+                  checked={isSelected}
+                  onChange={() => handleDayToggle(i)}
+                  className="size-4 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            ))}
+          </div>
+        )}     
+      </div>
+      <div className="flex gap-2 space-x-2 w-full sm:w-full md:w-full">
+        {referralCondition && (         
+          <PermissionGuard permission="canAssignBeneficiaries">
+              <div className="flex items-center space-x-2">
+                <Switch id="step1" checked={condition1} onCheckedChange={setCondition1} />
+                <span className="text-sm text-muted-foreground">The applicant is in a crisis situation</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="step2" checked={condition2} onCheckedChange={setCondition2} />
+                <span className="text-sm text-muted-foreground">Information about subsidised food has been provided</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="step3" checked={condition3} onCheckedChange={setCondition3} />
+                <span className="text-sm text-muted-foreground">Support services are working to resolve the crisis</span>
+              </div>
+          </PermissionGuard>
+        )}      
         </div>
         <Label htmlFor="adults">Household Composition</Label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -455,7 +638,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading || checkingDup}>
+              <Button type="submit" disabled={isLoading || checkingDup || !approveEnabled}>
                 {isLoading || checkingDup ? "Checking..." : "Save"}
               </Button>
             {/* </div> */}

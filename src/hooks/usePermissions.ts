@@ -5,14 +5,15 @@ export interface PermissionSet {
   canAccessAllReports: boolean;
   canAccessAnalytics: boolean;
   canDeleteRecords: boolean;
-  canCreateOrganizations: boolean;
-  canApproveOrganizations: boolean;
+  canCreateEntities: boolean;
+  canApproveEntities: boolean;
+  canManageDivisionOpen: boolean;
+  canDeleteDivisions: boolean;
+  canEditEntityDivSettings: boolean;
   canAssignBeneficiaries: boolean;
   canApproveBeneficiaries: boolean;
   canMergeBeneficiaries: boolean;
   canServeBeneficiaries: boolean;
-  canSetManagerTargets: boolean;
-  canSetAccountManagerTargets: boolean;
   canViewAllManagerReports: boolean;
   canViewAllAccountManagerReports: boolean;
   canProposeReassignments: boolean;
@@ -26,14 +27,15 @@ const NO_PERMISSIONS: PermissionSet = {
   canAccessAllReports: false,
   canAccessAnalytics: false,
   canDeleteRecords: false,
-  canCreateOrganizations: false,
-  canApproveOrganizations: false,
+  canCreateEntities: false,
+  canApproveEntities: false,
+  canManageDivisionOpen: false,
+  canDeleteDivisions: false,
+  canEditEntityDivSettings: false,
   canAssignBeneficiaries: false,
   canApproveBeneficiaries: false,
   canMergeBeneficiaries: false,
   canServeBeneficiaries: false,
-  canSetManagerTargets: false,
-  canSetAccountManagerTargets: false,
   canViewAllManagerReports: false,
   canViewAllAccountManagerReports: false,
   canProposeReassignments: false,
@@ -45,7 +47,6 @@ const NO_PERMISSIONS: PermissionSet = {
 const BASE_CRUD: Partial<PermissionSet> = {
   canCrudContacts: true,
   canCrudTasks: true,
-  canCreateOrganizations: true,
 };
 
 export const usePermissions = (): PermissionSet => {
@@ -60,7 +61,11 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: true,
         canAccessAnalytics: true,
         canDeleteRecords: true,
-        canApproveOrganizations: true,
+        canCreateEntities: true,
+        canApproveEntities: true,
+        canManageDivisionOpen: true,
+        canDeleteDivisions: true,
+        canEditEntityDivSettings: true,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
@@ -76,7 +81,11 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: true,
         canAccessAnalytics: true,
         canDeleteRecords: false,
-        canApproveOrganizations: false,
+        canCreateEntities: false,
+        canApproveEntities: false,
+        canManageDivisionOpen: true,
+        canDeleteDivisions: true,
+        canEditEntityDivSettings: true,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
@@ -92,7 +101,11 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: true,
         canAccessAnalytics: true,
         canDeleteRecords: false,
-        canApproveOrganizations: true,
+        canCreateEntities: false,
+        canApproveEntities: false,
+        canManageDivisionOpen: true,
+        canDeleteDivisions: false,
+        canEditEntityDivSettings: true,
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
@@ -107,7 +120,11 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: false,
         canAccessAnalytics: false,
         canDeleteRecords: false,
-        canApproveOrganizations: true,
+        canCreateEntities: false,
+        canApproveEntities: false,
+        canManageDivisionOpen: true,
+        canDeleteDivisions: false,
+        canEditEntityDivSettings: false,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
@@ -122,7 +139,11 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: false,
         canAccessAnalytics: false,
         canDeleteRecords: false,
-        canApproveOrganizations: false,
+        canCreateEntities: false,
+        canApproveEntities: false,
+        canManageDivisionOpen: false,
+        canDeleteDivisions: false,
+        canEditEntityDivSettings: false,
         canAssignBeneficiaries: false,
         canApproveBeneficiaries: false,
         canMergeBeneficiaries: true,
@@ -137,7 +158,11 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: false,
         canAccessAnalytics: false,
         canDeleteRecords: false,
-        canApproveOrganizations: false,
+        canCreateEntities: false,
+        canApproveEntities: false,
+        canManageDivisionOpen: false,
+        canDeleteDivisions: false,
+        canEditEntityDivSettings: false,
         canAssignBeneficiaries: false,
         canApproveBeneficiaries: false,
         canMergeBeneficiaries: false,
@@ -152,7 +177,10 @@ export const usePermissions = (): PermissionSet => {
         canAccessUserManagement: false,
         canAccessAnalytics: false,
         canDeleteRecords: false,
-        canApproveOrganizations: false,
+        canApproveEntities: false,
+        canManageDivisionOpen: false,
+        canDeleteDivisions: false,
+        canEditEntityDivSettings: false,
         canAssignBeneficiaries: true,
         canApproveBeneficiaries: false,
         canMergeBeneficiaries: true,

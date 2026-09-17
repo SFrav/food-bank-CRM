@@ -7,6 +7,8 @@ export interface Division {
   id: string;
   name: string;
   entity_id: string | null;
+  street_address: string | null;
+  postcode: string | null;
   head_id: string | null;
   manager_id: string | null;
   created_at: string;
@@ -48,11 +50,19 @@ export function useDivisions(
     fetchDivisions();
   }, [fetchDivisions]);
 
-  const createDivision = async (name: string, entityId: string, headId?: string | null) => {
+  const createDivision = async (
+    name: string, 
+    entityId: string, 
+    address: string, 
+    postcode: string, 
+    headId?: string | null
+  ) => {
     try{
       const { data, error: rpcErr } = await supabase.rpc('create_division', {
         p_name: name,
         p_entity_id: entityId,
+        p_street_address: address,
+        p_postcode: postcode,
         p_head_id: headId,
       });
       if (rpcErr) throw rpcErr;
@@ -70,6 +80,8 @@ export function useDivisions(
   const updateDivision = async (
     id: string,
     name: string,
+    address: string, 
+    postcode: string,
     entityId: string,
     headId?: string | null
   ) => {
@@ -78,10 +90,12 @@ export function useDivisions(
         p_id: id,
         p_name: name,
         p_entity_id: entityId,
+        p_street_address: address,
+        p_postcode: postcode,
         p_head_id: headId,
       });
       if (rpcErr) throw rpcErr;
-      await fetchDivisions();
+      if (!rpcErr) await fetchDivisions();
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 

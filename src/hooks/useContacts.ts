@@ -18,6 +18,7 @@ export interface Contact {
   vegetarian?: boolean;
   hallal?: boolean;
   status: "pending" | "active" | "inactive" | "banned" | "merged";
+  delayed_days: number;
   notes: string | null;
   created_at?: string;
   owner_id?: string;
@@ -33,6 +34,7 @@ export interface ContactDuplicate {
   postcode: string | null;
   region_id: string | null;
   status: "pending" | "active" | "inactive" | "banned" | "merged";
+  delayed_days: number;
   notes: string | null;
   created_at?: string;
   owner_id?: string;
@@ -68,15 +70,16 @@ export interface UseContactsReturn {
     children_lt16?: number | null;
     notes: string | null;
     status: "pending" | "active" | "inactive" | "banned" | "merged";
+    delayed_days: number | 7;
     user_id: string;
     owner_id?: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; data?: string; error?: string }>;
   // setFilterQueue: (b: boolean) => void;
 }
 
 const validateContact = (c: Contact) => {
   const errs: Record<string, string> = {};
-  if (!c.name.trim()) errs.name = 'Name is required';
+  if (!c.name) errs.name = 'Name is required';
   if (c.email && !/^[^@]+@[^@]+\.[^@]+$/.test(c.email))
     errs.email = 'Invalid email';
   return errs;
@@ -85,7 +88,6 @@ const validateContact = (c: Contact) => {
 export const useContacts = (
   orderDesc: boolean = false,
   // filterQueue: boolean = false,
-  toastUpdateEnabled: boolean = false
 ): UseContactsReturn => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isExactMatch, setIsExact] = useState<boolean>(false);
@@ -191,18 +193,19 @@ export const useContacts = (
         p_children_lt16: c.children_lt16,
         p_notes: c.notes,
         p_status: c.status,
+        p_delayed_days: c.delayed_days,
         p_user_id: c.user_id,
         p_owner_id: c.owner_id,
       }).single();
 
       if (rpcError) throw rpcError;
       await fetch();
-      return { success: true };
+      return { success: true, data: data};
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(err);
       toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
-      return { success: false, error: error.message };
+      return { success: false, data: null, error: error.message };
     } finally {
       //toast({ title: 'Success', description: 'Contact created successfully' });
       setLoading(false);
@@ -211,11 +214,11 @@ export const useContacts = (
 
   const updateContact = useCallback(
     async (c: Contact) => {
-      const errs = validateContact(c);
-      if (Object.keys(errs).length) {
-        toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
-        return { success: false, error: 'Validation failed' };
-      }
+      // const errs = validateContact(c);
+      // if (Object.keys(errs).length) {
+      //   toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
+      //   return { success: false, error: 'Validation failed' };
+      // }
       setLoading(true);
       try{
       const { data, error: rpcError } = await supabase.rpc('update_contact', {
@@ -234,6 +237,7 @@ export const useContacts = (
         p_vegetarian: c.vegetarian,
         p_hallal: c.hallal,
         p_status: c.status,
+        p_delayed_days: c.delayed_days,
         p_user_id: c.user_id,
         p_owner_id: c.owner_id,
         p_notes: c.notes,

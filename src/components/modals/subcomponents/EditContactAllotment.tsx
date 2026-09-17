@@ -100,7 +100,6 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
 
   const lastAllotment = useMemo<ContactAllotment | undefined>(() => {
     if (!allotment || allotment.length === 0) return undefined;
-    
     const sortedAllotment = [...allotment].sort((a, b) => {
       return new Date(b.date).getTime() - new Date(a.date).getTime(); 
     });
@@ -273,7 +272,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                     ${muted ? 'text-muted-foreground' : ''}`}
                 >
                   <span>
-                    Visit {entry.visit_num} on {entryDate}
+                    Visit {entry.visit_num ?? '-'} on {entryDate}
                   </span>
                   <div className="flex justify-center">
                     {todayMatch && (
@@ -346,7 +345,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
       )}
       {lastAllotment?.approver_name ? (
         <span className="sm:table-cell sm:max-w-full">
-          Last approved: {lastAllotment?.approver_name}
+          Last approved by: {lastAllotment?.approver_name}
         </span>
       ) : (
         <span></span>

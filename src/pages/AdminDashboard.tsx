@@ -56,7 +56,7 @@ const AdminDashboard: React.FC = () => {
       </Card>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="users" className="space-y-6">
+      {/* <Tabs defaultValue="users" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="size-4" />
@@ -66,15 +66,15 @@ const AdminDashboard: React.FC = () => {
             <Settings className="size-4" />
             System Settings
           </TabsTrigger>
-        </TabsList>
+        </TabsList> */}
 
-        <TabsContent value="users" className="space-y-6">
+        {/* <TabsContent value="users" className="space-y-6"> */}
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="size-5" />
-                  User Role Management
+                  User role management
                 </CardTitle>
                 <CardDescription>
                   Assign and manage user roles across the organization
@@ -113,7 +113,7 @@ const AdminDashboard: React.FC = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Manage organisation</CardTitle>
+              <CardTitle>Manage organisations</CardTitle>
               <CardDescription>
                 Manage entities, divisions (teams) and regions
               </CardDescription>
@@ -122,14 +122,14 @@ const AdminDashboard: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 View, add, remove or edit entities, divisions and regions
               </p>
-              <Button className="w-[250px]" onClick={goTo('/admin')}>
+              <Button className="w-[250px]" onClick={goTo('/admin/orgs')}>
                 Review entities and divisions
               </Button>
             </CardContent>
           </Card>
-        </TabsContent>
+        {/* </TabsContent> */}
 
-        <TabsContent value="system" className="space-y-6">
+        {/* <TabsContent value="system" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-3">
             <Card>
               <CardHeader>
@@ -192,7 +192,7 @@ const AdminDashboard: React.FC = () => {
             </Card>
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs> */}
     </div>
   );
 };

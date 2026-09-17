@@ -3,30 +3,41 @@ import { PermissionGuard } from '@/components/PermissionGuard';
 import { EntityManagement } from '@/components/EntityManagement';
 import { EntitySettingsTable } from '@/components/EntitySettings';
 // import { GlobalSettings } from '@/components/GlobalSettings';
-import { DivisionDepartmentManagement } from '@/components/DivisionDepartmentManagement';
+import { DivisionManagement } from '@/components/DivisionManagement';
 import { DivisionSettingsTable } from '@/components/DivisionSettings';
+import { DivisionOpenTable } from '@/components/DivisionOpen';
+
 
 export default function AdminOther() {
   return (
     <div className="space-y-6">
-      <PermissionGuard permission="canAccessUserManagement">
+      
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <RegionManagement />
-          </div>
+          <PermissionGuard permission="canCreateEntities">
+            <div className="grid gap-6 md:grid-cols-2">
+              <RegionManagement />
+            </div>
               
-          <EntityManagement />
+            <EntityManagement />
+          </PermissionGuard>
 
+          <PermissionGuard permission="canEditEntityDivSettings">
           <EntitySettingsTable />
+          </PermissionGuard>
 
-          <DivisionDepartmentManagement />   
+          <PermissionGuard permission="canEditEntityDivSettings">
+            <DivisionManagement />     
+          </PermissionGuard>
 
-          <DivisionSettingsTable />  
+          <PermissionGuard permission="canManageDivisionOpen">
+            <DivisionSettingsTable />
+            <DivisionOpenTable />
+          </PermissionGuard>
           
           {/* <GlobalSettings /> */}
                  
         </div>
-      </PermissionGuard>
+      
     </div>
   );
 }

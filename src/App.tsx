@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from '@/hooks/useNotificationsContext';
 import { CRMLayout } from "@/components/layout/CRMLayout";
+// import { StarTest } from "@/components/StarTest";
 import Forbidden from "./pages/Forbidden";
 import Index from "./Index";
 import PendingApproval from "./pages/PendingApproval";
@@ -87,9 +88,9 @@ const App = () => (
                 </RoleBasedRoute>
               </ProtectedRoute>
             } />
-            <Route path="/admin" element={
+            <Route path="/admin/orgs" element={
               <ProtectedRoute>
-                <RoleBasedRoute allowedRoles={['admin']}>
+                <RoleBasedRoute allowedRoles={['admin', 'head', 'manager', 'branch_manager']}>
                   <CRMLayout>
                     <Suspense fallback={<div className="p-4">Loading Org. Management &hellip;</div>}>
                     <lazyPages.AdminOther/>
