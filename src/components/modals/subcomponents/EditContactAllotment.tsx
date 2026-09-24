@@ -13,6 +13,7 @@ import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import { Contact } from '@/hooks/useContacts';
 import { ContactAllotment } from '@/hooks/useContactAllotment';
 import { ContactFormData } from '@/components/modals/EditContact';
+import ReferrerRating from '@/components/modals/subcomponents/ReferrerRating'
 
 
 interface ContactEditAllotmentProps {
@@ -63,6 +64,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   const { settingsMap, fetchSettings } = useDivisionSettings();
   const [divId, setDivId] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [isRateReferrerOpen, setIsRateReferrerOpen] = useState(false);
 
   const divisionSettings = settingsMap[divId || ''] ?? {}; 
   const allotmentWeeks = parseInt(divisionSettings.allotment_weeks ?? '0', 10);
@@ -337,12 +339,18 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     </form>
     <div className="grid grid-cols-1 text-sm w-full"> 
       {lastAllotment?.referrer_name ? (
-        <span className="sm:table-cell sm:max-w-full">
-          Last referred by: {lastAllotment?.referrer_name}
-        </span>
-      ) : (
-        <span>  </span>
-      )}
+      <span className="sm:table-cell sm:max-w-full">
+        Last referred by: {lastAllotment?.referrer_name}{' '}
+        <a
+          className="text-primary cursor-pointer hover:underline"
+          onClick={() => setIsRateReferrerOpen(true)}
+        >
+          (rate referrer)
+        </a>
+      </span>
+    ) : (
+      <span>  </span>
+    )}
       {lastAllotment?.approver_name ? (
         <span className="sm:table-cell sm:max-w-full">
           Last approved by: {lastAllotment?.approver_name}
@@ -351,7 +359,14 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
         <span></span>
       )}
     </div>
+    <ReferrerRating
+      isOpen={isRateReferrerOpen}
+      onClose={() => setIsRateReferrerOpen(false)}
+      referrerId={lastAllotment?.referrer_id ?? ''}
+      contactId={contact?.id ?? ''}
+    />
     </div>
+    
   );
 };
 

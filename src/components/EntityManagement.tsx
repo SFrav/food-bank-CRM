@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -7,13 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit3, Loader2 } from 'lucide-react';
+import { useCountries, Country } from '@/hooks/useCountries';
 import { useEntities } from '@/hooks/useEntities';
 import { useToast } from '@/hooks/useToast';
 import { Badge } from '@/components/ui/badge';
 
 export const EntityManagement = () => {
+  const { countries, loading: loadingCounty, refetch: refetchCountry } = useCountries();
   const { entities, loading, createEntity, updateEntity, deleteEntity } = useEntities();
   const { toast } = useToast();
+  const [newCountryId, setNewCountryId] = useState('');
   const [newEntityName, setNewEntityName] = useState('');
   const [newEntityCode, setNewEntityCode] = useState('');
   const [newEntityReferrer, setNewEntityReferrer] = useState(false);
@@ -22,10 +26,17 @@ export const EntityManagement = () => {
   const [deletingEntityId, setDeletingEntityId] = useState<string | null>(null);
 
   const handleCreateEntity = async () => {
-    if (!newEntityName.trim()) return;
+    if (!newEntityName.trim() || !newCountryId) {
+      toast({
+        title: "Error",
+        description: "Name and country are mandatory fields",
+        variant: "destructive",
+      });
+      return
+    };
 
     setIsLoading(true);
-    const { error } = await createEntity(newEntityName.trim(), newEntityCode.trim(), newEntityReferrer || undefined);
+    const { error } = await createEntity(newCountryId, newEntityName.trim(), newEntityCode.trim(), newEntityReferrer || undefined);
     
     if (error) {
       toast({
@@ -166,7 +177,7 @@ export const EntityManagement = () => {
             <h3 className="text-lg font-medium mb-4">Add New Entity</h3>
             <div className="grid grid-cols-1 md:flex md:items-end gap-2">
               <div>
-                <Label htmlFor="entity-name">Entity Name *</Label>
+                <Label htmlFor="entity-name">Entity Name*</Label>
                 <Input
                   id="entity-name"
                   value={newEntityName}
@@ -182,6 +193,19 @@ export const EntityManagement = () => {
                   onChange={handleNewEntityCode}
                   placeholder="e.g., ACME"
                 />
+              </div>
+              <div>
+                <Label htmlFor="country-name">Country*</Label>
+                <Select value={newCountryId} onValueChange={setNewCountryId}>
+                  <SelectTrigger className="w-[240px]">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.filter(c => c.is_active).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="entity-referrer">Is Referrer</Label>
@@ -225,6 +249,7 @@ export const EntityManagement = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Code</TableHead>
+                    <TableHead>Country</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Created</TableHead>
@@ -255,6 +280,11 @@ export const EntityManagement = () => {
                         ) : (
                           entity.code || '-'
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono">
+                          {entity.country_name}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge 

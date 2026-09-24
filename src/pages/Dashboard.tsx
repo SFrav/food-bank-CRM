@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DivisionSummary } from "@/components/dashboard/DivisionSummary";
-import { DivisionChart } from "@/components/dashboard/DivisionBeneficiaryChart";
+import { DivisionAllotmentSummary } from "@/components/DivisionAllotmentSummary";
+// import { DivisionChart } from "@/components/dashboard/DivisionBeneficiaryChart";
 import { CalendarDays } from "lucide-react";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useProfile } from "@/hooks/useProfile";
-
 import { PermissionGuard } from '@/components/PermissionGuard';
 
 type AllowedRoles = "branch_manager" | "volunteer" | "staff" | "referrer" | "manager" | "head" | "admin";
@@ -21,7 +21,7 @@ export default function Dashboard() {
 
   const goTo = (path: string) => () => navigate(path);
 
-  const [dateRange, setDateRange] = useState<string>("month");
+  // const [dateRange, setDateRange] = useState<string>("month");
 
   const role = profile?.role as AllowedRoles;
 
@@ -53,7 +53,7 @@ export default function Dashboard() {
 
       <DivisionSummary />
 
-      <PermissionGuard permission="canManageDivisionOpen">
+      {/* <PermissionGuard permission="canManageDivisionOpen">
         <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -63,21 +63,21 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
         <div className="flex flex-col gap-2">
-          {/* <label className="text-sm font-medium text-foreground">
-            View or edit organisation level settings
-          </label> */}
           <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
             Edit settings
           </Button>
         </div>
         </CardContent>
         </Card>
+      </PermissionGuard> */}
 
-      </PermissionGuard>
-
+      
       <PermissionGuard permission="canAccessAnalytics">
-        {/* Filters Section */}
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+            <DivisionAllotmentSummary/>
+        </div>
+        {/* Filters Section */}
+        {/* <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-foreground">Date Range</label>
@@ -101,17 +101,15 @@ export default function Dashboard() {
         </div>
 
         {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left Column - Primary Content */}
+        {/* <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 space-y-6">
               <DivisionChart dateRange={dateRange} />
-            </div>
+            </div> 
 
-          {/* Right Column - Secondary Content */}
           <div className="space-y-6">
      
           </div>
-        </div>
+        </div> */}
       </PermissionGuard>
     </div>
   );

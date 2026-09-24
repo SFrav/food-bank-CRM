@@ -1,5 +1,6 @@
-import { RegionManagement } from '@/components/RegionManagement';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { CountryManagement } from '@/components/CountryManagement';
+import { RegionManagement } from '@/components/RegionManagement';
 import { EntityManagement } from '@/components/EntityManagement';
 import { EntitySettingsTable } from '@/components/EntitySettings';
 // import { GlobalSettings } from '@/components/GlobalSettings';
@@ -14,7 +15,8 @@ export default function AdminOther() {
       
         <div className="space-y-6">
           <PermissionGuard permission="canCreateEntities">
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-0 md:grid-cols-[45%_55%]">
+              <CountryManagement />
               <RegionManagement />
             </div>
               

@@ -18,11 +18,14 @@ Look and feel:
 
 - [User sign-up and approval process](assets/Admin-approve-user.gif)
 - [Organisation management](assets/Admin-org-manage.gif)
-- [Logs](assets/Admin-logs.gif)
+- [Opening hours settings](assets/Other-settings2.gif)
 - [Current contact referral](assets/Contact-current-refer.gif)
 - [How the process works when beneficiaries collect food](assets/Contact-allotment.gif)
 - [Merging contacts](assets/Contact-merge.gif)
+- [Rating a referrer](assets/Referrer-rating.gif)
+- [Dashboard](assets/Dashboard.gif)
 - [Other tabs - support services, calendar and tasks](assets/Other-tabs.gif)
+- [Logs](assets/Admin-logs.gif)
 - [Settings for users - profile, preferences and security](assets/Other-settings.gif)
 
 Repo limitation: Core SQL logic of user authentication removed.

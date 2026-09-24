@@ -14,8 +14,7 @@ export interface PermissionSet {
   canApproveBeneficiaries: boolean;
   canMergeBeneficiaries: boolean;
   canServeBeneficiaries: boolean;
-  canViewAllManagerReports: boolean;
-  canViewAllAccountManagerReports: boolean;
+  canViewReferrerSummary: boolean
   canProposeReassignments: boolean;
   canApproveReassignments: boolean;
   canCrudContacts: boolean;
@@ -36,8 +35,7 @@ const NO_PERMISSIONS: PermissionSet = {
   canApproveBeneficiaries: false,
   canMergeBeneficiaries: false,
   canServeBeneficiaries: false,
-  canViewAllManagerReports: false,
-  canViewAllAccountManagerReports: false,
+  canViewReferrerSummary: false,
   canProposeReassignments: false,
   canApproveReassignments: false,
   canCrudContacts: false,
@@ -70,7 +68,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
-        canViewAllManagerReports: true,
+        canViewReferrerSummary: true,
         canProposeReassignments: true,
         canApproveReassignments: true,
       } as PermissionSet;
@@ -90,7 +88,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
-        canViewAllManagerReports: true,
+        canViewReferrerSummary: true,
         canProposeReassignments: false,
         canApproveReassignments: true,
       } as PermissionSet;
@@ -110,6 +108,7 @@ export const usePermissions = (): PermissionSet => {
         canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
         canAssignBeneficiaries: true,
+        canViewReferrerSummary: true,
         canProposeReassignments: true,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -129,6 +128,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveBeneficiaries: true,
         canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
+        canViewReferrerSummary: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -148,6 +148,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveBeneficiaries: false,
         canMergeBeneficiaries: true,
         canServeBeneficiaries: true,
+        canViewReferrerSummary: true,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -167,6 +168,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveBeneficiaries: false,
         canMergeBeneficiaries: false,
         canServeBeneficiaries: true,
+        canViewReferrerSummary: false,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;
@@ -185,6 +187,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveBeneficiaries: false,
         canMergeBeneficiaries: true,
         canServeBeneficiaries: false,
+        canViewReferrerSummary: false,
         canProposeReassignments: false,
         canApproveReassignments: false,
       } as PermissionSet;

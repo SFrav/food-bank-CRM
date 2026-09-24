@@ -17,6 +17,16 @@ CREATE TYPE "public"."beneficiary_enum" AS ENUM (
     'merged'
 );
 
+CREATE TYPE "public"."contact_pref_key_enum" AS ENUM (
+    'infant',
+    'allergies',
+    'vegetarian',
+    'hallal',
+    'no_cooking',
+    'no_freezer',
+    'gluten_free'
+);
+
 CREATE TYPE "public"."notification_type_enum" AS ENUM (
     'alert',
     'dm',
@@ -55,6 +65,26 @@ CREATE TYPE "public"."allotment_type_enum" AS ENUM (
     'drop_in'
 );
 
+CREATE TYPE "public"."user_setting_enum" AS ENUM (
+    'dark_mode',
+    'notification_email',
+    'notification_tasks',
+    'notification_calendar',
+    'two_FA'
+);
+
+CREATE TYPE "public"."entity_setting_enum" AS ENUM (
+    'referrer_request',
+    'contact_notify',
+    'contact_approve',
+    'contact_ban'
+);
+
+CREATE TYPE "public"."division_setting_enum" AS ENUM (
+    'allotment_weeks',
+    'exclusion_weeks',
+    'frequency'
+);
 
 --
 --Tables
@@ -69,7 +99,7 @@ CREATE TABLE IF NOT EXISTS "public"."audit_logs" (
     "record_id" "uuid",
     "old_values" "jsonb" DEFAULT '{}'::"jsonb",
     "new_values" "jsonb" DEFAULT '{}'::"jsonb",
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
@@ -85,8 +115,8 @@ CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
     "manager_id" "uuid",
     "status" "public"."user_status_enum" DEFAULT 'active'::"public"."user_status_enum" NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -104,23 +134,44 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "infant" boolean DEFAULT NULL,
     "allergies" boolean DEFAULT NULL,
     "vegetarian" boolean DEFAULT NULL,
-    "hallal" boolean DEFAULT NULL,
+    "hallal" boolean DEFAULT NULL, --@ add no_cooking, no_freezer, no_fridge, gluten free? Move all these preferences to another table?
     "notes" "text",
     "owner_id" "uuid",
     "updated_by" "uuid",
     "status" "public"."beneficiary_enum" DEFAULT 'inactive'::"public"."beneficiary_enum" NOT NULL,
-    "delayed_days" numeric DEFAULT 7, 
-    "created_at" timestamp with time zone DEFAULT "now"(),
+    "delayed_days" numeric DEFAULT 7, --@ reset to default 7 when changed to inactive
+    "created_at" timestamp with time zone DEFAULT now(),
     "created_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
+
+-- CREATE TABLE IF NOT EXISTS "public"."contacts_preferences" (
+--     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+--     "contact_id" uuid NOT NULL,
+--     "infant" boolean DEFAULT NULL,
+--     "allergies" boolean DEFAULT NULL,
+--     "vegetarian" boolean DEFAULT NULL,
+--     "hallal" boolean DEFAULT NULL, --@ add no_cooking, no_freezer, no_fridge, gluten free? Move all these preferences to another table?
+--     "created_at" timestamp with time zone DEFAULT now(),
+--     "created_by" "uuid",
+--     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+-- );
+
+-- CREATE TABLE IF NOT EXISTS "public"."contacts_preferences" (
+--     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+--     "contact_id" uuid NOT NULL,
+--     "preference_key" "contact_pref_key_enum" NOT NULL,
+--     "value" boolean
+--     "created_at" timestamp with time zone DEFAULT now(),
+--     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+-- );
 
 CREATE TABLE IF NOT EXISTS "public"."contacts_days" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" uuid NOT NULL,
     "day_of_week" integer CHECK ("day_of_week" BETWEEN 0 AND 6),
     "is_available" boolean NOT NULL DEFAULT TRUE,
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 
@@ -129,7 +180,7 @@ CREATE TABLE IF NOT EXISTS "public"."contacts_notes" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" "uuid" NOT NULL,
     "note" "text",
-    "created_at" timestamp with time zone DEFAULT "now"(),
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz,
     "created_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     "updated_by" "uuid"
@@ -142,25 +193,25 @@ CREATE TABLE IF NOT EXISTS "public"."divisions" (
     "description" "text",
     "manager_id" "uuid",
     "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
     "head_id" "uuid",
     "entity_id" "uuid", 
     "street_address" text, 
-    "postcode" text, 
+    "postcode" text,
     "region_id" "uuid"
 );
 
-
 CREATE TABLE IF NOT EXISTS "public"."entities" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "country_id" uuid NOT NULL,
     "name" "text" NOT NULL,
     "code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
-    "is_referrer" boolean DEFAULT false NOT NULL,
+    "is_referrer" boolean DEFAULT false NOT NULL, --@ CREATE TABLE entities_linked - join referrers to food banks and foodbanks to eachother 
     "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."calendar" (
@@ -173,8 +224,8 @@ CREATE TABLE IF NOT EXISTS "public"."calendar" (
     "scheduled_at" timestamp with time zone,
     "created_by" "uuid",
     "beneficiary_id" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
     "due_at" timestamp with time zone,
     "pic_id" "uuid"
 );
@@ -189,7 +240,7 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "message" "text" DEFAULT '',
     "link" "text",
     "meta" "jsonb" DEFAULT '{}'::"jsonb",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."notifications_user" (
@@ -198,7 +249,7 @@ CREATE TABLE IF NOT EXISTS "public"."notifications_user" (
     "user_id" "uuid", -- REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
     "is_read" boolean NOT NULL DEFAULT false,
     "read_at" timestamptz NULL,
-    "created_at" timestamptz DEFAULT now() NOT NULL
+    "created_at" timestamptz DEFAULT now()::timestamptz NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."organisations" (
@@ -215,8 +266,8 @@ CREATE TABLE IF NOT EXISTS "public"."organisations" (
     "approval_status" "text" DEFAULT 'approved'::"text",
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."countries" (
@@ -225,8 +276,8 @@ CREATE TABLE IF NOT EXISTS "public"."countries" (
     "code" "text" NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."regions" (
@@ -236,41 +287,41 @@ CREATE TABLE IF NOT EXISTS "public"."regions" (
     "code" "text" NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "public"."system_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "setting_key" "text" NOT NULL,
-    "setting_value" "text", 
+    "setting_value" "text", --@revised from jsonb --@set enum to align with types
     "updated_by" "uuid",
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."user_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid" NOT NULL,
-    "setting_key" "text" NOT NULL, 
+    "setting_key" "user_setting_enum" NOT NULL,
     "setting_value" "text", 
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."entity_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "entity_id" "uuid" NOT NULL,
     "division_id" "uuid",
-    "setting_key" "text" NOT NULL,
+    "setting_key" "entity_setting_enum" NOT NULL, 
     "setting_value" "text", 
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."division_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "division_id" "uuid" NOT NULL,
-    "setting_key" "text" NOT NULL, 
+    "setting_key" "division_setting_enum" NOT NULL,
     "setting_value" "text", 
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."division_open" (
@@ -286,24 +337,39 @@ CREATE TABLE IF NOT EXISTS "public"."division_closed" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "division_id" "uuid" NOT NULL,
     "date" timestamp with time zone, 
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."contacts_referrer" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" "uuid" NOT NULL,
     "referrer_id" "uuid" NOT NULL,
+    "division_id" "uuid",
     "first_referred_by" "uuid", 
     "approved_at" timestamp with time zone,
     "approved_by" "uuid",
     "message" "text",
-    "created_at" timestamp with time zone DEFAULT "now"(), --set at create_contact
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz, 
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "public"."referrer_rating" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "referrer_id" "uuid" NOT NULL,
+    "contact_id" "uuid" NOT NULL,
+    "rate_screening" numeric,
+    "rate_support" numeric,
+    "rate_inform" numeric,
+    "rate_enumeration" numeric,
+    "note" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT now()::timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS "public"."contacts_allotment" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" "uuid" NOT NULL,
+    "division_id" "uuid",
     "date" timestamp with time zone NOT NULL,
     "time" TIME NOT NULL,
     "visit_num" "numeric", --(e.g. first week receiving food = 1, second week = 2. Discretionary is NULL)
@@ -311,7 +377,7 @@ CREATE TABLE IF NOT EXISTS "public"."contacts_allotment" (
     "serving" boolean NOT NULL DEFAULT false,
     "served" boolean NOT NULL DEFAULT false, 
     "type" "public"."allotment_type_enum" NOT NULL, -- referred or drop_in
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT now()::timestamptz NOT NULL
 );
 
 
@@ -421,7 +487,7 @@ ALTER TABLE ONLY "public"."audit_logs"
     ADD CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id");
+    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id"); --@ check if should be user_id
 
 ALTER TABLE ONLY "public"."user_profiles"
     ADD CONSTRAINT "user_profiles_email_key" UNIQUE ("email");
@@ -455,6 +521,12 @@ CREATE UNIQUE INDEX "uq_contacts_name_address_postcode"
 
 ALTER TABLE ONLY "public"."contacts_notes"
     ADD CONSTRAINT "contacts_notes_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."referrer_rating"
+  ADD CONSTRAINT "referrer_rating_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."referrer_rating"
+  ADD CONSTRAINT "uq_referrer_rating" UNIQUE ("referrer_id", "contact_id", "created_by");  
 
 ALTER TABLE ONLY "public"."contacts_referrer"
     ADD CONSTRAINT "contacts_referrer_pkey" PRIMARY KEY ("id");    
@@ -520,7 +592,8 @@ ALTER TABLE ONLY "public"."contacts_days"
   ADD CONSTRAINT "contacts_days_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE "public"."contacts_days"
-  ADD CONSTRAINT "uq_contacts_dayts" UNIQUE ("contact_id", "day_of_week");
+  ADD CONSTRAINT "uq_contacts_days" UNIQUE ("contact_id", "day_of_week");
+
 
 
 
@@ -557,6 +630,9 @@ ALTER TABLE ONLY "public"."contacts"
 
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_user_id_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."entities"
+    ADD CONSTRAINT "entities_entity_id_fkey" FOREIGN KEY ("country_id") REFERENCES "public"."countries"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."divisions"
     ADD CONSTRAINT "divisions_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
@@ -631,8 +707,19 @@ ALTER TABLE ONLY "public"."contacts_referrer"
     ADD CONSTRAINT "referrer_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."contacts_referrer"
+    ADD CONSTRAINT "referrer_division_id_fkey" FOREIGN KEY ("division_id") REFERENCES "public"."divisions"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."contacts_referrer"
     ADD CONSTRAINT "referrer_user_id_fkey" FOREIGN KEY ("referrer_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
 
+ALTER TABLE ONLY "public"."referrer_rating"
+    ADD CONSTRAINT "referrer_rating_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."referrer_rating"
+    ADD CONSTRAINT "referrer_rating_rater_id_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."referrer_rating"
+    ADD CONSTRAINT "referrer_rating_referrer_id_fkey" FOREIGN KEY ("referrer_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
 -- ALTER TABLE "public"."contacts_days" 
 --   ADD CONSTRAINT "availability_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE CASCADE;
 
@@ -702,7 +789,7 @@ CREATE INDEX IF NOT EXISTS idx_division_open_division_day
   ON public.division_open (division_id, day_of_week);
 
 -- CREATE INDEX IF NOT EXISTS idx_division_closed_division_date_day
---   ON public.division_closed (division_id, date_trunc('day', date)); --functions need to be marked as immutable
+--   ON public.division_closed (division_id, date_trunc('day', date)); --@functions need to be marked as immutable
 
 -- CREATE INDEX IF NOT EXISTS idx_contacts_allotment_contact_date_day
 --   ON public.contacts_allotment (contact_id, date_trunc('day', date));
@@ -822,7 +909,7 @@ $$;
 
 --------------------------
 -- Entity management
-CREATE OR REPLACE FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text" DEFAULT NULL::"text", p_referrer boolean DEFAULT NULL::boolean) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."admin_create_entity"("p_country_id" "uuid","p_name" "text", "p_code" "text" DEFAULT NULL::"text", p_referrer boolean DEFAULT NULL::boolean) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -847,8 +934,8 @@ BEGIN
   IF NOT v_is_admin THEN
     RAISE EXCEPTION 'Only admin can create entities';
   END IF;
-  INSERT INTO public.entities (name, code, is_active, is_referrer, created_by)
-  VALUES (p_name, p_code, true, p_referrer, v_uid)
+  INSERT INTO public.entities (country_id, name, code, is_active, is_referrer, created_by)
+  VALUES (p_country_id, p_name, p_code, true, p_referrer, v_uid)
     RETURNING * INTO new_row;
     new_id := new_row.id;
   --RETURNING id INTO v_entity_id;
@@ -862,7 +949,7 @@ BEGIN
   SELECT
     new_id,
     NULL,
-    unnest(array['referrer_request', 'contact_notify', 'contact_approve', 'contact_ban']),
+    unnest(array['referrer_request', 'contact_notify', 'contact_approve', 'contact_ban'])::entity_setting_enum,
     unnest(array['manager', 'manager', 'manager', 'manager'])
   ON CONFLICT DO NOTHING;
 
@@ -875,6 +962,8 @@ $$;
 CREATE OR REPLACE FUNCTION "public"."get_entities"()
 RETURNS TABLE (
   id uuid,
+  country_id uuid,
+  country_name text,
   name text,
   code text,
   is_active boolean,
@@ -888,8 +977,9 @@ SET "search_path" TO 'public'
 SECURITY INVOKER
 AS $$
   SELECT
-    id, name, code, is_active, is_referrer, created_by, created_at, updated_at
-  FROM entities
+    e.id, e.country_id, c.name as country_name, e.name, e.code, e.is_active, e.is_referrer, e.created_by, e.created_at, e.updated_at
+  FROM entities e
+  JOIN countries c ON c.id = e.country_id 
   ORDER BY name ASC;
 $$;
 
@@ -927,7 +1017,7 @@ BEGIN
     name = COALESCE(p_name, name),
     code = COALESCE(p_code, code),
     is_active = COALESCE(p_is_active, is_active),
-    updated_at = now()
+    updated_at = now()::timestamptz
   WHERE id = p_entity_id
   RETURNING * INTO new_row;
   PERFORM log_audit_event('UPDATE', 'entities', p_entity_id, old_row, row_to_json(new_row)::jsonb);
@@ -1018,7 +1108,7 @@ updated_at timestamp with time zone
 LANGUAGE "sql" STABLE SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
-  SELECT id, entity_id, division_id, setting_key, setting_value, updated_at 
+  SELECT id, entity_id, division_id, setting_key::text, setting_value, updated_at 
   FROM public.entity_settings 
   WHERE entity_id = p_entity_id
   AND setting_key IN ('referrer_request', 'contact_notify', 'contact_approve', 'contact_ban')
@@ -1037,7 +1127,7 @@ BEGIN
       RAISE EXCEPTION 'Only authenticated users can update settings';
     END IF;
     INSERT INTO entity_settings (entity_id, setting_key, setting_value)
-    VALUES (p_entity_id, p_setting_key, p_setting_value)
+    VALUES (p_entity_id, p_setting_key::entity_setting_enum, p_setting_value)
     ON CONFLICT (entity_id, setting_key) DO UPDATE
     SET setting_value = EXCLUDED.setting_value;
 END;
@@ -1053,7 +1143,7 @@ updated_at timestamp with time zone
 LANGUAGE "sql" STABLE SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
-  SELECT id, division_id, setting_key, setting_value, updated_at 
+  SELECT id, division_id, setting_key::text, setting_value, updated_at 
   FROM public.division_settings 
   WHERE division_id = p_division_id
   AND setting_key IN ('allotment_weeks', 'exclusion_weeks', 'frequency')
@@ -1072,7 +1162,7 @@ BEGIN
       RAISE EXCEPTION 'Only authenticated users can update settings';
     END IF;
     INSERT INTO division_settings (division_id, setting_key, setting_value)
-    VALUES (p_division_id, p_setting_key, p_setting_value)
+    VALUES (p_division_id, p_setting_key::division_setting_enum, p_setting_value)
     ON CONFLICT (division_id, setting_key) DO UPDATE
     SET setting_value = EXCLUDED.setting_value;
 END;
@@ -1090,7 +1180,7 @@ CREATE OR REPLACE FUNCTION "public"."get_user_settings"(
 LANGUAGE "sql" STABLE SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
-  SELECT id, user_id, setting_key, setting_value, updated_at 
+  SELECT id, user_id, setting_key::text, setting_value, updated_at 
   FROM public.user_settings
   WHERE user_id = p_user_id
   AND setting_key IN ('dark_mode', 'notification_email', 'notification_tasks', 'notification_calendar', 'two_FA')
@@ -1109,7 +1199,7 @@ BEGIN
       RAISE EXCEPTION 'Only authenticated users can update settings';
     END IF;
     INSERT INTO user_settings (user_id, setting_key, setting_value)
-    VALUES (p_user_id, p_setting_key, p_setting_value)
+    VALUES (p_user_id, p_setting_key::user_setting_enum, p_setting_value)
     ON CONFLICT (user_id, setting_key) DO UPDATE
     SET setting_value = EXCLUDED.setting_value;
 END;
@@ -1164,17 +1254,18 @@ RETURNS TABLE(
   role text, 
   entity_id uuid, 
   region_id uuid, 
-  division_id uuid)
+  division_id uuid,
+  full_name text)
 LANGUAGE "plpgsql"
 SET "search_path" TO 'public'
 SECURITY DEFINER
 AS $$
-BEGIN 
+BEGIN --@@@ add role level checks - allow all users with a role and that are currently active
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can add beneficiaries';
   END IF;
   RETURN QUERY
-  SELECT up.role::text, up.entity_id, up.region_id, up.division_id
+  SELECT up.role::text, up.entity_id, up.region_id, up.division_id, up.full_name
   FROM public.user_profiles up
   WHERE up.user_id = p_user_id;
 END;
@@ -1224,10 +1315,14 @@ $$;
 
 -- User management
 CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
---Removed
+--REMOVED
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
---Removed
+--REmoved
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
   "p_profile_id" "uuid", 
@@ -1283,7 +1378,7 @@ BEGIN
     division_id = COALESCE(p_division_id, division_id),
     manager_id = COALESCE(p_manager_id, manager_id),
     region_id = COALESCE(p_region_id, region_id),
-    updated_at = now()
+    updated_at = now()::timestamptz
   WHERE id = v_target_profile_id
   RETURNING * INTO new_row;
   PERFORM log_audit_event('UPDATE', 'user_profiles', p_profile_id, old_row, row_to_json(new_row)::jsonb);
@@ -1425,33 +1520,33 @@ BEGIN
   UPDATE public.user_profiles
   SET full_name = coalesce(p_full_name, full_name),
       phone = coalesce(p_phone, phone),
-      updated_at = now()
+      updated_at = now()::timestamptz
   WHERE user_id = p_user_id;
   RETURN FOUND;
 END;
 $$;
 
-
--- Region management
-CREATE OR REPLACE FUNCTION "public"."get_regions"()
+-- Country management
+CREATE OR REPLACE FUNCTION public."get_countries"()
 RETURNS TABLE (
   id uuid,
   name text,
   code text,
-  is_active boolean
+  is_active boolean,
+  created_at timestamptz
 )
 LANGUAGE sql
 SET "search_path" TO 'public'
 SECURITY DEFINER
 AS $$
   SELECT
-    id, name, code, is_active
-  FROM regions
+    id, name, code, is_active, created_at
+  FROM countries
   -- WHERE is_active = true
   ORDER BY name ASC;
 $$;
 
-CREATE OR REPLACE FUNCTION public."create_region"(
+CREATE OR REPLACE FUNCTION public."create_country"(
     p_name text,
     p_code text
 ) RETURNS uuid
@@ -1463,10 +1558,79 @@ DECLARE
     new_id uuid;
 BEGIN
     IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can add countries';
+    END IF;
+    INSERT INTO public.countries (name, code, is_active)
+    VALUES (p_name, p_code, true)
+    RETURNING id INTO new_id;
+    RETURN new_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public."update_country"(
+  p_id uuid,
+  p_name text,
+  p_code text,
+  p_is_active boolean
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can update countries';
+    END IF;
+  UPDATE public.countries
+  SET    name = COALESCE(p_name, name),
+         code = COALESCE(p_code, code),
+         is_active = COALESCE(p_is_active, is_active)
+  WHERE  id = p_id;
+  RETURN FOUND;
+END;
+$$;
+
+
+-- Region management
+CREATE OR REPLACE FUNCTION "public"."get_regions"()
+RETURNS TABLE (
+  id uuid,
+  country_id uuid,
+  country_name text, 
+  name text,
+  code text,
+  is_active boolean,
+  created_at timestamptz
+)
+LANGUAGE sql
+SET "search_path" TO 'public'
+SECURITY DEFINER
+AS $$
+  SELECT
+    r.id, r.country_id, c.name as country_name, r.name, r.code, r.is_active, r.created_at
+  FROM regions r
+  JOIN countries c ON c.id = r.country_id
+  -- WHERE is_active = true
+  ORDER BY r.name ASC;
+$$;
+
+CREATE OR REPLACE FUNCTION public."create_region"(
+    p_name text,
+    p_code text,
+    p_country_id uuid
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    new_id uuid;
+BEGIN
+    IF auth.uid() IS NULL THEN
       RAISE EXCEPTION 'Only authenticated users can add regions';
     END IF;
-    INSERT INTO public.regions (name, code, is_active)
-    VALUES (p_name, p_code, true)
+    INSERT INTO public.regions (country_id, name, code, is_active)
+    VALUES (p_country_id, p_name, p_code, true)
     RETURNING id INTO new_id;
     RETURN new_id;
 END;
@@ -1474,6 +1638,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public."update_region"(
   p_id uuid,
+  p_country_id uuid,
   p_name text,
   p_code text,
   p_is_active boolean
@@ -1487,10 +1652,11 @@ BEGIN
       RAISE EXCEPTION 'Only authenticated users can update regions';
     END IF;
   UPDATE public.regions
-  SET    name = COALESCE(p_name, name),
-         code = COALESCE(p_code, code),
-         is_active = COALESCE(p_is_active, is_active)
-  WHERE  id = p_id;
+  SET   country_id = COALESCE(p_country_id, country_id), 
+        name = COALESCE(p_name, name),
+        code = COALESCE(p_code, code),
+        is_active = COALESCE(p_is_active, is_active)
+  WHERE id = p_id;
   RETURN FOUND;
 END;
 $$;
@@ -1523,14 +1689,15 @@ CREATE OR REPLACE FUNCTION "public"."create_contact"(
   p_address     text DEFAULT '',
   p_postcode    text DEFAULT '',
   p_region_id   uuid DEFAULT NULL,
-  p_adults  numeric DEFAULT 1,
+  p_adults      numeric DEFAULT 1,
   p_children_gt16 numeric DEFAULT 0,
   p_children_lt16 numeric DEFAULT 0,
   p_notes       text DEFAULT '',
   p_status      "public"."beneficiary_enum" DEFAULT 'inactive',
   p_delayed_days numeric DEFAULT 7,
   p_user_id     uuid DEFAULT NULL,
-  p_owner_id    uuid DEFAULT NULL
+  p_owner_id    uuid DEFAULT NULL,
+  p_days        integer[] DEFAULT NULL
 ) RETURNS uuid
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -1539,36 +1706,69 @@ AS $$
 DECLARE
   v_caller_role text;
   v_caller_entity_id uuid;
-  v_caller_region_id uuid;
-  v_caller_division_id uuid;
-  v_id uuid;
-  new_row public.contacts; --for audit log
+  v_owner_entity_id uuid;
+  v_contact_id uuid;
+  v_division_id uuid;
+  v_open_days_count integer;
+  new_row public.contacts;
 BEGIN
   IF auth.uid() IS NULL THEN
-      RAISE EXCEPTION 'Only authenticated users can add beneficiaries';
-    END IF;
+    RAISE EXCEPTION 'Only authenticated users can add beneficiaries';
+  END IF;
 
-  SELECT role::text, entity_id, region_id, division_id 
-    INTO v_caller_role, v_caller_entity_id, v_caller_region_id, v_caller_division_id
+  SELECT role::text, entity_id
+    INTO v_caller_role, v_caller_entity_id
     FROM get_user_profile_info(auth.uid());
-  
+
   IF v_caller_role IN ('admin', 'head', 'manager', 'branch_manager') THEN
-    NULL; 
+    NULL;
   ELSIF v_caller_role IN ('referrer', 'staff', 'volunteer') THEN
     IF p_status::text = 'active' THEN
       RAISE EXCEPTION 'You can only add as an inactive or pending beneficiary';
     END IF;
   END IF;
-  
-  INSERT INTO "public"."contacts"
-    (name, email, phone, street_address, postcode, region_id, adults_count, children_gt16, children_lt16, notes, status, delayed_days, updated_by, owner_id, created_by)
-  VALUES
-    (p_name, p_email, p_phone, p_address, p_postcode, p_region_id, p_adults, p_children_gt16, p_children_lt16, p_notes, p_status, p_delayed_days, p_user_id, p_owner_id, p_user_id)
-  RETURNING * INTO new_row;
-  v_id := new_row.id;
-  --RETURNING "id" INTO v_id;
-  PERFORM log_audit_event('CREATE', 'contacts', v_id, NULL, row_to_json(new_row)::jsonb);
-  RETURN v_id;
+
+  v_contact_id := gen_random_uuid();
+  IF p_status::text != 'active' THEN
+    INSERT INTO "public"."contacts"
+      (id, name, email, phone, street_address, postcode, region_id, adults_count, children_gt16, children_lt16, notes, status, delayed_days, updated_by, owner_id, created_by)
+    VALUES
+      (v_contact_id, p_name, p_email, p_phone, p_address, p_postcode, p_region_id, p_adults, p_children_gt16, p_children_lt16, p_notes, p_status, p_delayed_days, p_user_id, p_owner_id, p_user_id);
+
+    IF p_days IS NOT NULL AND array_length(p_days, 1) > 0 THEN
+      INSERT INTO public.contacts_days (contact_id, day_of_week, is_available)
+        SELECT v_contact_id, day_of_week, true FROM unnest(p_days) AS t(day_of_week);
+    END IF;
+  END IF;
+
+  IF p_status::text = 'active' THEN
+    SELECT entity_id, division_id
+      INTO v_owner_entity_id, v_division_id
+      FROM get_user_profile_info(p_owner_id);
+
+    IF v_owner_entity_id IS DISTINCT FROM v_caller_entity_id THEN
+      RAISE EXCEPTION 'You can only assign beneficiaries to branches linked to your organisation';
+    END IF;
+    SELECT COUNT(*) INTO v_open_days_count FROM public.division_open WHERE division_id = v_division_id AND is_open = true;
+    IF v_open_days_count = 0 THEN
+        RAISE EXCEPTION 'Branch is not currently active';
+    END IF;
+    INSERT INTO "public"."contacts"
+      (id, name, email, phone, street_address, postcode, region_id, adults_count, children_gt16, children_lt16, notes, status, delayed_days, updated_by, owner_id, created_by)
+    VALUES
+      (v_contact_id, p_name, p_email, p_phone, p_address, p_postcode, p_region_id, p_adults, p_children_gt16, p_children_lt16, p_notes, 'inactive', p_delayed_days, p_user_id, p_owner_id, p_user_id);
+    IF p_days IS NOT NULL AND array_length(p_days, 1) > 0 THEN
+      INSERT INTO public.contacts_days (contact_id, day_of_week, is_available)
+        SELECT v_contact_id, day_of_week, true FROM unnest(p_days) AS t(day_of_week);
+    END IF;
+    UPDATE "public"."contacts"
+      SET status = p_status, updated_at = now()::timestamptz
+      WHERE id = v_contact_id;
+  END IF;
+
+  SELECT * INTO new_row FROM "public"."contacts" WHERE id = v_contact_id;
+  PERFORM log_audit_event('CREATE', 'contacts', v_contact_id, NULL, row_to_json(new_row)::jsonb);
+  RETURN v_contact_id;
 END;
 $$;
 
@@ -1649,7 +1849,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SET "search_path" TO 'public'
-SECURITY DEFINER 
+SECURITY DEFINER --@debug to security invoker
 AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -1794,7 +1994,7 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."update_contact"(
+CREATE OR REPLACE FUNCTION "public"."update_contact"( --@ add check on user_profile.is_active
   p_id    uuid DEFAULT NULL,
   p_name  text DEFAULT '',
   p_email text DEFAULT '',
@@ -1817,7 +2017,7 @@ CREATE OR REPLACE FUNCTION "public"."update_contact"(
 )
 RETURNS public.contacts
 LANGUAGE plpgsql
-SECURITY INVOKER 
+SECURITY INVOKER --@Change to invoker to enforce policy - after beta-testing
 SET "search_path" TO 'public'
 AS $$
 DECLARE
@@ -1832,6 +2032,7 @@ DECLARE
   v_creator_id       uuid;
   v_region_id        uuid;
   v_division_id      uuid;
+  v_new_division_id  uuid;
   v_status           text;
   v_name             text; 
   v_email            text; 
@@ -1839,12 +2040,13 @@ DECLARE
   v_address          text; 
   v_postcode         text;
   v_owner_entity_id  uuid;
+  v_open_days_count  integer;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can update beneficiaries';
   END IF;
 
-  SELECT role::text, entity_id, region_id, division_id 
+  SELECT role::text, entity_id, region_id, division_id --@ check is_active for caller
   INTO v_caller_role, v_caller_entity_id, v_caller_region_id, v_caller_division_id
   FROM get_user_profile_info(auth.uid());
 
@@ -1852,13 +2054,13 @@ BEGIN
     RAISE EXCEPTION 'User profile not found';
   END IF;
 
+    SELECT owner_id , created_by, region_id, status::text, name, email, phone, street_address, postcode
+  INTO v_owner_id, v_creator_id, v_region_id, v_status, v_name, v_email, v_phone, v_address, v_postcode
+  FROM contacts WHERE id = p_id;   
+
   SELECT entity_id, division_id
   INTO v_owner_entity_id, v_division_id
-  FROM get_user_profile_info(v_owner_id);
-
-  SELECT owner_id , created_by, region_id, status::text, name, email, phone, street_address, postcode
-  INTO v_owner_id, v_creator_id, v_region_id, v_status, v_name, v_email, v_phone, v_address, v_postcode
-  FROM contacts WHERE id = p_id;    
+  FROM get_user_profile_info(v_owner_id); 
 
   -- SELECT entity_id, division_id
   -- INTO v_owner_entity_id, v_division_id
@@ -1869,9 +2071,6 @@ BEGIN
 --     RAISE EXCEPTION 'Record not found';
 --   END IF;
 
-  SELECT entity_id, division_id
-  INTO v_owner_entity_id, v_division_id
-  FROM get_user_profile_info(v_owner_id);
 
   IF v_caller_role IN ('admin', 'head') THEN
     NULL; 
@@ -1928,6 +2127,16 @@ BEGIN
     END IF;
   END IF;
 
+  IF p_status::text = 'active' THEN
+    SELECT division_id
+      INTO v_new_division_id
+      FROM get_user_profile_info(p_owner_id); 
+    SELECT COUNT(*) INTO v_open_days_count FROM public.division_open WHERE division_id = v_new_division_id AND is_open = true;
+    IF v_open_days_count = 0 THEN
+        RAISE EXCEPTION 'Branch is not currently active';
+    END IF;
+  END IF;
+
   SELECT row_to_json(c)
     INTO old_row
     FROM public.contacts c
@@ -1951,7 +2160,7 @@ BEGIN
       delayed_days = COALESCE(p_delayed_days, delayed_days),
       updated_by= COALESCE(p_user_id, updated_by),
       owner_id  = COALESCE(p_owner_id, owner_id),
-      updated_at = now()
+      updated_at = now()::timestamptz
   WHERE id = p_id
   RETURNING * INTO new_row;
 
@@ -1971,7 +2180,7 @@ CREATE OR REPLACE FUNCTION "public"."merge_contacts"(
     p_secondary uuid
 ) RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER 
+SECURITY DEFINER --@debug to invoker
 SET "search_path" = 'public'
 AS $$
 DECLARE
@@ -2175,6 +2384,152 @@ BEGIN
 END;
 $$;
 
+--Referrer rating
+CREATE OR REPLACE FUNCTION "public"."create_referrer_rating"(
+  p_referrer_id uuid,
+  p_contact_id uuid,
+  p_rate_screening numeric,
+  p_rate_support numeric,
+  p_rate_inform numeric,
+  p_rate_enumeration numeric,
+  p_note text,
+  p_created_by uuid
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  new_id uuid;
+  v_caller_role text;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE 'Only authenticated users can add beneficiaries';
+  END IF;
+
+  SELECT role::text, entity_id
+    INTO v_caller_role
+    FROM get_user_profile_info(auth.uid());
+
+  IF v_caller_role IN ('admin', 'head', 'manager', 'branch_manager', 'staff') THEN
+    NULL;
+  ELSIF v_caller_role IN ('referrer', 'volunteer') THEN
+    RAISE 'You can not rate referrers';
+  END IF;
+    INSERT INTO public.referrer_rating (referrer_id, contact_id, rate_screening, rate_support, rate_inform, rate_enumeration, note, created_by, created_at)
+    VALUES (p_referrer_id, p_contact_id, p_rate_screening, p_rate_support, p_rate_inform, p_rate_enumeration, p_note, p_created_by, now()::timestamptz)
+    RETURNING id INTO new_id;
+    RETURN new_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public."get_referrer_ratings"("p_referrer_id" "uuid")
+RETURNS TABLE (
+  id uuid,
+  referrer_id uuid,
+  contact_id uuid,
+  rater_id uuid,
+  rate_screening numeric,
+  rate_support numeric,
+  rate_inform numeric,
+  rate_enumeration numeric,
+  note text,
+  created_at timestamptz
+)
+LANGUAGE sql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+  SELECT rr.id, rr.referrer_id, rr.contact_id, rr.created_by AS rater_id, rr.rate_screening, rr.rate_support, rr.rate_inform,
+  rr.rate_enumeration, rr.note, rr.created_at::date
+  FROM public.referrer_rating rr
+  CROSS JOIN LATERAL get_user_profile_info(rr.referrer_id) up
+  WHERE rr.referrer_id = p_referrer_id AND up.role::text = 'referrer'
+$$;
+
+CREATE OR REPLACE FUNCTION public."get_referrer_rating_ave"("p_caller_region_id" "uuid")
+RETURNS TABLE (
+  referrer_id uuid,
+  entity_name text,
+  referrer_name text,
+  rate_screening numeric,
+  rate_support numeric,
+  rate_inform numeric,
+  rate_enumeration numeric,
+  last_rating date
+)
+LANGUAGE sql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+  SELECT 
+      rr.referrer_id,
+      entities.name AS entity_name,
+      up.full_name AS referrer_name,
+      COALESCE(AVG(rate_screening), 0) AS rate_screening,
+      COALESCE(AVG(rate_support), 0) AS rate_support,
+      COALESCE(AVG(rate_inform), 0) AS rate_inform,
+      COALESCE(AVG(rate_enumeration), 0) AS rate_enumeration,
+      MAX(rr.created_at)::date AS last_rating
+    FROM public.referrer_rating rr
+    JOIN user_profiles up ON up.user_id = rr.referrer_id
+    JOIN entities ON entities.id = up.entity_id
+    WHERE up.region_id = p_caller_region_id AND up.role::text = 'referrer'
+    GROUP BY rr.referrer_id, entities.name, up.full_name;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public."get_referrer_rating_ave"("p_caller_region_id" "uuid")
+RETURNS TABLE (
+  referrer_id uuid,
+  entity_name text,
+  referrer_name text,
+  rate_screening numeric,
+  rate_support numeric,
+  rate_inform numeric,
+  rate_enumeration numeric,
+  last_rating date
+)
+LANGUAGE sql
+SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+  SELECT
+      rr.referrer_id,
+      entities.name AS entity_name,
+      up.full_name AS referrer_name,
+      COALESCE(AVG(rate_screening), 0) AS rate_screening,
+      COALESCE(AVG(rate_support), 0) AS rate_support,
+      COALESCE(AVG(rate_inform), 0) AS rate_inform,
+      COALESCE(AVG(rate_enumeration), 0) AS rate_enumeration,
+      MAX(rr.created_at)::date AS last_rating
+    FROM public.referrer_rating rr
+    CROSS JOIN LATERAL get_user_profile_info(rr.referrer_id) up
+    JOIN entities ON entities.id = up.entity_id
+    WHERE up.region_id = p_caller_region_id AND up.role::text = 'referrer'
+    GROUP BY rr.referrer_id, entities.name, up.full_name;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."delete_referrer_rating"(p_id uuid)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'public', 'auth'
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can delete services';
+  END IF;
+  DELETE FROM public.referrer_rating
+  WHERE id = p_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'You do not have the required privilages to complete this action';
+  END IF;
+  RETURN FOUND;
+END;
+$$;
+
+--@ Add policies (delete limited to admin) and grant execute
 
 -- Core referral system logic - notifications, allotment and clean-up
 --
@@ -2184,7 +2539,7 @@ $$;
 ------
 --------
 --------
-CREATE OR REPLACE FUNCTION public."perform_status_notifications"(p_contact_id uuid, p_contact_name text, p_owner_id uuid, p_caller_id uuid, p_new_status text, p_postcode text)
+CREATE OR REPLACE FUNCTION public."perform_status_notifications"(p_contact_id uuid, p_contact_name text, p_owner_id uuid, p_owner_entity_id uuid, p_caller_id uuid, p_new_status text, p_postcode text)
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
 SET "search_path" TO 'public'
@@ -2193,6 +2548,7 @@ DECLARE
     v_div_name text;
     v_referrer_name text;
     v_updater_role text;
+    v_notify_role text;
     v_allotment_details text := '';
     v_div_id uuid;
 BEGIN
@@ -2203,10 +2559,14 @@ BEGIN
     FROM public.user_profiles
     WHERE user_id = p_caller_id;
 
+    SELECT setting_value::text INTO v_notify_role
+    FROM public.entity_settings
+    WHERE entity_id = p_owner_entity_id AND setting_key = 'contact_notify';
+
     IF p_new_status = 'pending' THEN
         IF v_updater_role = 'referrer' THEN
             INSERT INTO public.notifications (
-                p_contact_id,
+                contact_id,
                 org_role,
                 type,
                 title,
@@ -2217,22 +2577,20 @@ BEGIN
                 v_notify_role,
                 'referral'::notification_type_enum,
                 'New referral',
-                CASE WHEN v_div_name IS NOT NULL THEN v_referrer_name || ' has referred ' || p_contact_name || ' to ' || v_div_name 
+                CASE WHEN v_div_name IS NOT NULL THEN v_referrer_name || ' has referred ' || p_contact_name || ' to ' || v_div_name --@v_div_name NOT NULL
                     WHEN p_postcode != '' AND v_div_name IS NULL THEN v_referrer_name || ' has referred ' || p_contact_name || ' to the food bank nearest to ' || p_postcode
                     ELSE v_referrer_name || ' has referred ' || p_contact_name
                 END,
-                now()
+                now()::timestamptz
             );
         END IF;
     END IF;
-
     IF p_new_status = 'active' THEN
         SELECT string_agg(to_char(ca.date, 'Day, DD Mon YYYY') || ' at ' || to_char(ca.time, 'HH24:MI'), ', ')
         INTO v_allotment_details
         FROM public.contacts_allotment ca
         WHERE ca.contact_id = p_contact_id AND ca.date > now();
     END IF;
-
     INSERT INTO public.notifications (contact_id, org_role, type, title, message, created_at)
     VALUES (
         p_contact_id,
@@ -2259,12 +2617,12 @@ SECURITY DEFINER
 SET search_path = 'public'
 AS $$
 DECLARE
-    v_now            timestamptz := now();
+    v_now            timestamptz := now()::timestamptz;
     v_start_date     date       := (date_trunc('day', v_now)::date)
                                    + COALESCE(p_delayed_days, 7)::int * interval '1 day';
     v_clamped_freq   int := p_frequency;
     v_last_allotment timestamptz;
-    v_weeks_diff     int;
+    v_weeks_diff     float;
     v_visit_num_offset int := 0;
     week_index       int := 0;       
 BEGIN
@@ -2283,8 +2641,8 @@ BEGIN
         IF v_last_allotment IS NOT NULL
            AND v_last_allotment <= v_now THEN
 
-            v_weeks_diff := extract(week from (v_now::date - v_last_allotment::date));
-
+            -- v_weeks_diff := extract(week from (v_now::date - v_last_allotment::date));
+            v_weeks_diff := (v_now::date - v_last_allotment::date) / 7.0;
             IF v_weeks_diff < p_exclusion_weeks THEN
                 RAISE EXCEPTION
                     'Exclusion period is % weeks. There are % weeks remaining',
@@ -2381,8 +2739,9 @@ BEGIN
             WHERE NOT EXISTS (SELECT 1 FROM ranked)
         )
         INSERT INTO public.contacts_allotment
-            (contact_id, date, time, visit_num, type, updated_at)
+            (contact_id, division_id, date, time, visit_num, type, updated_at)
         SELECT p_contact_id,
+            p_division_id,
             candidate_date::timestamptz + open_time::time,
             open_time,
             rn + v_visit_num_offset,
@@ -2403,7 +2762,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.handle_contact_status()
+CREATE OR REPLACE FUNCTION public."handle_contact_status"()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
 SET "search_path" TO 'public'
@@ -2426,12 +2785,12 @@ BEGIN
 
     SELECT setting_value::text INTO v_notify_role
     FROM public.entity_settings
-    WHERE entity_id = v_entity_id AND setting_key = 'contact_notify';
+    WHERE entity_id = v_entity_id AND setting_key::text = 'contact_notify';
 
     IF (TG_OP = 'INSERT' AND NEW.status = 'pending'::beneficiary_enum) THEN
-        INSERT INTO public.contacts_referrer (contact_id, referrer_id, first_referred_by, message, created_at, updated_at)
-            VALUES (NEW.id, NEW.created_by, NEW.created_by, NEW.notes, now(), now());
-        PERFORM public.perform_status_notifications(NEW.id, NEW.name, NEW.owner_id, NEW.created_by, NEW.status::text, NEW.postcode);
+        INSERT INTO public.contacts_referrer (contact_id, referrer_id, division_id, first_referred_by, message, created_at, updated_at)
+            VALUES (NEW.id, NEW.created_by, v_division_id, NEW.created_by, NEW.notes, now()::timestamptz, now()::timestamptz);
+        PERFORM public.perform_status_notifications(NEW.id, NEW.name, NEW.owner_id, v_entity_id, NEW.created_by, NEW.status::text, NEW.postcode);
 
     ELSIF (TG_OP = 'INSERT' AND NEW.status = 'active'::beneficiary_enum) THEN
     --Comment: Role based guard in update contact
@@ -2440,13 +2799,13 @@ BEGIN
             RAISE EXCEPTION 'Branch is not currently active';
         END IF;
 
-      INSERT INTO public.contacts_referrer (contact_id, referrer_id, first_referred_by, approved_at, approved_by, message, created_at, updated_at)
-            VALUES (NEW.id, NEW.created_by, NEW.created_by, now(), NEW.created_by, NEW.notes, now(), now());
+      INSERT INTO public.contacts_referrer (contact_id, referrer_id, division_id, first_referred_by, approved_at, approved_by, message, created_at, updated_at)
+            VALUES (NEW.id, NEW.created_by, v_division_id, NEW.created_by, now()::timestamptz, NEW.created_by, NEW.notes, now()::timestamptz, now()::timestamptz);
 
       IF v_division_id IS NOT NULL THEN
-                SELECT setting_value::int INTO v_allotment_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'allotment_weeks';
-                SELECT setting_value::int INTO v_exclusion_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'exclusion_weeks';
-                SELECT setting_value::int INTO v_frequency FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'frequency';
+                SELECT setting_value::int INTO v_allotment_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'allotment_weeks';
+                SELECT setting_value::int INTO v_exclusion_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'exclusion_weeks';
+                SELECT setting_value::int INTO v_frequency FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'frequency';
 
                 IF v_allotment_weeks IS NOT NULL AND v_allotment_weeks > 0 AND v_exclusion_weeks IS NOT NULL AND v_frequency IS NOT NULL THEN
                     PERFORM public.perform_allotments(NEW.id, v_division_id, v_allotment_weeks, v_exclusion_weeks, v_frequency,  COALESCE(NEW.delayed_days, 7)::int);                
@@ -2455,10 +2814,10 @@ BEGIN
 
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.status = 'inactive'::beneficiary_enum AND NEW.status = 'pending'::beneficiary_enum) THEN
-            INSERT INTO public.contacts_referrer (contact_id, referrer_id, first_referred_by, message, created_at, updated_at)
-                VALUES (NEW.id, NEW.created_by, NEW.created_by, NEW.notes, now(), now());
+            INSERT INTO public.contacts_referrer (contact_id, referrer_id, division_id, first_referred_by, message, created_at, updated_at)
+                VALUES (NEW.id, NEW.updated_by, v_division_id, NEW.created_by, NEW.notes, now()::timestamptz, now()::timestamptz);
 
-            PERFORM public.perform_status_notifications(NEW.id, NEW.name, NEW.owner_id, NEW.updated_by, NEW.status::text, NEW.postcode);
+            PERFORM public.perform_status_notifications(NEW.id, NEW.name, NEW.owner_id, v_entity_id, NEW.updated_by, NEW.status::text, NEW.postcode);
 
         ELSIF (OLD.status = 'pending'::beneficiary_enum AND NEW.status = 'active'::beneficiary_enum) THEN
           SELECT COUNT(*) INTO v_open_days_count FROM public.division_open WHERE division_id = v_division_id AND is_open = true;
@@ -2478,26 +2837,27 @@ BEGIN
 
                 UPDATE "public"."contacts_referrer"
                 SET
+                    division_id = COALESCE(division_id, v_division_id),
                     approved_by = COALESCE(approved_by, NEW.updated_by),
-                    approved_at = COALESCE(approved_at, now()),
-                    updated_at = now(),
+                    approved_at = COALESCE(approved_at, now()::timestamptz),
+                    updated_at = now()::timestamptz,
                     message = v_note_text
                 WHERE id = v_recent_referrer_id;
 
-                PERFORM public.perform_status_notifications(NEW.id, NEW.name, NEW.owner_id, NEW.updated_by, NEW.status::text, NEW.postcode);
+                PERFORM public.perform_status_notifications(NEW.id, NEW.name, NEW.owner_id, v_entity_id, NEW.updated_by, NEW.status::text, NEW.postcode);
             END IF;
 
-            IF EXISTS (SELECT 1 FROM public.contacts_allotment WHERE contact_id = NEW.id AND date > now()) THEN
+            IF EXISTS (SELECT 1 FROM public.contacts_allotment WHERE contact_id = NEW.id AND date > now()::timestamptz) THEN
                 RETURN NEW;
             END IF;
 
             IF v_division_id IS NOT NULL THEN
-                SELECT setting_value::int INTO v_allotment_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'allotment_weeks';
-                SELECT setting_value::int INTO v_exclusion_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'exclusion_weeks';
-                SELECT setting_value::int INTO v_frequency FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'frequency';
+                SELECT setting_value::int INTO v_allotment_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'allotment_weeks';
+                SELECT setting_value::int INTO v_exclusion_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'exclusion_weeks';
+                SELECT setting_value::int INTO v_frequency FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'frequency';
 
                 IF v_allotment_weeks IS NOT NULL AND v_allotment_weeks > 0 AND v_exclusion_weeks IS NOT NULL AND v_frequency IS NOT NULL THEN
-                    PERFORM public.perform_allotments(NEW.id, v_division_id, v_allotment_weeks, v_exclusion_weeks, v_frequency,  COALESCE(NEW.delayed_days, 7)::int);
+                    PERFORM public.perform_allotments(NEW.id, v_division_id, v_allotment_weeks, v_exclusion_weeks, v_frequency,  COALESCE(NEW.delayed_days, 7)::int); --@@@
                 END IF;
             END IF;
 
@@ -2507,17 +2867,17 @@ BEGIN
           IF v_open_days_count = 0 THEN
               RAISE EXCEPTION 'Branch is not currently active';
           END IF;
-          INSERT INTO public.contacts_referrer (contact_id, referrer_id, first_referred_by, approved_at, approved_by, message, created_at, updated_at)
-            VALUES (NEW.id, NEW.created_by, NEW.created_by, now(), NEW.created_by, NEW.notes, now(), now());
+          INSERT INTO public.contacts_referrer (contact_id, referrer_id, division_id, first_referred_by, approved_at, approved_by, message, created_at, updated_at)
+            VALUES (NEW.id, NEW.updated_by, v_division_id, NEW.created_by, now()::timestamptz, NEW.created_by, NEW.notes, now()::timestamptz, now()::timestamptz);
 
-            IF EXISTS (SELECT 1 FROM public.contacts_allotment WHERE contact_id = NEW.id AND date > now()) THEN
+            IF EXISTS (SELECT 1 FROM public.contacts_allotment WHERE contact_id = NEW.id AND date > now()::timestamptz) THEN
                 RETURN NEW;
             END IF;
 
             IF v_division_id IS NOT NULL THEN
-                SELECT setting_value::int INTO v_allotment_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'allotment_weeks';
-                SELECT setting_value::int INTO v_exclusion_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'exclusion_weeks';
-                SELECT setting_value::int INTO v_frequency FROM public.division_settings WHERE division_id = v_division_id AND setting_key = 'frequency';
+                SELECT setting_value::int INTO v_allotment_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'allotment_weeks';
+                SELECT setting_value::int INTO v_exclusion_weeks FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'exclusion_weeks';
+                SELECT setting_value::int INTO v_frequency FROM public.division_settings WHERE division_id = v_division_id AND setting_key::text = 'frequency';
 
                 IF v_allotment_weeks IS NOT NULL AND v_allotment_weeks > 0 AND v_exclusion_weeks IS NOT NULL AND v_frequency IS NOT NULL THEN
                     PERFORM public.perform_allotments(NEW.id, v_division_id, v_allotment_weeks, v_exclusion_weeks, v_frequency,  COALESCE(NEW.delayed_days, 7)::int);
@@ -2525,7 +2885,7 @@ BEGIN
             END IF;
         END IF;
           
-        --@ inactive handled separately in handle_allotment_complete
+        --Comment: Change to inactive handled separately in handle_allotment_complete
     END IF;
     RETURN NEW;
 END;
@@ -2578,7 +2938,7 @@ RETURNS TABLE (
   created_at timestamp with time zone
 )
 LANGUAGE plpgsql
-SECURITY DEFINER 
+SECURITY DEFINER --@debug to invoker. When set to invoker even those who created the note can't see them
 SET "search_path" TO 'public'
 AS $$
 BEGIN
@@ -2593,7 +2953,7 @@ BEGIN
     up.full_name,
     cn.created_at
   FROM public.contacts_notes cn
-  LEFT JOIN public.get_profile_names() up 
+  LEFT JOIN public.get_profile_names() up --@Review security profile and potentially restrict return by region, entity and division by role in get_profile_names
     ON cn.created_by = up.user_id
   WHERE cn.contact_id = p_contact_id
   ORDER BY cn.created_at DESC;
@@ -2607,6 +2967,7 @@ SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
+--@restrict to non-volunteer?
   DELETE FROM public.contacts_notes
   WHERE id = p_note_id;
   RETURN FOUND;
@@ -2616,7 +2977,9 @@ $$;
 CREATE OR REPLACE FUNCTION "public"."get_allotment"(p_contact_id uuid)
 RETURNS TABLE (
   allotment_id uuid,
-  referrer_org text,
+  division_id uuid,
+  referrer_id uuid,
+  referrer_org text, --@test added referrer_id
   referrer_code text,
   referrer_name text,
   approver_org text,
@@ -2630,13 +2993,18 @@ RETURNS TABLE (
   updated_at timestamp with time zone
 )
 LANGUAGE plpgsql
-SECURITY DEFINER 
+SECURITY DEFINER --@debug policies
 SET "search_path" TO 'public'
 AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    ca.id,
+    ca.id, ca.division_id,
+    (SELECT cr.referrer_id
+    FROM public.contacts_referrer cr
+    WHERE cr.contact_id = p_contact_id
+    ORDER BY cr.updated_at DESC
+    LIMIT 1) AS referrer_id,
     (SELECT e.name
     FROM public.entities e
     JOIN public.user_profiles up ON up.entity_id = e.id
@@ -2691,7 +3059,7 @@ $$;
 CREATE OR REPLACE FUNCTION "public"."insert_allotment_discretionary"(
   "p_contact_id" uuid DEFAULT NULL, 
   "p_user_id" uuid DEFAULT NULL,
-  "p_date" timestamp with time zone DEFAULT now(), 
+  "p_date" timestamp with time zone DEFAULT now()::timestamptz, 
   "p_type" allotment_type_enum DEFAULT 'drop_in'::allotment_type_enum,
   "p_note" text DEFAULT ''
   ) RETURNS uuid
@@ -2699,15 +3067,44 @@ LANGUAGE "plpgsql" SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 DECLARE
+  v_caller_role text;
+  v_caller_division_id uuid;
+  v_owner_division_id uuid;
+  v_division_out uuid;
   v_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN
-      RAISE EXCEPTION 'Only authenticated users can add allotments';
-    END IF;
+    RAISE EXCEPTION 'Only authenticated users can add allotments';
+  END IF;
+
+  SELECT cup.role::text, cup.division_id 
+  INTO v_caller_role, v_caller_division_id
+  FROM get_user_profile_info(auth.uid()) cup;
+
+  SELECT oup.division_id
+  INTO v_owner_division_id
+  FROM contacts c
+  CROSS JOIN LATERAL get_user_profile_info(c.owner_id) oup
+  WHERE c.id = p_contact_id;
+
+  IF v_caller_role = 'referrer' THEN
+    RAISE EXCEPTION 'Referrers can not use this feature';
+  END IF;
+
+  IF v_caller_division_id IS NOT NULL THEN
+    v_division_out := v_caller_division_id;
+  ELSIF v_owner_division_id IS NOT NULL THEN
+    v_division_out := v_owner_division_id;
+  END IF;
+
+  IF v_division_out IS NULL THEN
+    RAISE EXCEPTION 'Either you must be associated with a specific branch or the beneficiary must be assigned to a specific branch - as inactive, pending or active';
+  END IF;
+
   INSERT INTO public.contacts_allotment
-      (contact_id, date, time, visit_num, attended, serving, served, type) 
+      (contact_id, division_id, date, time, visit_num, attended, serving, served, type) 
   VALUES
-      (p_contact_id, p_date, now(), NULL, true, false, false, p_type)
+      (p_contact_id, v_division_out, p_date, now(), NULL, true, false, false, p_type)
       RETURNING id INTO v_id;
   INSERT INTO public.contacts_notes
       (contact_id, note, created_by, updated_by)
@@ -2857,7 +3254,44 @@ BEGIN
 END;
 $$;
 
+--Allotment summary
+CREATE OR REPLACE FUNCTION public."get_allotment_summary"(
+  p_division_id  uuid,
+  p_start_ts     timestamptz,
+  p_end_ts       timestamptz
+)
+RETURNS TABLE (
+  week_start      date,
+  cases           bigint,
+  dropins         bigint,
+  referrals       bigint,
+  absent          bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Only authenticated users can call this function';
+  END IF;
 
+  RETURN QUERY
+  SELECT
+    -- week starting on Monday
+    (date_trunc('week', date)::date + INTERVAL '1 day')::date AS week_start,
+    COUNT(*) AS cases,
+    SUM(CASE WHEN type = 'drop_in' AND attended = true THEN 1 ELSE 0 END) AS dropins,
+    SUM(CASE WHEN type = 'referral' AND attended = true THEN 1 ELSE 0 END) AS referrals,
+    SUM(CASE WHEN type = 'referral' AND attended = false THEN 1 ELSE 0 END) AS absent
+  FROM public.contacts_allotment
+  WHERE division_id = p_division_id
+    AND date >= p_start_ts
+    AND date < p_end_ts
+  GROUP BY week_start
+  ORDER BY week_start;
+END;
+$$;
 
 -- Dashboard
 CREATE OR REPLACE FUNCTION "public"."get_division_summary"(
@@ -2934,7 +3368,7 @@ BEGIN
 
   WHERE (p_entity_id IS NOT NULL AND d.entity_id = p_entity_id)
      OR (p_entity_id IS NULL AND up_user.user_id IS NOT NULL) 
-     OR (up_user.role = 'referrer'); 
+     OR (up_user.role = 'referrer'); --@link referrers to all relevant entities
 END;
 $$;
 
@@ -2976,6 +3410,7 @@ AS $$
   ORDER BY d.name;
 $$;
 
+--@ add region
 CREATE OR REPLACE FUNCTION public.create_division(
     p_name text,
     p_entity_id uuid,
@@ -3007,7 +3442,7 @@ BEGIN
     END IF;
 
     INSERT INTO public.divisions (name, entity_id, street_address, postcode, head_id, created_at, is_active)
-    VALUES (p_name, p_entity_id, p_street_address, p_postcode, p_head_id, now(), true)
+    VALUES (p_name, p_entity_id, p_street_address, p_postcode, p_head_id, now()::timestamptz, true)
      RETURNING * INTO new_row;
      new_id := new_row.id;
 
@@ -3018,7 +3453,7 @@ BEGIN
   )
   SELECT
     new_id,
-    unnest(array['allotment_weeks', 'exclusion_weeks', 'frequency']),
+    unnest(array['allotment_weeks', 'exclusion_weeks', 'frequency'])::division_setting_enum,
     unnest(array['6', '12', '1']) 
   ON CONFLICT DO NOTHING;
 
@@ -3029,7 +3464,8 @@ BEGIN
   RETURN new_id;
 END;
 $$;
-  
+
+--@ add region?   
 CREATE OR REPLACE FUNCTION public."update_division"(
   p_id          uuid,
   p_name        text,
@@ -3050,7 +3486,7 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can update divisions';
   END IF;
-
+  --@ add check on role to match policy
   SELECT row_to_json(d)
   INTO old_row
   FROM public.divisions d
@@ -3093,7 +3529,7 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can delete divisions';
   END IF;
-
+  --@add check on role to match policy
   SELECT row_to_json(d)::jsonb
   INTO old_row
   FROM public.divisions d
@@ -3163,17 +3599,17 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION "public"."create_contact_days"(
-        p_contact_id uuid,
-        p_days public.contacts_days[]
-    ) RETURNS void
-    LANGUAGE plpgsql SECURITY INVOKER
-    SET "search_path" TO 'public'
-    AS $$
-    BEGIN
-      INSERT INTO public.contacts_days (contact_id, day_of_week, is_available)
-        SELECT p_contact_id, day_of_week, is_available FROM unnest(p_days);
-    END;
-    $$;
+    p_contact_id uuid,
+    p_days public.contacts_days[]
+) RETURNS void
+LANGUAGE plpgsql SECURITY INVOKER
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+  INSERT INTO public.contacts_days (contact_id, day_of_week, is_available)
+    SELECT p_contact_id, day_of_week, is_available FROM unnest(p_days);
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION "public"."upsert_division_open"(
     p_division_id uuid,
@@ -3222,7 +3658,7 @@ BEGIN
     IF v_current_freq IS NOT NULL AND v_current_freq::integer > v_open_count THEN
       v_new_freq := v_open_count::text;
       INSERT INTO public.division_settings (division_id, setting_key, setting_value)
-      VALUES (p_division_id, 'frequency', v_new_freq)
+      VALUES (p_division_id, 'frequency'::division_setting_enum, v_new_freq)
       ON CONFLICT (division_id, setting_key) DO UPDATE
       SET setting_value = EXCLUDED.setting_value;
     END IF;
@@ -3424,7 +3860,7 @@ BEGIN
     ) VALUES (
         p_entry_type, P_subject, p_location, p_beneficiary_id, p_pic_id,
         p_scheduled_at, p_status, p_notes,
-        p_created_by, NOW(), NOW()
+        p_created_by, now()::timestamptz, now()::timestamptz
     )
     RETURNING id INTO new_id;
     RETURN new_id;
@@ -3459,8 +3895,8 @@ BEGIN
         rec->>'p_status',
         rec->>'p_notes',
         (rec->>'p_created_by')::uuid,
-        NOW(),
-        NOW()
+        now()::timestamptz,
+        now()::timestamptz
     );
   END LOOP;
   RETURN FOUND;
@@ -3486,7 +3922,7 @@ BEGIN
     IF auth.uid() IS NULL THEN
       RAISE EXCEPTION 'Only authenticated users can update events and tasks';
     END IF;
-
+    --@ add role and user_id=created_by restrictions
     UPDATE public.calendar SET
         entry_type     = p_entry_type,
         subject       = p_subject,
@@ -3496,7 +3932,7 @@ BEGIN
         scheduled_at  = p_scheduled_at,
         status        = p_status,
         notes         = p_notes,
-        updated_at    = NOW()
+        updated_at    = now()::timestamptz
     WHERE id = p_id;
     RETURN FOUND;
 END;
@@ -3516,7 +3952,7 @@ BEGIN
     END IF;
     UPDATE public.calendar SET
         status        = p_status,
-        updated_at    = NOW()
+        updated_at    = now()::timestamptz
     WHERE id = p_id;
     RETURN FOUND;
 END;
@@ -3614,7 +4050,7 @@ BEGIN
         v_message,
         v_link,
         '{}'::jsonb,
-        NOW(),
+        now()::timestamptz,
         NEW.id
     );
     RETURN NEW;
@@ -3788,7 +4224,7 @@ BEGIN
   JOIN notifications n ON nu.notification_id = n.id
   LEFT JOIN user_settings us
     ON us.user_id = auth.uid()
-   AND us.setting_key = CASE
+   AND us.setting_key::text = CASE
         WHEN n.type = 'task'     THEN 'notification_tasks'
         WHEN n.type = 'calendar' THEN 'notification_calendar'
         ELSE NULL
@@ -3977,7 +4413,7 @@ BEGIN
       RAISE EXCEPTION 'Only authenticated users can add services';
     END IF;
     INSERT INTO public.organisations (name, org_type, service, address, region_id, website, phone, email, approval_status, is_active, notes, created_by, created_at, updated_at)
-    VALUES (p_name, p_org_type, p_service, COALESCE(p_address, '{}'::jsonb), p_region_id, p_website, p_phone, p_email, p_approval_status, p_is_active, p_notes, p_created_by, now(), now())
+    VALUES (p_name, p_org_type, p_service, COALESCE(p_address, '{}'::jsonb), p_region_id, p_website, p_phone, p_email, p_approval_status, p_is_active, p_notes, p_created_by, now()::timestamptz, now()::timestamptz)
     RETURNING id INTO new_id;
     RETURN new_id;
 END;
@@ -4280,7 +4716,20 @@ FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."user_profiles" "up"
   WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text = 'admin')))));
   
+ALTER TABLE "public"."referrer_rating" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "referrer_rating_select" ON "public"."referrer_rating" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND (up.role::text IN ('admin', 'head', 'manager', 'branch_manager', 'staff', 'volunteer')))))));
+
+CREATE POLICY "referrer_rating_insert" ON "public"."referrer_rating" 
+FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."user_profiles" "up"
+  WHERE (("up"."user_id" = (select auth.uid())) AND ("up"."role"::text IN ('admin', 'head', 'manager', 'branch_manager', 'staff') )))));
+
+CREATE POLICY "referrer_rating_delete" ON "public"."referrer_rating" FOR DELETE TO "authenticated" USING (((SELECT "role" FROM "public"."get_my_profile"()) = 'admin'::"text"));
+
+--Divisions
 ALTER TABLE "public"."divisions" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "divisions_delete" ON "public"."divisions" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -4663,7 +5112,7 @@ REVOKE EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p
 
 REVOKE EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text", "p_referrer" boolean) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION "public"."admin_create_entity"("p_country_id" "uuid", "p_name" "text", "p_code" "text", "p_referrer" boolean) FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."admin_delete_entity"("p_entity_id" "uuid") FROM PUBLIC;
 
@@ -4677,18 +5126,25 @@ REVOKE EXECUTE ON FUNCTION "public"."update_division"("p_id" "uuid", "p_name" "t
 
 REVOKE EXECUTE ON FUNCTION "public"."delete_division"("p_id" "uuid") FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION "public"."create_country"(p_name text, p_code text) FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_name text, p_code text, p_is_active boolean) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION "public"."get_countries"() FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."update_country"(p_id uuid, p_name text, p_code text, p_is_active boolean) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text, p_country_id uuid) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_regions"() FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_country_id uuid, p_name text, p_code text, p_is_active boolean) FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "uuid", "p_role" "public"."role_enum", 
 "p_entity_id" "uuid", "p_division_id" "uuid", "p_manager_id" "uuid", "p_region_id" "uuid") FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."get_regions"() FROM PUBLIC; 
 
 REVOKE EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_phone" "text", "p_address" "text", 
 "p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", 
-"p_notes" "text", "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_user_id" "uuid", "p_owner_id" "uuid") FROM PUBLIC; 
+"p_notes" "text", "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_user_id" "uuid", "p_owner_id" "uuid", "p_days" integer[]) FROM PUBLIC; 
 
 REVOKE EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_phone" "text", 
 "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
@@ -4707,6 +5163,17 @@ REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") F
 REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."mark_allotment_served"("p_id" "uuid") FROM PUBLIC; 
+
+REVOKE EXECUTE ON FUNCTION "public"."get_allotment_summary"(uuid, timestamptz, timestamptz) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_referrer_rating_ave"(p_caller_region_id uuid) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_referrer_ratings"(p_referrer_id uuid) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."create_referrer_rating"(p_referrer_id uuid, p_contact_id uuid, p_rate_screening numeric, 
+  p_rate_support numeric, p_rate_inform numeric, p_rate_enumeration numeric, p_note text, p_created_by uuid) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."delete_referrer_rating"(p_id uuid) FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."create_calendar"(text, text, text, uuid, uuid, timestamptz, text, text, uuid) FROM PUBLIC;
 
@@ -4737,7 +5204,7 @@ REVOKE EXECUTE ON FUNCTION "public"."delete_contact_days"("p_id" "uuid") FROM PU
 
 
 
-GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated"; --@ currently weak? Anyone can sign-up and so add to auth and user_profiles via useAuth GoTrueClient 
 
 GRANT EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_old_values" "jsonb", "p_new_values" "jsonb") TO "authenticated";
 
@@ -4775,9 +5242,9 @@ GRANT EXECUTE ON FUNCTION "public"."get_user_settings"("p_user_id" "uuid") TO "a
 
 GRANT EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; --@ currently weak? Anyone can sign-up and so add to auth and user_profiles via useAuth GoTrueClient
 
-GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_name" "text", "p_code" "text", "p_referrer" boolean) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_country_id" "uuid","p_name" "text", "p_code" "text", "p_referrer" boolean) TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."admin_delete_entity"("p_entity_id" "uuid") TO "authenticated";
 
@@ -4803,15 +5270,21 @@ GRANT EXECUTE ON FUNCTION "public"."update_division_closed"("p_id" "uuid", "p_da
 
 GRANT EXECUTE ON FUNCTION "public"."delete_division_closed"("p_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."create_country"(p_name text, p_code text) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_name text, p_code text, p_is_active boolean) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."get_countries"() TO "authenticated"; 
+
+GRANT EXECUTE ON FUNCTION "public"."update_country"(p_id uuid, p_name text, p_code text, p_is_active boolean) TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text, p_country_id uuid) TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_country_id uuid, p_name text, p_code text, p_is_active boolean) TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "uuid", "p_role" "public"."role_enum", "p_entity_id" "uuid", "p_division_id" "uuid", "p_manager_id" "uuid", "p_region_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."get_regions"() TO "authenticated"; 
 
-GRANT EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_phone" "text", "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_notes" "text", "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_user_id" "uuid", "p_owner_id" "uuid") TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_phone" "text", "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_notes" "text", "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_user_id" "uuid", "p_owner_id" "uuid", "p_days" integer[]) TO "authenticated"; 
 
 GRANT EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_phone" "text", 
 "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
@@ -4829,6 +5302,17 @@ GRANT EXECUTE ON FUNCTION "public"."mark_allotment_attendance"("p_id" "uuid") TO
 GRANT EXECUTE ON FUNCTION "public"."mark_allotment_serving"("p_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."mark_allotment_served"("p_id" "uuid") TO "authenticated"; 
+
+GRANT EXECUTE ON FUNCTION "public"."get_allotment_summary"(uuid, timestamptz, timestamptz) TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_referrer_rating_ave"(p_referrer_id uuid) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION "public"."get_referrer_ratings"(p_referrer_id uuid) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION "public"."create_referrer_rating"(p_referrer_id uuid, p_contact_id uuid, p_rate_screening numeric, 
+  p_rate_support numeric, p_rate_inform numeric, p_rate_enumeration numeric, p_note text, p_created_by uuid) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION "public"."delete_referrer_rating"(p_id uuid) TO authenticated;
 
 GRANT EXECUTE ON FUNCTION "public"."create_calendar"(text, text, text, uuid, uuid, timestamptz, text, text, uuid) TO authenticated;
 
@@ -4888,6 +5372,8 @@ REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."system_settings" FROM P
 
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_notes" FROM PUBLIC;
 
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."referrer_rating" FROM PUBLIC;
+
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_referrer" FROM PUBLIC;
 
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_allotment" FROM PUBLIC;
@@ -4926,11 +5412,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_audit_log_complete" TO
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_profiles" TO "authenticated"; 
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."countries" TO "authenticated";
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."regions" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."system_settings" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_notes" TO "authenticated";
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."referrer_rating" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_referrer" TO "authenticated";
 

@@ -142,7 +142,9 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   // if (!user || !profile) return null;
 
-  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === profile?.region_id), [divisions, profile]);
+  const activeRegions = regions.filter(r => r.is_active === true)
+
+  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === formData.region_id), [divisions, formData.region_id]);
 
   const divId = useMemo(() => {
     const managerId = formData.owner_id || contact?.owner_id;
@@ -491,7 +493,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                   setCondition2={setCondition2}
                   setCondition3={setCondition3}
                   contact={contact}
-                  regions={regions}
+                  regions={activeRegions}
                   divsRegion={divsRegion}
                   notes={notes}
                   handleDelete={handleDelete}

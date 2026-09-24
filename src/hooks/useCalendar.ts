@@ -70,7 +70,8 @@ export function useCalendar() {
     }
   }, [user]);
 
-  return { events, 
+  return { 
+    events, 
     loading, 
     error,
     fetchEvents, 

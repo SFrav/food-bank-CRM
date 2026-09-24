@@ -3,23 +3,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Save, X, RefreshCw, Trash2, Loader2 } from 'lucide-react';
+import { useCountries, Country } from '@/hooks/useCountries';
 import { useRegions, Region } from '@/hooks/useRegions';
 import { useToast } from '@/hooks/useToast';
+import { format } from 'date-fns';
 
 export const RegionManagement = () => {
   const { toast } = useToast();
+  const { countries, loading: loadingCounty, refetch: refetchCountry } = useCountries();
   const { regions, loading, createRegion, updateRegion, deleteRegion, refetch } = useRegions();
+  const [newCountryId, setNewCountryId] = useState('');
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionCode, setNewRegionCode] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCountryId, setEditingCountryId] = useState('');
   const [editingName, setEditingName] = useState('');
   const [editingCode, setEditingCode] = useState('');
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  const getDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB');
+  };
 
   const handleCreate = async () => {
     if (!newRegionName.trim() || !newRegionCode.trim()) {
@@ -29,11 +39,11 @@ export const RegionManagement = () => {
 
     setCreating(true);
     try {
-      const { data, error } = await createRegion(newRegionName.trim(), newRegionCode.trim().toUpperCase());
+      const { data, error } = await createRegion(newRegionName.trim(), newRegionCode.trim().toUpperCase(), newCountryId);
       if(!error || data) {
         setNewRegionName('');
         setNewRegionCode('');
-
+        setNewCountryId('');
       };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
@@ -44,6 +54,7 @@ export const RegionManagement = () => {
 
   const handleEdit = (region: Region) => {
     setEditingId(region.id);
+    setEditingCountryId(region.country_id);
     setEditingName(region.name);
     setEditingCode(region.code);
   };
@@ -58,6 +69,7 @@ export const RegionManagement = () => {
     try {
       const { data, error } = await updateRegion(
         id, 
+        editingCountryId,
         editingName.trim() || null,
         editingCode.trim().toUpperCase() || null,
         null
@@ -83,7 +95,7 @@ export const RegionManagement = () => {
   const handleToggleActive = async (id: string, isActive: boolean) => {
     setUpdating(id);
     try {
-      const {data, error } = await updateRegion(id, null, null, !isActive );
+      const {data, error } = await updateRegion(id, null, null, null, !isActive );
       if(!error || data) toast({ title: 'Error', description: (isActive ? 'Region deactivated' : 'Region activated'), variant: 'destructive' });
     } catch (err: unknown) {
       const error = err as { message?: string }; 
@@ -113,6 +125,11 @@ export const RegionManagement = () => {
     }
   };
 
+  const handleRefetch = () => {
+    refetch;
+    refetchCountry;
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -120,10 +137,10 @@ export const RegionManagement = () => {
           <div>
             <CardTitle>Region Management</CardTitle>
             <CardDescription>
-              Manage geographical regions for user profiles
+              Manage geographical regions
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={handleRefetch} disabled={loading}>
             <RefreshCw className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -132,6 +149,16 @@ export const RegionManagement = () => {
       <CardContent className="space-y-4">
         {/* Add new region */}
         <div className="flex gap-2">
+          <Select value={newCountryId} onValueChange={setNewCountryId}>
+            <SelectTrigger className="w-[240px]">
+              <SelectValue placeholder="Select country" />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.filter(c => c.is_active).map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             placeholder="Enter region name..."
             value={newRegionName}
@@ -165,6 +192,7 @@ export const RegionManagement = () => {
               <TableRow>
                 <TableHead>Region Name</TableHead>
                 <TableHead>Code</TableHead>
+                <TableHead>Country</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
@@ -205,6 +233,24 @@ export const RegionManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>
+                      {editingId === region.id ? (
+                        <Select value={editingCountryId} onValueChange={setEditingCountryId}>
+                          <SelectTrigger className="w-[240px]">
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {countries.filter(c => c.is_active).map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline" className="font-mono">
+                          {region.country_name}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Badge 
                         variant={region.is_active ? "default" : "secondary"}
                         className="cursor-pointer"
@@ -214,7 +260,7 @@ export const RegionManagement = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(region.created_at).toLocaleDateString()}
+                      {getDate(region.created_at)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -257,7 +303,7 @@ export const RegionManagement = () => {
                               disabled={updating === region.id || deleting === region.id}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             > */}
-<AlertDialog>
+                            <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   size="sm"

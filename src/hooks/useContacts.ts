@@ -73,7 +73,7 @@ export interface UseContactsReturn {
     delayed_days: number | 7;
     user_id: string;
     owner_id?: string;
-  }) => Promise<{ success: boolean; data?: string; error?: string }>;
+  }, days?: number[]) => Promise<{ success: boolean; data?: string; error?: string }>;
   // setFilterQueue: (b: boolean) => void;
 }
 
@@ -173,44 +173,44 @@ export const useContacts = (
   };
 
   const createContact = useCallback(
-    async (c: Contact) => {
-      const errs = validateContact(c);
-      if (Object.keys(errs).length) {
-        toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
-        return { success: false, error: 'Validation failed' };
-      }
-      setLoading(true);
-      try{
-      const { data, error: rpcError } = await supabase.rpc('create_contact', {
-        p_name: c.name,
-        p_email: c.email,
-        p_phone: c.phone,
-        p_address: c.street_address,
-        p_postcode: c.postcode,
-        p_region_id: c.region_id,
-        p_adults: c.adults,
-        p_children_gt16: c.children_gt16,
-        p_children_lt16: c.children_lt16,
-        p_notes: c.notes,
-        p_status: c.status,
-        p_delayed_days: c.delayed_days,
-        p_user_id: c.user_id,
-        p_owner_id: c.owner_id,
-      }).single();
+      async (c: Contact, days?: number[]) => {
+        const errs = validateContact(c);
+        if (Object.keys(errs).length) {
+          toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
+          return { success: false, error: 'Validation failed' };
+        }
+        setLoading(true);
+        try{
+        const { data, error: rpcError } = await supabase.rpc('create_contact', {
+          p_name: c.name,
+          p_email: c.email,
+          p_phone: c.phone,
+          p_address: c.street_address,
+          p_postcode: c.postcode,
+          p_region_id: c.region_id,
+          p_adults: c.adults,
+          p_children_gt16: c.children_gt16,
+          p_children_lt16: c.children_lt16,
+          p_notes: c.notes,
+          p_status: c.status,
+          p_delayed_days: c.delayed_days,
+          p_user_id: c.user_id,
+          p_owner_id: c.owner_id,
+          p_days: days ?? null,
+        }).single();
 
-      if (rpcError) throw rpcError;
-      await fetch();
-      return { success: true, data: data};
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error(err);
-      toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
-      return { success: false, data: null, error: error.message };
-    } finally {
-      //toast({ title: 'Success', description: 'Contact created successfully' });
-      setLoading(false);
-      }
-    }, [fetch]);
+        if (rpcError) throw rpcError;
+        await fetch();
+        return { success: true, data: data};
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        console.error(err);
+        toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+        return { success: false, data: null, error: error.message };
+      } finally {
+        setLoading(false);
+        }
+      }, [fetch]);
 
   const updateContact = useCallback(
     async (c: Contact) => {

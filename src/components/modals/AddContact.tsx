@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { User, Phone, Mail } from "lucide-react";
+// import { User, Phone, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Card, CardContent } from '@/components/ui/card';
+// import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -237,34 +237,34 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         delayed_days: formData.delayed_days || 7,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
-      });
+      }, selectedDays ? Array.from(selectedDays) : null);
 
       if (!success) throw new Error(error);
 
-      if (newContactId && selectedDays.size > 0) {
-        const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
-        await createContactDays(newContactId, daysToCreate);
-      }
+      // if (newContactId && selectedDays.size > 0) {
+      //   const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
+      //   await createContactDays(newContactId, daysToCreate);
+      // }
 
-      if ( newContactId && formData.status === 'active') {
-        await updateContact({
-        id: newContactId,
-        name: null,
-        email: null,
-        phone: null,
-        street_address: null,
-        postcode: null,
-        region_id: null,
-        adults: null,
-        children_gt16: null,
-        children_lt16: null,
-        status: formData.status,
-        delayed_days: formData.delayed_days || 7,
-        user_id: null,
-        owner_id: null,
-        notes: null 
-      })
-      };
+      // if ( newContactId && formData.status === 'active') {
+      //   await updateContact({
+      //   id: newContactId,
+      //   name: null,
+      //   email: null,
+      //   phone: null,
+      //   street_address: null,
+      //   postcode: null,
+      //   region_id: null,
+      //   adults: null,
+      //   children_gt16: null,
+      //   children_lt16: null,
+      //   status: formData.status,
+      //   delayed_days: formData.delayed_days || 7,
+      //   user_id: null,
+      //   owner_id: null,
+      //   notes: null 
+      // })
+      // };
 
       onContactAdded();
       setCondition1(false);
@@ -306,40 +306,40 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         children_gt16: formData.children_gt16 || null,
         children_lt16: formData.children_lt16 || null,
         notes: formData.notes.trim() || null,
-        status: formData.status === 'active' ? 'inactive' : formData.status,
+        status: formData.status ?? 'inactive',
         delayed_days: formData.delayed_days || 7,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
-      });
+      }, selectedDays ? Array.from(selectedDays) : null);
 
       if (!success) {
         throw new Error(error);
       }
     
-      if (newContactId && selectedDays.size > 0) {
-        const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
-        await createContactDays(newContactId, daysToCreate);
-      }
+      // if (newContactId && selectedDays.size > 0) {
+      //   const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
+      //   await createContactDays(newContactId, daysToCreate);
+      // }
 
-      if ( newContactId && formData.status === 'active') {
-        await updateContact({
-        id: newContactId,
-        name: null,
-        email: null,
-        phone: null,
-        street_address: null,
-        postcode: null,
-        region_id: null,
-        adults: null,
-        children_gt16: null,
-        children_lt16: null,
-        status: formData.status,
-        delayed_days: formData.delayed_days || 7,
-        user_id: null,
-        owner_id: null,
-        notes: null 
-      })
-      };
+      // if ( newContactId && formData.status === 'active') {
+      //   await updateContact({
+      //   id: newContactId,
+      //   name: null,
+      //   email: null,
+      //   phone: null,
+      //   street_address: null,
+      //   postcode: null,
+      //   region_id: null,
+      //   adults: null,
+      //   children_gt16: null,
+      //   children_lt16: null,
+      //   status: formData.status,
+      //   delayed_days: formData.delayed_days || 7,
+      //   user_id: null,
+      //   owner_id: null,
+      //   notes: null 
+      // })
+      // };
       
       onContactAdded();
       setCondition1(false);
@@ -404,7 +404,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             </div>
             <div>
             <p className="text-xs text-muted-foreground">
-                The following fileds must be unique: email, phone and the triad name-address-postcode.  
+                The following fields must be unique: email, phone and the triad name-address-postcode.  
             </p>
             </div>
             <div className="flex justify-between">

@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 
 export interface Entity {
   id: string;
+  country_id: string;
+  country_name: string;
   name: string;
   code: string | null;
   is_active: boolean;
@@ -41,13 +43,14 @@ export const useEntities = () => {
     }
   }, [user]);
 
-  const createEntity = async (name: string, code?: string, is_referrer?: boolean) => {
+  const createEntity = async (countryId: string, name: string, code?: string, is_referrer?: boolean) => {
     if (!profile?.role || profile.role !== 'admin') {
       throw new Error('Only admins can create entities');
     }
 
     try {
       const { data: entityId, error: rpcError } = await supabase.rpc('admin_create_entity', {
+        p_country_id: countryId,
         p_name: name,
         p_code: code || null,
         p_referrer: is_referrer || false

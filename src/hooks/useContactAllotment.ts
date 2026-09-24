@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/useToast';
 
 export interface ContactAllotment {
   allotment_id: string;
+  division_id: string;
   contact_id: string;
+  referrer_id: string;
   referrer_org: string;
   referrer_code: string;
   referrer_name: string;

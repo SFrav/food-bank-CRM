@@ -1,9 +1,12 @@
 import { User, UserPlus, Users } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDivisionSummary } from "@/hooks/useDivisionSummary";
 import { useProfile } from '@/hooks/useProfile';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 export function DivisionSummary() {
   const { profile } = useProfile();
@@ -12,6 +15,9 @@ export function DivisionSummary() {
       ? profile.entity_id ?? null
       : null
   );
+  const navigate = useNavigate();
+
+  const goTo = (path: string) => () => navigate(path);
 
   const totalPending =  Math.max(...divisions.map(d => d.pending_beneficiaries)); // divisions.reduce((sum, d) => sum + d.pending_beneficiaries, 0);
   const totalActive = divisions.reduce((sum, d) => sum + d.beneficiaries, 0);
@@ -34,8 +40,14 @@ export function DivisionSummary() {
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Division Summary</CardTitle>
+        <CardHeader className="flex justify-between">
+          <CardTitle>Division Summary
+            <PermissionGuard permission="canManageDivisionOpen">
+              <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
+                Edit settings
+              </Button>
+            </PermissionGuard>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -108,9 +120,16 @@ export function DivisionSummary() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex justify-between">
+          <div className="flex items-centre gap-2">
           <Users className="size-5" />
           Division Summary
+          </div>
+          <PermissionGuard permission="canManageDivisionOpen">
+              <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
+                Edit settings
+              </Button>
+            </PermissionGuard>
         </CardTitle>
       </CardHeader>
       <CardContent>

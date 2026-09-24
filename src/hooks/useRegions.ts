@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/useToast';
 
 export interface Region {
   id: string;
+  country_id: string;
+  country_name: string;
   name: string;
   code: string;
   is_active: boolean;
@@ -39,14 +41,15 @@ export const useRegions = () => {
       }  
   };
 
-  const createRegion = async (name: string, code: string) => {
+  const createRegion = async (name: string, code: string, country_id: string) => {
     if (!isAdmin()) {
       throw new Error('Only admins can create regions');
     }
     try {
       const { data, error } = await supabase.rpc('create_region', {
         p_name: name,
-        p_code: code
+        p_code: code,
+        p_country_id: country_id
       }).single();
 
       if (error) throw error;
@@ -62,6 +65,7 @@ export const useRegions = () => {
 
   const updateRegion = async (
     id: string,  
+    country_id: string | null,
     name?: string | null, 
     code?: string | null, 
     is_active?: boolean 
@@ -72,6 +76,7 @@ export const useRegions = () => {
     try {
       const { data, error } = await supabase.rpc('update_region', {
         p_id: id,
+        p_country_id: country_id,
         p_name: name,
         p_code: code,
         p_is_active: is_active

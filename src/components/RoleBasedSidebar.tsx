@@ -45,6 +45,7 @@ export const RoleBasedSidebar = ({
           { title: 'System Logs', url: '/admin/logs', icon: Database },
           // { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
           { title: 'Referral System', url: '/referrals', icon: UserPlus },
+          { title: 'Referrer ratings', url: '/referrers', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           // { title: 'System Settings', url: '/admin/settings', icon: Settings }
@@ -53,6 +54,7 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+           { title: 'Referrer ratings', url: '/referrers', icon: UserPlus },
           // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
@@ -64,6 +66,7 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+           { title: 'Referrer ratings', url: '/referrers', icon: UserPlus },
           // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
@@ -83,6 +86,7 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Referrer ratings', url: '/referrers', icon: UserPlus },
           // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
@@ -93,6 +97,7 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
+          { title: 'Referrer ratings', url: '/referrers', icon: UserPlus },
           // { title: 'Referral system', url: '/referrals', icon: UserPlus },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },

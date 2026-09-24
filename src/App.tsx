@@ -13,6 +13,7 @@ import PendingApproval from "./pages/PendingApproval";
 import Auth from "./pages/Auth";
 import Notifications from "./pages/Notifications";
 import Beneficiaries from "./pages/Beneficiaries";
+import Referrers from "./pages/Referrers";
 // import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import Dashboard from "./pages/Dashboard";
@@ -137,6 +138,15 @@ const App = () => (
                 <CRMLayout>
                   <Beneficiaries />
                 </CRMLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/referrers" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={['staff', 'branch_manager', 'manager', 'head', 'admin']}>
+                  <CRMLayout>
+                    <Referrers />
+                  </CRMLayout>
+                </RoleBasedRoute>
               </ProtectedRoute>
             } />
             <Route path="/services" element={
