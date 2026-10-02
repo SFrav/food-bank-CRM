@@ -17,6 +17,7 @@ export interface ReferrerRatingAverage {
 export interface ReferrerRating {
   id: string;
   referrer_id: string;
+  is_referrer: boolean;
   contact_id: string;
   rater_id: string;
   rate_screening: number;
@@ -25,6 +26,7 @@ export interface ReferrerRating {
   rate_enumeration: number;
   note: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export function useReferrerRating(referrerId?: string) {
@@ -116,6 +118,42 @@ export function useReferrerRating(referrerId?: string) {
     }
   }, [profile]);
 
+  const updateRating = useCallback(async (ratingData: {
+    referrer: string;
+    contact: string | null;
+    rating_screen: number | null;
+    rating_support: number | null;
+    rating_inform: number | null;
+    rating_enumeration: number | null;
+    notes: string | null;
+    updated_by: string;
+  }) => {
+    if (!ratingData.referrer) {
+      toast({ title: 'Error', description: 'Referrer ID is missing', variant: 'destructive' });
+      return { success: false, error: 'referrer_id missing' };
+    }
+    try {
+      const { data, error } = await supabase.rpc('update_referrer_rating', {
+        p_referrer_id: ratingData.referrer,
+        p_contact_id: ratingData.contact,
+        p_rate_screening: ratingData.rating_screen,
+        p_rate_support: ratingData.rating_support,
+        p_rate_inform: ratingData.rating_inform,
+        p_rate_enumeration: ratingData.rating_enumeration,
+        p_note: ratingData.notes,
+        p_updated_by: ratingData.updated_by
+      });
+      if (error) throw error;
+      // toast({ title: 'Success', description: 'Rating edited successfully' });
+      return { success: true, error: null };
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      console.error('Error updating rating:', err);
+      toast({ title: 'Error', description: error.message || 'Failed to update rating', variant: 'destructive' });
+      return { success: false, error: error.message };
+    }
+  }, [profile]);
+
   const deleteRating = useCallback(async (id: string) => {
     try {
       const { data, error } = await supabase.rpc('delete_referrer_rating', { p_id: id });
@@ -136,6 +174,7 @@ export function useReferrerRating(referrerId?: string) {
     loading,
     error,
     createRating,
+    updateRating,
     deleteRating,
     fetchAverageRatings,
     fetchRatings,

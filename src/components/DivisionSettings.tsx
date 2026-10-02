@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DivisionOpenTable } from '@/components/DivisionOpen';
 // import { RefreshCw } from 'lucide-react';
 import { useDivisions } from '@/hooks/useDivisions';
 import { useEntities } from '@/hooks/useEntities';
@@ -19,37 +20,20 @@ export const DivisionSettingsTable = () => {
   const { settingsMap, loading: settingsLoading, fetchSettings, updateSetting } = useDivisionSettings();
   const [filterEntityId, setFilterEntityId] = useState<string>('all');
 
-  useEffect(() => {
-    if (divisions) {
-      divisions.forEach(d => {
-        fetchSettings(d.id);
-        fetchOpen(d.id); 
-    });
-    }
-  }, [divisions, fetchSettings, fetchOpen]);
+  // useEffect(() => {
+  //   if (divisions) {
+  //     divisions.forEach(d => {
+  //       fetchSettings(d.id);
+  //       fetchOpen(d.id); 
+  //   });
+  //   }
+  // }, [divisions, fetchSettings, fetchOpen]);
 
   
-  const hourOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [];
-    for (let h = 8; h <= 18.5; h += 0.5) {
-      const label = `${Math.floor(h)}:${h % 1 === 0 ? '00' : '30'}${h < 12 ? 'am' : 'pm'}`;
-      opts.push({ value: h.toString(), label });
-    }
-    return opts;
-  }, []);
 
   const entityNames: Record<string, string> = Object.fromEntries(
     entities.filter(e => e.is_active && !e.is_referrer).map(e => [e.id, e.name])
   );
-
-  // const filteredDivisions = filterEntityId === 'all' 
-  //   ? [...divisions].sort((a, b) => {
-  //       const ea = entityNames[a.entity_id ?? ''] ?? '';
-  //       const eb = entityNames[b.entity_id ?? ''] ?? '';
-  //       if (ea !== eb) return ea.localeCompare(eb);
-  //       return a.name.localeCompare(b.name);
-  //     })
-  //   : divisions.filter((t) => t.entity_id === filterEntityId);
 
   const filteredDivisions = useMemo(() => {
     if (profile?.division_id) return divisions.filter((d) => d.id === profile?.division_id);
@@ -66,17 +50,33 @@ export const DivisionSettingsTable = () => {
 
   const rowSettings = (divisionId: string) => settingsMap[divisionId] ?? {};
 
-  const openCount = useCallback((divisionId: string) => {
-    return Object.values(openMap[divisionId] ?? {}).filter((o: any) => o.is_open).length;
-  }, [openMap]);
+  // const openCount = useCallback((divisionId: string) => {
+  //   fetchOpen(divisionId);
+  //   return Object.values(openMap[divisionId] ?? {}).filter((o: any) => o.is_open).length;
+  // }, [openMap]);
 
-  const handleFrequencyChange = async(divisionId: string, value: string) => {
+  useEffect(() => {
+      if (!filteredDivisions || filteredDivisions.length === 0 || !settingsMap || !openMap) return;
+      filteredDivisions.forEach(d => {
+        fetchSettings(d.id);
+        fetchOpen(d.id);
+      });
+    }, [filteredDivisions]); 
+
+  const handleUpdateOpen = async(divisionId: string, dayIdx: number, is_open: boolean, open_time: string, close_time: string) => {
+    await updateOpen(divisionId, dayIdx, is_open, open_time, close_time);
+    await fetchSettings(divisionId);
+  };
+
+  const handleFrequencyChange = useCallback(async(divisionId: string, value: string) => {
     await fetchOpen(divisionId);
     const raw = Number(value);
     const count = Object.values(openMap[divisionId] ?? {}).filter((o: any) => o.is_open).length;
-    const clamped = Math.min(raw, Math.max(0, count));
+    // const clamped = Math.min(raw, Math.max(0, count));
+    const clamped = Math.min(raw, count);
     await updateSetting(divisionId, 'frequency', String(clamped));
-  };
+    // await updateSetting(divisionId, 'frequency', String(value));
+  }, [openMap]);
 
   // const handleRefreshAll = async () => {
   //   await refetchDivisions();
@@ -86,6 +86,7 @@ export const DivisionSettingsTable = () => {
   // };
 
   return (
+    <div className="grid gap-6">
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -125,6 +126,7 @@ export const DivisionSettingsTable = () => {
               <TableRow>
                 <TableHead>Entity Name</TableHead>
                 <TableHead>Branch Name</TableHead>
+                <TableHead>Fee (local currency)</TableHead>
                 <TableHead>Allotment Duration (weeks)</TableHead>
                 <TableHead>Exclusion Period (weeks)</TableHead>
                 <TableHead>Visits Per Week (max)</TableHead>
@@ -150,6 +152,16 @@ export const DivisionSettingsTable = () => {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">{division.name}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          className="w-[100px]"
+                          value={s.fee ?? ''}
+                          onChange={e => updateSetting(division.id, 'fee', e.target.value)}
+                        />
                       </TableCell>
                       <TableCell>
                         <Input
@@ -193,5 +205,11 @@ export const DivisionSettingsTable = () => {
         </div>
       </CardContent>
     </Card>
+    <DivisionOpenTable 
+      openMap={openMap}
+      handleUpdateOpen={handleUpdateOpen}
+      filteredDivisions={filteredDivisions}
+    />
+  </div>
   );
 };

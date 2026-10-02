@@ -4,6 +4,7 @@ import { useDivisions } from './useDivisions';
 import { useToast } from '@/hooks/useToast';
 
 export interface DivisionSettings {
+  fee?: string;
   allotment_weeks?: string;
   exclusion_weeks?: string;
   frequency?: string;

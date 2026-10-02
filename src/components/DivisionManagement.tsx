@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDivisions, Division } from '@/hooks/useDivisions';
 import { useEntities } from '@/hooks/useEntities';
+import { useRegions, Region } from '@/hooks/useRegions';
 import { useProfile } from "@/hooks/useProfile";
 import { useToast } from '@/hooks/useToast';
 // import { PermissionGuard } from '@/components/PermissionGuard';
@@ -18,7 +19,9 @@ export const DivisionManagement = () => {
   const { profile } = useProfile();
   const { divisions, loading, createDivision, updateDivision, deleteDivision, refetch } = useDivisions();
   const { entities } = useEntities();
-  const [newDivisionEntityId, setNewDivisionEntityId] = useState<string>('');
+  const { regions, refetch: fetchRegions } = useRegions();
+  const [newDivisionEntityId, setNewDivisionEntityId] = useState<string>(profile?.entity_id ? profile.entity_id : '');
+  const [newDivisionRegionId, setNewDivisionRegionId] = useState<string>('');
   const [newDivisionName, setNewDivisionName] = useState('');
   const [newDivisionAddress, setNewDivisionAddress] = useState('');
   const [newDivisionPostcode, setNewDivisionPostcode] = useState('');
@@ -27,6 +30,7 @@ export const DivisionManagement = () => {
   const [editingDivisionAddress, setEditingDivisionAddress] = useState('');
   const [editingDivisionPostcode, setEditingDivisionPostcode] = useState('');
   const [editingDivisionEntityId, setEditingDivisionEntityId] = useState<string>('');
+  const [editingDivisionRegionId, setEditingDivisionRegionId] = useState<string>('');
   const [creatingDivision, setCreatingDivision] = useState(false);
   const [updatingDivision, setUpdatingDivision] = useState<string | null>(null);
   const [deletingDivision, setDeletingDivision] = useState<string | null>(null);
@@ -48,6 +52,24 @@ export const DivisionManagement = () => {
     if(profile?.entity_id) setNewDivisionEntityId(profile.entity_id);
     setNewDivisionEntityId(e_id);
   }, [profile]);
+
+  const filteredRegions = useMemo(() => {
+    if(!regions || !entities || newDivisionEntityId === '') return [];
+    const countryId = entities.find(e => e.id === newDivisionEntityId)?.country_id;
+    if(countryId) return regions.filter(r => r.country_id === countryId);
+    return ['Admin must set country first'];
+  }, [regions, entities, newDivisionEntityId])
+
+  const filteredRegionsEditing = useMemo(() => {
+    if(!regions || !entities || editingDivisionRegionId === '') return [];
+    const countryId = entities.find(e => e.id === editingDivisionEntityId)?.country_id;
+    if(countryId) return regions.filter(r => r.country_id === countryId);
+    return ['Admin must set country first'];
+  }, [regions, entities, editingDivisionEntityId])
+
+  const handleCreateDivRegionSelect = (e_id: string) => {
+    setNewDivisionRegionId(e_id);
+  };
 
   const filteredDivisions = useMemo(() => {
     if (profile?.entity_id) return divisions.filter((d) => d.entity_id ===profile?.entity_id);
@@ -72,9 +94,11 @@ export const DivisionManagement = () => {
       const entityId = newDivisionEntityId !== '' && newDivisionEntityId !== null ? newDivisionEntityId : profile.entity_id;
       const { success, error } = await createDivision(
         newDivisionName.trim(),
+        entityId,
         newDivisionAddress.trim(),
         newDivisionPostcode.trim(), 
-        entityId);
+        newDivisionRegionId
+        );
       if(!success) {
         // toast.error(error ?? 'Failed to create branch');
       return;
@@ -82,6 +106,7 @@ export const DivisionManagement = () => {
       setNewDivisionName('');
       setNewDivisionAddress('');
       setNewDivisionPostcode('');
+      setNewDivisionRegionId('');
       setNewDivisionEntityId('');
       syncOrgUnits();
     } catch (err: unknown) {
@@ -95,10 +120,12 @@ export const DivisionManagement = () => {
   const handleEditDivision = (division: Division) => {
     setEditingDivisionId(division.id);
     setEditingDivisionName(division.name);
+    setEditingDivisionPostcode(division.postcode);
+    setEditingDivisionRegionId(division.region_id || null);
     setEditingDivisionEntityId(division.entity_id || null);
   };
 
-  const handleSaveDivision = async (id: string) => {
+  const handleSaveDivision = useCallback(async (id: string) => {
     if (!editingDivisionName.trim()) {
       toast({ title: 'Error', description: 'Branch name is required', variant: 'destructive' });
       return;
@@ -107,21 +134,21 @@ export const DivisionManagement = () => {
       toast({ title: 'Error', description: 'Only admin and head can edit branches', variant: 'destructive' });
       return;
     }
+
     setUpdatingDivision(id);
     try {
-      const entityId =
-        editingDivisionEntityId !== null
-          ? editingDivisionEntityId
-          : null;
+      const entityId = profile?.entity_id? profile.entity_id : editingDivisionEntityId;
+      console.log(entityId);
       const { success, error } = await updateDivision(
         id, 
         editingDivisionName.trim(),
-        editingDivisionAddress.trim(),
-        editingDivisionPostcode.trim(),
+        editingDivisionAddress.trim() || null,
+        editingDivisionPostcode.trim() || null,
+        editingDivisionRegionId,
         entityId,
       );
       if(!success) {
-        // toast.error(error ?? 'Failed to create branch');
+        toast({ title: 'Error', description: error || 'Failed to update', variant: 'destructive' });
       return;
       }
       setEditingDivisionId(null);
@@ -136,11 +163,13 @@ export const DivisionManagement = () => {
     } finally {
       setUpdatingDivision(null);
     }
-  };
+  }, [profile, editingDivisionName, editingDivisionAddress, editingDivisionPostcode, editingDivisionRegionId, editingDivisionEntityId]);
 
   const handleCancelDivision = () => {
     setEditingDivisionId(null);
     setEditingDivisionName('');
+    setEditingDivisionPostcode('');
+    setEditingDivisionRegionId('');
     setEditingDivisionEntityId('');
   };
 
@@ -213,7 +242,7 @@ export const DivisionManagement = () => {
                 value={newDivisionPostcode}
                 onChange={handleNewDivisionPostcode}
               />
-              <Select value={profile?.entity_id ? profile.entity_id : newDivisionEntityId} onValueChange={handleCreateDivEntitySelect}>
+              <Select value={newDivisionEntityId} onValueChange={handleCreateDivEntitySelect}>
                 <SelectTrigger className="w-[140px]">
                    <SelectValue placeholder="Select entity"/>
                 </SelectTrigger>
@@ -222,6 +251,18 @@ export const DivisionManagement = () => {
                   {profile?.entity_id ? 
                   <SelectItem key={profile.entity_id} value={profile.entity_id}>{profile.entity}</SelectItem> 
                   : entities.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={newDivisionRegionId} 
+                      onValueChange={handleCreateDivRegionSelect}
+                      disabled={newDivisionEntityId === '' && !profile?.entity_id}>
+                <SelectTrigger className="w-[140px]">
+                   <SelectValue placeholder="Select region"/>
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredRegions.map((e) => (
                     <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -268,6 +309,7 @@ export const DivisionManagement = () => {
                 <TableHead>Address</TableHead>
                 <TableHead>Postcode</TableHead>
                 <TableHead>Entity</TableHead>
+                <TableHead>Region</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -275,7 +317,7 @@ export const DivisionManagement = () => {
             <TableBody>
               {filteredDivisions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No divisions found.</TableCell>
+                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No divisions found.</TableCell>
                 </TableRow>
               ) : (
                 filteredDivisions.map((division) => (
@@ -328,12 +370,30 @@ export const DivisionManagement = () => {
                         <span className="text-muted-foreground">{entities.filter(e => e.is_active).find(e => e.id === division.entity_id)?.name || '—'}</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      {editingDivisionId === division.id ? (
+                      <Select value={editingDivisionRegionId} 
+                              onValueChange={setEditingDivisionRegionId}
+                              disabled={editingDivisionEntityId === 'none'}>
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue placeholder="Select region"/>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredRegionsEditing.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                       ) : (
+                        <span className="text-muted-foreground">{regions.find(r => r.id === division.region_id)?.name || '—'}</span>
+                      )}
+                    </TableCell>
                     <TableCell>{new Date(division.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {editingDivisionId === division.id ? (
                           <div>
-                            <Button size="sm" onClick={() => handleSaveDivision(division.id)} disabled={updatingDivision === division.id}>
+                            <Button size="sm" onClick={() => handleSaveDivision(division.id)} disabled={updatingDivision === division.id || editingDivisionName === ''}>
                               {updatingDivision === division.id ? <RefreshCw className="size-3 animate-spin" /> : <Save className="size-3" />}
                             </Button>
                             <Button size="sm" variant="outline" onClick={handleCancelDivision} disabled={updatingDivision === division.id}>

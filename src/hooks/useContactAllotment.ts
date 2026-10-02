@@ -61,7 +61,7 @@ export const useContactAllotment = (contactId: string | null) => {
         const error = err as { message?: string };
         console.error(err);
         setError(true);
-        toast({ title: 'Error', description: error.message || 'test', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return { success: false, error: error.message };
       } finally {
         setLoading(false);
@@ -83,7 +83,7 @@ export const useContactAllotment = (contactId: string | null) => {
         const error = err as { message?: string }; 
         console.error(err);
         setError(true);
-        toast({ title: 'Error', description: error.message || 'test', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return { success: false, error: error.message };
       } finally {
         setLoading(false);
@@ -105,7 +105,7 @@ export const useContactAllotment = (contactId: string | null) => {
         const error = err as { message?: string };
         console.error(err);
         setError(true);
-        toast({ title: 'Error', description: error.message || 'test', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return { success: false, error: error.message };
       } finally {
         setLoading(false);
@@ -120,6 +120,7 @@ export const useContactAllotment = (contactId: string | null) => {
     ) => {
       if (!contactId) return { success: false, error: 'No contact' };
       setLoading(true);
+      try{
       const { data, error: rpcErr } = await supabase.rpc(
         'insert_allotment_discretionary', {
           p_contact_id: contactId,
@@ -131,15 +132,18 @@ export const useContactAllotment = (contactId: string | null) => {
       ).single();
       
       if (rpcErr) throw rpcErr;
-      if (rpcErr) {
-        console.error('Error inserting allotment:', rpcErr);
-        // toast({ title: 'Error', description: rpcError.message, variant: 'destructive' });
-        return { success: false, error: rpcErr.message };
-      }
       await fetch();
       // toast({ title: 'Success', description: 'Visit approved' });
-      setLoading(false);
       return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      console.error('Error inserting allotment:', err);
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+      
+    }
     },
     [contactId]
   );

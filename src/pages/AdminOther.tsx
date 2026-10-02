@@ -6,7 +6,7 @@ import { EntitySettingsTable } from '@/components/EntitySettings';
 // import { GlobalSettings } from '@/components/GlobalSettings';
 import { DivisionManagement } from '@/components/DivisionManagement';
 import { DivisionSettingsTable } from '@/components/DivisionSettings';
-import { DivisionOpenTable } from '@/components/DivisionOpen';
+// import { DivisionOpenTable } from '@/components/DivisionOpen';
 
 
 export default function AdminOther() {
@@ -33,7 +33,7 @@ export default function AdminOther() {
 
           <PermissionGuard permission="canManageDivisionOpen">
             <DivisionSettingsTable />
-            <DivisionOpenTable />
+            {/* <DivisionOpenTable /> */}
           </PermissionGuard>
           
           {/* <GlobalSettings /> */}

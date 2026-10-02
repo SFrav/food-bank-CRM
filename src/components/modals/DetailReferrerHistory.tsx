@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StarRating } from "@/components/ui/star-rating";
 import { Label } from '@/components/ui/label';
@@ -19,12 +19,18 @@ const ReferrerRatingHistory: React.FC<ReferrerRatingHistoryProps> = ({
 }) => {
   const { profile } = useProfile();
   const { ratings, fetchRatings, loading, deleteRating } = useReferrerRating(referrerId);
-  
+
   // useEffect(() => {
   //   if (referrerId && profile) {
   //     fetchRatings(referrerId);
   //   }
   // }, [referrerId, profile]);
+
+  const sortedRatings = useMemo(() => {
+    if (ratings) {
+      return [...ratings].filter(r => r.id !== '').sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+    }
+  },[ratings]) 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -35,14 +41,14 @@ const ReferrerRatingHistory: React.FC<ReferrerRatingHistoryProps> = ({
         <div className="space-y-4">
           {loading ? <p>Loading...</p> : (
             <div className="space-y-2">
-              {ratings.map((r) => (
+              {sortedRatings.map((r) => (
                 <div key={r.id}>
                   <div className="flex justify-between items-center py-2 border-b">
                     <div className="flex items-center gap-2">
                       {/* <Label className="text-muted-foreground">Rated By:</Label>
                       <span className="font-medium">{r.rater_id}</span> */}
                       <Label className="text-sm text-muted-foreground">Rated on:</Label>
-                      <span className="text-sm">{new Date(r.created_at).toLocaleDateString()}</span>
+                      <span className="text-sm">{new Date(r.updated_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                     {profile?.role === 'admin' && (

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 // import { useAuth } from '@/hooks/useAuth';
 import { useContacts, Contact, ContactDuplicate } from '@/hooks/useContacts';
 import { useContactDays } from '@/hooks/useContactDays';
@@ -18,6 +19,7 @@ import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import { useDivisionOpen } from '@/hooks/useDivisionOpen';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { DuplicateContactCard } from '@/components/modals/subcomponents/AddContactDuplicate';
+// import { TooltipTrigger } from '@radix-ui/react-tooltip';
 
 
 interface AddContactModalProps {
@@ -55,6 +57,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     name: string;
     email: string;
     phone: string;
+    gender: "male" | "female" | "undefined" | null;
+    age_bracket:  "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65" | null;
     street_address: string;
     postcode: string;
     region_id: string,
@@ -63,12 +67,15 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     children_lt16: number;
     status: "pending" | "active" | "inactive" | "banned" | "merged";
     delayed_days: number;
+    duration_request: number;
     owner_id: string;
     notes: string;
   }>({
     name: '',
     email: '',
     phone: '',
+    gender: null,
+    age_bracket: null,
     postcode: '',
     street_address: '',
     region_id: '',
@@ -77,6 +84,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     children_lt16: 0,
     status: 'inactive',
     delayed_days: 7,
+    duration_request: null,
     owner_id: '',
     notes: '',
   });
@@ -90,14 +98,17 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const referralCondition = formData.status === 'pending' || formData.status === 'active';
   
   const canApprove = ['head', 'manager', 'branch_manager'].includes(profile?.role ?? '');
+  const isStaff = profile?.role === 'staff';
   const isVolunteer = profile?.role === 'volunteer';
+  const isReferrer = profile?.role === 'referrer';
 
   const activeRegions = regions.filter(r => r.is_active === true)
 
   useEffect(() => {
     if (!profile || !isOpen) return;
-    const divs = divisions.filter((d) => d.region_id === formData.region_id);
+    const divs = divisions.filter((d) => d.region_id === formData.region_id && d.is_active);
     setDivsRegion(divs);
+    if (isVolunteer || isStaff || isReferrer) setFormData(prev => ({ ...prev, region_id: profile?.region_id })); //@role based restriction on region - initialise data
     if (!isOpen || nameInit ==='' || formData.name !== '') return;
     setFormData(prev => ({ ...prev, name: nameInit }));
   }, [profile, isOpen, formData.region_id, formData.name, nameInit, divisions]);
@@ -123,6 +134,15 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     return parseInt(divSettings.frequency ?? '1', 10);
   }, [divId, settingsMap]);
 
+  const maxDuration = useMemo(() => {
+    if (!divId) return 0;
+    const divSettings = settingsMap[divId] ?? {};
+    const maxD = parseInt(divSettings.allotment_weeks ?? '0', 10);
+    if (formData.duration_request === null || formData.duration_request === 0) setFormData(prev => ({ ...prev, duration_request: maxD }));
+    return maxD
+  }, [divId, settingsMap]);
+
+
   const handleDayToggle = useCallback((day: number) => {
     setSelectedDays(prev => {
       const newSet = new Set(prev);
@@ -134,7 +154,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   }, [maxDaysSelectable]);
 
   const days = useMemo(() => {
-    return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((label, i) => {
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((label, i) => {
       const isOpenDay = openDayArray?.[i]?.is_open ?? false;
       const isSelected = selectedDays.has(i);
       const disabled = !isOpenDay || (isSelected ? false : selectedDays.size >= maxDaysSelectable);
@@ -148,6 +168,14 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     setDuplicateCandidates(null);
     setDupExact(false);
   }, []);
+
+  const handleGender = useCallback((v: Contact["gender"]) => setFormData(prev => (
+    {...prev, gender: v})
+  ), []);
+
+  const handleAgeChange = useCallback((v: Contact["age_bracket"]) => setFormData(prev => (
+    {...prev, age_bracket: v})
+  ), []);
 
   const handleRegionChange = useCallback((v: string) => setFormData(prev => (
     {...prev, region_id: v})
@@ -173,6 +201,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     setFormData({
       name: '',
       email: '',
+      gender: null,
+      age_bracket: null,
       phone: '',
       street_address: '',
       postcode: '',
@@ -182,6 +212,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       children_lt16: 0,
       status: 'inactive',
       delayed_days: 7,
+      duration_request: null,
       owner_id: '',
       notes: '',
     }); 
@@ -225,6 +256,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       const { success, data: newContactId, error } = await createContact({
         name: formData.name,
         email: formData.email.trim() || null,
+        gender: formData.gender || null,
+        age_bracket: formData.age_bracket || null,
         phone: formData.phone.trim() || null,
         street_address: formData.street_address.trim() || null,
         postcode: formData.postcode.trim() || null,
@@ -235,6 +268,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         notes: formData.notes.trim() || null,
         status: formData.status === 'active' ? 'inactive' : formData.status,
         delayed_days: formData.delayed_days || 7,
+        duration_request: formData.duration_request === 0 || formData.duration_request === null ? null : formData.duration_request,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
       }, selectedDays ? Array.from(selectedDays) : null);
@@ -298,6 +332,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       const { success, data: newContactId, error } = await createContact({
         name: formData.name,
         email: formData.email.trim() || null,
+        gender: formData.gender || null,
+        age_bracket: formData.age_bracket || null,
         phone: formData.phone.trim() || null,
         street_address: formData.street_address.trim() || null,
         postcode: formData.postcode.trim() || null,
@@ -308,6 +344,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         notes: formData.notes.trim() || null,
         status: formData.status ?? 'inactive',
         delayed_days: formData.delayed_days || 7,
+        duration_request: formData.duration_request === 0 || formData.duration_request === null ? null : formData.duration_request,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
       }, selectedDays ? Array.from(selectedDays) : null);
@@ -447,6 +484,43 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="gender" className="text-sm">Gender:</label>
+              <Select
+                value={formData.gender}
+                onValueChange={handleGender}
+              >
+                <SelectTrigger className="sm:w-full">
+                  <SelectValue placeholder="Select gender"/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="age-bracket" className="text-sm">Age:</label>
+              <Select
+                value={formData.age_bracket}
+                onValueChange={handleAgeChange}
+              >
+                <SelectTrigger className="sm:w-full">
+                  <SelectValue placeholder="Select age"/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="le24"> {"≤24"} </SelectItem>
+                  <SelectItem value="25-34">{"25-34"}</SelectItem>
+                  <SelectItem value="35-44">{"35-44"}</SelectItem>
+                  <SelectItem value="45-54">{"45-54"}</SelectItem>
+                  <SelectItem value="55-64">{"55-64"}</SelectItem>
+                  <SelectItem value="ge65">{"≥65"}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <Input
@@ -490,6 +564,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 readOnly
               />
               <Select
+                disabled={regions.length === 0 || isReferrer || isStaff || isVolunteer}
                 value={formData.region_id || ""}
                 onValueChange={handleRegionChange}
               >
@@ -526,9 +601,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               </Select>
             </div>
           </PermissionGuard>
-          <div className="flex gap-2 space-x-2 w-full sm:w-full md:w-full">
+          <div className="flex gap-1 space-x-2 w-full sm:w-full md:w-full">
             <div>
-            <label htmlFor="status" className="text-sm">Change status:</label>
+            <label htmlFor="status" className="text-sm">Status:</label>
             <Select
               value={formData.status}
               onValueChange={handleStatusChange}
@@ -545,12 +620,34 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             </Select>
           </div>
           {approveEnabled && (
-            <div>
-            <label htmlFor="delay" className="text-sm">Delay start (days):</label>
-            <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
-              value={formData.delayed_days} onChange={handleInputChange} placeholder={String(formData.delayed_days)} />
+            <div className="grid grid-cols-2 gap-1">
+              <div>      
+                <label htmlFor="delay" className="text-sm">Delay:</label>     
+                <Tooltip >
+                  <TooltipTrigger>
+                    <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
+                    value={formData.delayed_days} onChange={handleInputChange} placeholder={String(formData.delayed_days)} />
+                    </TooltipTrigger> 
+                  <TooltipContent>
+                    <p className="text-sm">Delay start (days)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div>
+                <label htmlFor="delay" className="text-sm">Duration:</label>
+                <Tooltip >
+                  <TooltipTrigger>
+                    <Input id="duration-request" name="duration_request" type='number' min={0} max={maxDuration} step={1} 
+                      value={formData.duration_request} onChange={handleInputChange} placeholder={String(formData.duration_request)} />
+                  </TooltipTrigger> 
+                  <TooltipContent>
+                    <p className="text-sm">Duration required (weeks - maximum differs by branch)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
             )}
+            
         </div>
         {formData.owner_id && approveEnabled && (
           <div className="grid grid-cols-7 gap-2 mt-1 border-b">

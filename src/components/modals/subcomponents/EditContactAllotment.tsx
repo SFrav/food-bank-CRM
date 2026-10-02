@@ -13,7 +13,10 @@ import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import { Contact } from '@/hooks/useContacts';
 import { ContactAllotment } from '@/hooks/useContactAllotment';
 import { ContactFormData } from '@/components/modals/EditContact';
-import ReferrerRating from '@/components/modals/subcomponents/ReferrerRating'
+import { useProfile } from "@/hooks/useProfile";
+import { useReferrerRating, ReferrerRating } from "@/hooks/useReferrerRating";
+import AddReferrerRating from '@/components/modals/subcomponents/AddReferrerRating'
+import EditReferrerRating from '@/components/modals/subcomponents/EditReferrerRating'
 
 
 interface ContactEditAllotmentProps {
@@ -60,11 +63,18 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   handleMarkAttended,
   handleMarkServed,
 }) => {
+  const { profile } = useProfile();
   const { divisions } = useDivisions();
   const { settingsMap, fetchSettings } = useDivisionSettings();
+  const { ratings, loading: loadingRatings, fetchRatings } = useReferrerRating();
   const [divId, setDivId] = useState('');
   const [showAll, setShowAll] = useState(false);
-  const [isRateReferrerOpen, setIsRateReferrerOpen] = useState(false);
+  const [isAddRateReferrerOpen, setIsAddRateReferrerOpen] = useState(false);
+  const [isEditRateReferrerOpen, setIsEditRateReferrerOpen] = useState(false);
+  const [ratingInactive, setRatingInactive] = useState(true);
+  const [filteredRatings, setFilteredRatings] = useState([]);
+
+  const callerReferrer = profile?.role === 'referrer';
 
   const divisionSettings = settingsMap[divId || ''] ?? {}; 
   const allotmentWeeks = parseInt(divisionSettings.allotment_weeks ?? '0', 10);
@@ -108,6 +118,25 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     return sortedAllotment[0] ?? undefined;
   }, [allotment]);
 
+  useEffect(() => {
+    if (!contact || !profile || !lastAllotment) return; //|| isAddRateReferrerOpen
+    fetchRatings(lastAllotment.referrer_id);
+    if (!loadingRatings) {
+      setRatingInactive(!ratings.some(r => r.is_referrer));
+      setFilteredRatings(ratings.filter(r => r.contact_id === contact.id && r.rater_id === profile.user_id));
+    }
+  }, [contact, profile, lastAllotment, loadingRatings, isAddRateReferrerOpen]);
+
+  // const filteredRatings = useMemo (() => {
+  //   if (!lastAllotment?.referrer_id || !contact?.id || !profile?.user_id) return [];
+  //   return ratings.filter(r => r.contact_id === contact.id && r.rater_id === profile.user_id);
+  // }, [ratings, lastAllotment, profile, contact.id, isAddRateReferrerOpen]) 
+
+  // const ratingInactive = useMemo (() => {
+  //   if (!lastAllotment?.referrer_id || !ratingsFetched) return true;
+  //   return !ratings.some(r => r.referrer_id === lastAllotment.referrer_id && r.is_referrer);
+  // }, [ratings, lastAllotment?.referrer_id, ratingsFetched])
+
   const normalizeDate = (d: string | Date) => {
     const n = new Date(d);
     n.setHours(0, 0, 0, 0);
@@ -125,6 +154,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
 
   const today = useMemo(() => new Date().toLocaleDateString('en-GB'), []);
 
+  
   // const enrichedAllotments = useMemo(() => allotment.map(a => ({ ...a, _d: normalizeDate(a.date) })), [allotment]);
 
   //  const currentAllotment = useMemo(() => {
@@ -144,12 +174,12 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
 
   const handleShowScope = useCallback((v: string) => {setShowAll(v === 'all')}, []);
   
-
+//contact?.name ?? 'Contact'
   return (
     <div>
     <div className="flex items-center justify-between px-4 py-2 border-b">
       <div className="flex items-center text-sm gap-2">
-        <span className="font-sm">{contact?.name ?? 'Contact'}</span>
+        <span className="font-sm">{String(ratingInactive)}</span>
         
         </div>
           <Select
@@ -323,7 +353,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
               <Select
                 value={newAllotmentType}
                 onValueChange={v => handleAddAllotment(v)}
-                disabled={loadingAllotment}
+                disabled={loadingAllotment || callerReferrer}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select type" />
@@ -335,33 +365,51 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
               </Select>
             </div>
           </div>
+          <div className="grid grid-cols-1 text-sm w-full"> 
+            {lastAllotment?.referrer_name ? (
+            <span className="sm:table-cell sm:max-w-full">
+              Last referred by: {lastAllotment?.referrer_name}{' '}
+              {filteredRatings.length > 0 ? (
+                <a
+                  className="text-primary cursor-pointer hover:underline"
+                  onClick={() => setIsEditRateReferrerOpen(true)}
+                  hidden={callerReferrer || ratingInactive}
+                >
+                  (update referrer rating)
+                </a>
+              ) : (
+                <a
+                  className="text-primary cursor-pointer hover:underline"
+                  onClick={() => setIsAddRateReferrerOpen(true)}
+                  hidden={callerReferrer || ratingInactive}
+                >
+                  (rate referrer)
+                </a>
+              )}
+            </span>
+          ) : (
+            <span>  </span>
+          )}
+          {lastAllotment?.approver_name ? (
+            <span className="sm:table-cell sm:max-w-full">
+              Last approved by: {lastAllotment?.approver_name}
+            </span>
+          ) : (
+            <span></span>
+          )}
+        </div>
       </div>
     </form>
-    <div className="grid grid-cols-1 text-sm w-full"> 
-      {lastAllotment?.referrer_name ? (
-      <span className="sm:table-cell sm:max-w-full">
-        Last referred by: {lastAllotment?.referrer_name}{' '}
-        <a
-          className="text-primary cursor-pointer hover:underline"
-          onClick={() => setIsRateReferrerOpen(true)}
-        >
-          (rate referrer)
-        </a>
-      </span>
-    ) : (
-      <span>  </span>
-    )}
-      {lastAllotment?.approver_name ? (
-        <span className="sm:table-cell sm:max-w-full">
-          Last approved by: {lastAllotment?.approver_name}
-        </span>
-      ) : (
-        <span></span>
-      )}
-    </div>
-    <ReferrerRating
-      isOpen={isRateReferrerOpen}
-      onClose={() => setIsRateReferrerOpen(false)}
+    <AddReferrerRating
+      isOpen={isAddRateReferrerOpen}
+      onClose={() => setIsAddRateReferrerOpen(false)}
+      referrerId={lastAllotment?.referrer_id ?? ''}
+      contactId={contact?.id ?? ''}
+    />
+    <EditReferrerRating
+      isOpen={isEditRateReferrerOpen}
+      onClose={() => setIsEditRateReferrerOpen(false)}
+      filteredRatings={filteredRatings[0]}
       referrerId={lastAllotment?.referrer_id ?? ''}
       contactId={contact?.id ?? ''}
     />

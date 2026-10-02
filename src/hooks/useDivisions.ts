@@ -6,13 +6,14 @@ import { useToast } from '@/hooks/useToast';
 export interface Division {
   id: string;
   name: string;
+  manager_id: string | null;
+  head_id: string | null;
   entity_id: string | null;
   street_address: string | null;
   postcode: string | null;
-  head_id: string | null;
-  manager_id: string | null;
-  created_at: string;
   region_id: string | null;
+  is_active: string | null;
+  created_at: string;
 }
 
 export function useDivisions(
@@ -55,6 +56,7 @@ export function useDivisions(
     entityId: string, 
     address: string, 
     postcode: string, 
+    regionId: string,
     headId?: string | null
   ) => {
     try{
@@ -63,6 +65,7 @@ export function useDivisions(
         p_entity_id: entityId,
         p_street_address: address,
         p_postcode: postcode,
+        p_region_id: regionId,
         p_head_id: headId,
       });
       if (rpcErr) throw rpcErr;
@@ -80,8 +83,9 @@ export function useDivisions(
   const updateDivision = async (
     id: string,
     name: string,
-    address: string, 
-    postcode: string,
+    address: string | null, 
+    postcode: string | null,
+    regionId: string,
     entityId: string,
     headId?: string | null
   ) => {
@@ -92,6 +96,7 @@ export function useDivisions(
         p_entity_id: entityId,
         p_street_address: address,
         p_postcode: postcode,
+        p_region_id: regionId,
         p_head_id: headId,
       });
       if (rpcErr) throw rpcErr;

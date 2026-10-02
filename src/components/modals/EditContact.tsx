@@ -36,6 +36,8 @@ interface EditContactModalProps {
 export interface FormData {
   name: string;
   email: string;
+  gender: "male" | "female" | "undefined" | null;
+  age_bracket:  "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65" | null;
   phone: string;
   street_address: string;
   postcode: string;
@@ -45,18 +47,21 @@ export interface FormData {
   children_lt16: number;
   status: "pending" | "active" | "inactive" | "banned" | "merged";
   delayed_days: number;
+  duration_request: number;
   owner_id: string;
   notes_new: string;
 }
 
 export type { FormData as ContactFormData };
 
-const emptyForm: FormData = { name: '', email: '', phone: '', street_address: '', postcode: '', region_id: '', adults: 1, children_gt16: 0, children_lt16: 0, status: 'inactive', delayed_days: 7, owner_id: '', notes_new: '' };
+const emptyForm: FormData = { name: '', email: '', gender: null, age_bracket: null, phone: '', street_address: '', postcode: '', region_id: '', adults: 1, children_gt16: 0, children_lt16: 0, status: 'inactive', delayed_days: 7, duration_request: null, owner_id: '', notes_new: '' };
 
 
 const formFromContact = (c: Contact): FormData => ({
   name: c.name || '',
   email: c.email || '',
+  gender: c.gender || null,
+  age_bracket:  c.age_bracket || null,
   phone: c.phone || '',
   street_address: c.street_address || '',
   postcode: c.postcode || '',
@@ -66,6 +71,7 @@ const formFromContact = (c: Contact): FormData => ({
   children_lt16: c.children_lt16 || 0,
   status: c.status || 'inactive',
   delayed_days: c.delayed_days || 7,
+  duration_request: c.duration_request || null,
   owner_id: c.owner_id || '',
   notes_new: '',
 });
@@ -144,7 +150,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   const activeRegions = regions.filter(r => r.is_active === true)
 
-  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === formData.region_id), [divisions, formData.region_id]);
+  const divsRegion = useMemo(() => divisions.filter(d => d.region_id === formData.region_id && d.is_active), [divisions, formData.region_id]);
 
   const divId = useMemo(() => {
     const managerId = formData.owner_id || contact?.owner_id;
@@ -188,6 +194,14 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const handleGender = useCallback((v: Contact["gender"]) => setFormData(prev => (
+      {...prev, gender: v})
+    ), []);
+  
+    const handleAgeChange = useCallback((v: Contact["age_bracket"]) => setFormData(prev => (
+      {...prev, age_bracket: v})
+    ), []);
 
   const handleRegionChange = useCallback((v: string) => setFormData(prev => (
     {...prev, region_id: v})
@@ -239,6 +253,14 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     return parseInt(divSettings.frequency ?? '1', 10)
       // return divSettings;
     }, [divId, settingsMap, formData.owner_id]);
+
+  const maxDuration = useMemo(() => {
+    if (!divId) return 0;
+    const divSettings = settingsMap[divId] ?? {};
+    const maxD = parseInt(divSettings.allotment_weeks ?? '0', 10);
+    if (formData.duration_request === null || formData.duration_request === 0) setFormData(prev => ({ ...prev, duration_request: maxD }));
+    return maxD
+    }, [divId, settingsMap]);
 
   const handleDayToggle = useCallback(async(day: number) => {
     if (!contact) return;
@@ -366,6 +388,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         id: contact.id,
         name: formData.name.trim(),
         email: formData.email.trim() || null,
+        gender: formData.gender || null,
+        age_bracket: formData.age_bracket || null,
         phone: formData.phone.trim() || null,
         street_address: formData.street_address.trim() || null,
         postcode: formData.postcode.trim() || null,
@@ -375,6 +399,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         children_lt16: formData.children_lt16 || null,
         status: formData.status || 'inactive',
         delayed_days: formData.delayed_days || 7,
+        duration_request: formData.duration_request === 0 || formData.duration_request === null ? null : formData.duration_request,
         user_id: user.id,
         owner_id: formData.owner_id === '' ? contact.owner_id : formData.owner_id || profile?.user_id,
         notes: formData.notes_new.trim() || null 
@@ -475,7 +500,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                   onDayToggle={handleDayToggle}
                   openMap={openMap}
                   maxDaysSelectable={maxDaysSelectable}
+                  maxDuration={maxDuration}
                   onInputChange={handleInputChange}
+                  onGender={handleGender}
+                  onAgeChange={handleAgeChange}
                   onRegionChange={handleRegionChange}
                   onDivisionChange={handleDivisionChange}
                   onStatusChange={handleStatusChange}

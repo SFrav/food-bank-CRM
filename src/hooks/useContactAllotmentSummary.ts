@@ -44,10 +44,10 @@ export const useContactAllotmentSummary = (
       if (rpcErr) throw rpcErr;
       setData(rpcData as WeeklySummary[]);
     } catch (err: unknown) {
-      const message = (err as any).message || 'Failed to load summary';
+      const error = err as { message?: string };
       console.error(err);
       setError(true);
-      toast({ title: 'Error', description: message, variant: 'destructive' });
+      toast({ title: 'Error', description: error.message || "Failed to load", variant: 'destructive' });
     } finally {
       setLoading(false);
     }

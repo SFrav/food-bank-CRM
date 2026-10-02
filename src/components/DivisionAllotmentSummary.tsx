@@ -57,7 +57,7 @@ export const DivisionAllotmentSummary = () => {
       <CardHeader>
         <CardTitle>Weekly Referral / Drop‑in Summary</CardTitle>
         <CardDescription>
-          View the flow of new cases, drop‑ins, referrals and absences by week.
+          View a summary of new cases, drop‑ins, referrals and absences by week.
         </CardDescription>
       </CardHeader>
 

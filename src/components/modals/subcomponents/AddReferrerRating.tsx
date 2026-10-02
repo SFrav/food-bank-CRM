@@ -16,7 +16,7 @@ interface RateReferrerProps {
 }
 
 
-const ReferrerRateForm: React.FC<RateReferrerProps> = ({
+const AddReferrerRate: React.FC<RateReferrerProps> = ({
   isOpen,
   onClose,
   referrerId,
@@ -35,6 +35,7 @@ const ReferrerRateForm: React.FC<RateReferrerProps> = ({
     const { name, value } = e.target;
     setNote(value);
   }, []);
+  
 
   const handleClose = () => {
     setRatingScreen(5);
@@ -140,4 +141,4 @@ const ReferrerRateForm: React.FC<RateReferrerProps> = ({
   );
 };
 
-export default ReferrerRateForm;
+export default AddReferrerRate;

@@ -6,6 +6,8 @@ export interface Contact {
   id: string;
   name: string;
   email: string | null;
+  gender: "male" | "female" | "undefined" | null;
+  age_bracket:  "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65" | null;
   phone: string | null;
   street_address: string | null;
   postcode: string | null;
@@ -19,6 +21,7 @@ export interface Contact {
   hallal?: boolean;
   status: "pending" | "active" | "inactive" | "banned" | "merged";
   delayed_days: number;
+  duration_request?: number;
   notes: string | null;
   created_at?: string;
   owner_id?: string;
@@ -29,6 +32,8 @@ export interface ContactDuplicate {
   id: string;
   name: string;
   email: string | null;
+  gender: "male" | "female" | "undefined" | null;
+  age_bracket:  "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65" | null;
   phone: string | null;
   street_address: string | null;
   postcode: string | null;
@@ -61,6 +66,8 @@ export interface UseContactsReturn {
   createContact: (data: {
     name: string;
     email: string | null;
+    gender: "male" | "female" | "undefined" | null;
+    age_bracket:  "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65" | null;
     phone: string | null;
     street_address: string | null;
     postcode: string | null;
@@ -71,6 +78,7 @@ export interface UseContactsReturn {
     notes: string | null;
     status: "pending" | "active" | "inactive" | "banned" | "merged";
     delayed_days: number | 7;
+    duration_request?: number | null
     user_id: string;
     owner_id?: string;
   }, days?: number[]) => Promise<{ success: boolean; data?: string; error?: string }>;
@@ -184,6 +192,8 @@ export const useContacts = (
         const { data, error: rpcError } = await supabase.rpc('create_contact', {
           p_name: c.name,
           p_email: c.email,
+          p_gender: c.gender,
+          p_age_bracket: c.age_bracket,
           p_phone: c.phone,
           p_address: c.street_address,
           p_postcode: c.postcode,
@@ -194,6 +204,7 @@ export const useContacts = (
           p_notes: c.notes,
           p_status: c.status,
           p_delayed_days: c.delayed_days,
+          p_duration_request: c.duration_request ?? null,
           p_user_id: c.user_id,
           p_owner_id: c.owner_id,
           p_days: days ?? null,
@@ -225,6 +236,8 @@ export const useContacts = (
         p_id: c.id,
         p_name: c.name,
         p_email: c.email,
+        p_gender: c.gender,
+        p_age_bracket: c.age_bracket,
         p_phone: c.phone,
         p_address: c.street_address, 
         p_postcode: c.postcode,
@@ -238,6 +251,7 @@ export const useContacts = (
         p_hallal: c.hallal,
         p_status: c.status,
         p_delayed_days: c.delayed_days,
+        p_duration_request: c.duration_request ?? null,
         p_user_id: c.user_id,
         p_owner_id: c.owner_id,
         p_notes: c.notes,

@@ -7,23 +7,29 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useEntities } from '@/hooks/useEntities';
-import { useDivisions, Division } from '@/hooks/useDivisions';
+import { Division } from '@/hooks/useDivisions';
 import { useDivisionOpen } from '@/hooks/useDivisionOpen';
 import { useDivisionClosed, DivisionClosed } from '@/hooks/useDivisionClosed';
-import { useDivisionSettings } from '@/hooks/useDivisionSettings';
+// import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import { useProfile } from "@/hooks/useProfile";
 import { useToast } from '@/hooks/useToast';
 import { format } from 'date-fns';
 
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thusday', 'Friday', 'Saturday', 'Sunday'];
+interface DivisionOpenTableProps {
+  openMap: Record<string, Record<number, any>>;
+  handleUpdateOpen: (divisionId: string, dayIdx: number, is_open: boolean, open_time: string, close_time: string) => Promise<void>;
+  filteredDivisions: Division[];
+}
 
-export const DivisionOpenTable = () => {
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thusday', 'Friday', 'Saturday'];
+
+export const DivisionOpenTable = ({ openMap, handleUpdateOpen, filteredDivisions }: DivisionOpenTableProps) => {
   const { toast } = useToast();
   const { profile } = useProfile();
   const { entities } = useEntities();
-  const { divisions, loading: divisionsLoading } = useDivisions();
-  const { fetchSettings } = useDivisionSettings();
-  const { openMap, loading: openLoading, fetchOpen, updateOpen } = useDivisionOpen();
+  // const { divisions, loading: divisionsLoading } = useDivisions();
+  // const { fetchSettings } = useDivisionSettings();
+  const { loading: openLoading } = useDivisionOpen();
   const { divisionClosed, loading: closedLoading, fetchClosed, createClosed, updateClosed, deleteClosed } = useDivisionClosed();
   const [creatingClosed, setCreatingClosed] = useState(false);
   const [addClosedDate, setAddClosedDate] = useState(new Date());
@@ -31,22 +37,24 @@ export const DivisionOpenTable = () => {
   const [selectedDivisionId, setSelectedDivisionId] = useState<string | null>(null);
   const [filterEntityId, setFilterEntityId] = useState<string>('all');
 
-  const entityNames: Record<string, string> = Object.fromEntries(
-    entities.filter(e => e.is_active && !e.is_referrer).map(e => [e.id, e.name])
-  );
+  // const map = openMap;
 
-  const filteredDivisions = useMemo(() => {
-    if (profile?.division_id) return divisions.filter((d) => d.id === profile?.division_id);
-    if (profile?.entity_id) return divisions.filter((d) => d.entity_id === profile?.entity_id);
-    return filterEntityId === 'all' 
-    ? [...divisions].sort((a, b) => {
-        const ea = entityNames[a.entity_id ?? ''] ?? '';
-        const eb = entityNames[b.entity_id ?? ''] ?? '';
-        if (ea !== eb) return ea.localeCompare(eb);
-        return a.name.localeCompare(b.name);
-      })
-    : divisions.filter((d) => d.entity_id === filterEntityId);
-  }, [profile, divisions, filterEntityId]);
+  // const entityNames: Record<string, string> = Object.fromEntries(
+  //   entities.filter(e => e.is_active && !e.is_referrer).map(e => [e.id, e.name])
+  // );
+
+  // const filteredDivisions = useMemo(() => {
+  //   if (profile?.division_id) return divisions.filter((d) => d.id === profile?.division_id);
+  //   if (profile?.entity_id) return divisions.filter((d) => d.entity_id === profile?.entity_id);
+  //   return filterEntityId === 'all' 
+  //   ? [...divisions].sort((a, b) => {
+  //       const ea = entityNames[a.entity_id ?? ''] ?? '';
+  //       const eb = entityNames[b.entity_id ?? ''] ?? '';
+  //       if (ea !== eb) return ea.localeCompare(eb);
+  //       return a.name.localeCompare(b.name);
+  //     })
+  //   : divisions.filter((d) => d.entity_id === filterEntityId);
+  // }, [profile, divisions, filterEntityId]);
 
   const filteredClosedDates = useMemo(() => {
     if (divisionClosed) {
@@ -59,18 +67,17 @@ export const DivisionOpenTable = () => {
   },[divisionClosed])
 
   useEffect(() => {
-    if (filteredDivisions) {
-      filteredDivisions.forEach(d => {
-        fetchOpen(d.id); 
-        fetchClosed(d.id);
-      });
-    }
-  }, [filteredDivisions, fetchOpen, fetchClosed]);
+    if (!openMap || !filteredDivisions) return;
+    filteredDivisions.forEach(d => {
+      // fetchOpen(d.id); 
+      fetchClosed(d.id);
+    });
+  }, [openMap, filteredDivisions]);
 
-  const handleUpdateOpen = async(divisionId: string, dayIdx: number, is_open: boolean, open_time: string, close_time: string) => {
-    await updateOpen(divisionId, dayIdx, is_open, open_time, close_time);
-    await fetchSettings(divisionId);
-  };
+  // const handleUpdateOpen = async(divisionId: string, dayIdx: number, is_open: boolean, open_time: string, close_time: string) => {
+  //   await updateOpen(divisionId, dayIdx, is_open, open_time, close_time);
+  //   await fetchSettings(divisionId);
+  // };
 
   const formatTime = (t: string | null) => t ? t.slice(0, 5) : '';
 

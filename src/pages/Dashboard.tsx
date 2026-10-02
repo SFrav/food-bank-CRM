@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DivisionSummary } from "@/components/dashboard/DivisionSummary";
+import { ReferrerSummary } from "@/components/dashboard/ReferrerSummary";
 import { DivisionAllotmentSummary } from "@/components/DivisionAllotmentSummary";
+import { ReferrerAllotmentSummary } from "@/components/ReferrerAllotmentSummary";
 // import { DivisionChart } from "@/components/dashboard/DivisionBeneficiaryChart";
 import { CalendarDays } from "lucide-react";
 import { DashboardHeader } from "@/components/DashboardHeader";
@@ -48,10 +50,17 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <DashboardHeader role= {role || 'staff'} /> 
+        <DashboardHeader role= {role} /> 
+      </div>
+      {profile?.role === 'referrer' ? 
+      <div>
+        <ReferrerSummary/>
+        <ReferrerAllotmentSummary/>
       </div>
 
+      :
       <DivisionSummary />
+      }
 
       {/* <PermissionGuard permission="canManageDivisionOpen">
         <Card>

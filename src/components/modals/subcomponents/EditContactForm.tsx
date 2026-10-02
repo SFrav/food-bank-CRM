@@ -10,6 +10,7 @@ import { Region } from '@/hooks/useRegions';
 import { Division } from '@/hooks/useDivisions';
 import { DivisionOpen } from '@/hooks/useDivisionOpen';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContactFormData } from '@/components/modals/EditContact';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { useProfile } from "@/hooks/useProfile";
@@ -22,7 +23,10 @@ interface ContactEditFormProps {
   onDayToggle: (day: number) => void;
   openMap: Record<string, Record<number, DivisionOpen>>; 
   maxDaysSelectable: number;
+  maxDuration: number;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onGender: (v: string) => void;
+  onAgeChange: (v: string) => void;
   onRegionChange: (v: string) => void;
   onDivisionChange: (v: string) => void;
   onStatusChange: (v: string) => void;
@@ -56,7 +60,10 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
   onDayToggle,
   openMap,
   maxDaysSelectable,
+  maxDuration,
   onInputChange,
+  onGender,
+  onAgeChange,
   onRegionChange,
   onDivisionChange,
   onStatusChange,
@@ -86,7 +93,8 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
 
   // const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  const isManager = ['manager', 'branch_manager'].includes(profile?.role ?? '');
+  //@role based permissions
+  // const isManager = ['manager', 'branch_manager'].includes(profile?.role ?? '');
   const isReferrer = profile?.role === 'referrer';
   const isStaff = profile?.role === 'staff';
   const isVolunteer = profile?.role === 'volunteer';
@@ -111,7 +119,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
   }, [divsRegion, openDayArray, formData.owner_id]); 
 
   const days = useMemo(() => {
-    return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((label, i) => {
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((label, i) => {
       const isOpenDay = openDayArray?.[i]?.is_open ?? false;
       const isSelected = selectedDays.has(i);
       const disabled = !isOpenDay || (isSelected ? false : selectedDays.size >= maxDaysSelectable);
@@ -163,6 +171,43 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="gender" className="text-sm">Gender:</label>
+          <Select
+            value={formData.gender}
+            onValueChange={onGender}
+          >
+            <SelectTrigger className="sm:w-full">
+              <SelectValue placeholder="Select gender"/>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="age-bracket" className="text-sm">Age:</label>
+          <Select
+            value={formData.age_bracket}
+            onValueChange={onAgeChange}
+          >
+            <SelectTrigger className="sm:w-full">
+              <SelectValue placeholder="Select age"/>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="le24"> {"≤24"} </SelectItem>
+              <SelectItem value="25-34">{"25-34"}</SelectItem>
+              <SelectItem value="35-44">{"35-44"}</SelectItem>
+              <SelectItem value="45-54">{"45-54"}</SelectItem>
+              <SelectItem value="55-64">{"55-64"}</SelectItem>
+              <SelectItem value="ge65">{"≥65"}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2 w-[50%] sm:w-full">
           <Label htmlFor="phone">Phone</Label>
           <Input id="phone" name="phone" value={formData.phone} onChange={onInputChange} placeholder="Phone number" />
@@ -199,7 +244,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               className="sr-only w-[0%]"
             />
             <Select
-              disabled={isLoadingRegions || regions.length === 0 || isManager || isReferrer || isStaff || isVolunteer}
+              disabled={isLoadingRegions || regions.length === 0 || isReferrer || isStaff || isVolunteer}
               value={formData.region_id || "none"}
               onValueChange={onRegionChange}
             >
@@ -240,7 +285,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex gap-2 space-x-2 w-full">
+          <div className="flex gap-1 space-x-1 w-full">
             <div>
               <label htmlFor="status" className="text-sm">Change status:</label>
               <Select
@@ -262,10 +307,31 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               </Select>
             </div>
             {approveEnabled && (
-            <div>
-            <label htmlFor="delay" className="text-sm ">Delay start (days):</label>
-            <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
-              value={formData.delayed_days} onChange={onInputChange} placeholder={String(formData.delayed_days)} />
+            <div className="grid grid-cols-2 gap-1">
+              <div>
+              <label htmlFor="delay" className="text-sm ">Delay:</label>
+              <Tooltip >
+                <TooltipTrigger>
+                  <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
+                    value={formData.delayed_days} onChange={onInputChange} placeholder={String(formData.delayed_days)} />
+                </TooltipTrigger> 
+                <TooltipContent>
+                  <p className="text-sm">Delay start (days)</p>
+                </TooltipContent>
+              </Tooltip>
+              </div>
+              <div>
+              <label htmlFor="delay" className="text-sm">Duration:</label>
+              <Tooltip >
+                <TooltipTrigger>
+                  <Input id="duration-request" name="duration_request" type='number' min={0} max={maxDuration} step={1} 
+                    value={formData.duration_request} onChange={onInputChange} placeholder={String(formData.duration_request)} />
+                </TooltipTrigger> 
+                  <TooltipContent>
+                    <p className="text-sm">Duration required (weeks - maximum differs by branch)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
             )}
           </div>
