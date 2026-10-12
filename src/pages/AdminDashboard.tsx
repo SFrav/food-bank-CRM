@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 // import { RoleBadge } from '@/components/RoleBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProfile } from '@/hooks/useProfile';
 import { Users, Settings, Shield, Database, User, Sliders } from 'lucide-react';
-import { DashboardHeader } from '@/components/DashboardHeader';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 
 const AdminDashboard: React.FC = () => {
   const { profile } = useProfile();

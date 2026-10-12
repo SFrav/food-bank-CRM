@@ -7,6 +7,7 @@ export interface Country {
   id: string;
   name: string;
   code: string;
+  currency_symbol: string;
   is_active: boolean;
   created_at: string;
   created_by: string | null;
@@ -39,14 +40,15 @@ export const useCountries = () => {
       }  
   };
 
-  const createCountry = async (name: string, code: string) => {
+  const createCountry = async (name: string, code: string, currency: string) => {
     if (!isAdmin()) {
       throw new Error('Only admins can create countries');
     }
     try {
       const { data, error } = await supabase.rpc('create_country', {
         p_name: name,
-        p_code: code
+        p_code: code,
+        p_currency: currency
       }).single();
 
       if (error) throw error;
@@ -64,6 +66,7 @@ export const useCountries = () => {
     id: string,  
     name?: string | null, 
     code?: string | null, 
+    currency?: string | null,
     is_active?: boolean 
   ) => {
     if (!isAdmin()) {
@@ -74,6 +77,7 @@ export const useCountries = () => {
         p_id: id,
         p_name: name,
         p_code: code,
+        p_currency: currency,
         p_is_active: is_active
       });
 

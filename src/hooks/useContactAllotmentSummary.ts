@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/useToast';
 
 
-export interface WeeklySummary {
+export interface Summary {
   week_start: string; 
   cases: number;
   dropins: number;
@@ -13,7 +13,7 @@ export interface WeeklySummary {
 
 export const useContactAllotmentSummary = (
 ) => {
-  const [data, setData] = useState<WeeklySummary[]>([]);
+  const [data, setData] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<boolean | undefined>();
   const { toast } = useToast();
@@ -42,7 +42,7 @@ export const useContactAllotmentSummary = (
       );
 
       if (rpcErr) throw rpcErr;
-      setData(rpcData as WeeklySummary[]);
+      setData(rpcData as Summary[]);
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error(err);
@@ -51,7 +51,7 @@ export const useContactAllotmentSummary = (
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   // useEffect(() => {
   //   fetch();

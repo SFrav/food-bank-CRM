@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Printer } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import { useDivisions, Division } from '@/hooks/useDivisions';
 import { useDivisionSettings } from '@/hooks/useDivisionSettings';
 import { Contact } from '@/hooks/useContacts';
 import { ContactAllotment } from '@/hooks/useContactAllotment';
+import { useContactAllotmentSummary } from '@/hooks/useContactAllotmentSummary';
+import { usePrintSlip } from '@/hooks/usePrintSlip';
 import { ContactFormData } from '@/components/modals/EditContact';
 import { useProfile } from "@/hooks/useProfile";
 import { useReferrerRating, ReferrerRating } from "@/hooks/useReferrerRating";
@@ -20,11 +23,14 @@ import EditReferrerRating from '@/components/modals/subcomponents/EditReferrerRa
 
 
 interface ContactEditAllotmentProps {
+  isOpen: boolean;
   contact: Contact | null; 
   formData: ContactFormData;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   handleSubmit?: () => void;
   isLoading: boolean;
+  isLoadingAllotment: boolean; 
+  // isLoadingSummary: boolean;
   isDirty: boolean;
   handleMarkServing: (entryId: string) => Promise<void>;
   handleToggleInfant: () => Promise<void>;
@@ -32,8 +38,8 @@ interface ContactEditAllotmentProps {
   handleToggleVegetarian: () => Promise<void>;
   handleToggleHallal: () => Promise<void>;
   handleAddAllotment: (v: string) => Promise<void>;
-  loadingAllotment: boolean; 
   allotment: ContactAllotment[];
+  // queueNumber: number;
   newAllotmentType: string;
   // setNewAllotmentType: React.Dispatch<React.SetStateAction<string>>;
   newAllotmentNote: string;
@@ -44,11 +50,14 @@ interface ContactEditAllotmentProps {
 
  
 const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
+  isOpen,
   contact,
   formData,
   handleInputChange,
   handleSubmit,
   isLoading,
+  isLoadingAllotment,
+  // isLoadingSummary,
   isDirty,
   handleMarkServing,
   handleToggleInfant,
@@ -56,8 +65,8 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   handleToggleVegetarian,
   handleToggleHallal,
   handleAddAllotment,
-  loadingAllotment,
   allotment,
+  // queueNumber,
   newAllotmentType,
   // setNewAllotmentType,
   handleMarkAttended,
@@ -67,6 +76,8 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   const { divisions } = useDivisions();
   const { settingsMap, fetchSettings } = useDivisionSettings();
   const { ratings, loading: loadingRatings, fetchRatings } = useReferrerRating();
+  const { data: allotmentSummary, fetch: fetchSummary, loading: loadingSummary } = useContactAllotmentSummary();
+  const { printSlip } = usePrintSlip();
   const [divId, setDivId] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [isAddRateReferrerOpen, setIsAddRateReferrerOpen] = useState(false);
@@ -87,14 +98,45 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   // }, [allotment, handleMarkServing])
 
   useEffect(() => {
-    if (!contact) return;
+    if (!contact || !isOpen) return;
     const div = String(divisions.filter((d) => d.manager_id === contact.owner_id).map(d => (d.id))); 
     setDivId(div);
 
     if (div && !settingsMap[div]) {
       fetchSettings(div);
     }
-  }, [contact, divisions, fetchSettings]);
+  }, [contact, divisions]);
+
+  const currentWeekStart = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - d.getDay() + 1);
+    return d;
+  })();
+
+  useEffect(() => {
+    if(!contact?.id || !allotment || allotment.length === 0 || !isOpen) return; 
+    const today = new Date();
+    const tomorrow = new Date();
+    today.setTime(1);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayAllotment = allotment.find(entry => new Date(entry.date) >= today && new Date(entry.date) < tomorrow);
+    if (!todayAllotment) return;
+    console.log(todayAllotment);
+    const div = todayAllotment?.division_id;
+    // new Promise(f => setTimeout(f, 1000));
+    const latestSummary = Object.values(allotmentSummary)[0];
+    if (latestSummary?.week_start) {
+      const latestWeek = new Date(latestSummary.week_start);
+      if (latestWeek.toDateString() === currentWeekStart.toDateString()) return;
+    };
+    fetchSummary(div, new Date(), tomorrow);
+  }, [contact?.id, allotment]);
+
+  const queueNumber = useMemo(() => {
+    const sum = Object.values(allotmentSummary);
+    return (sum[0]?.referrals || 0) + (sum[0]?.dropins || 0)
+  }, [allotmentSummary]);
 
   const displayedAllotment = useMemo(() => {
     if (!allotment) return [];
@@ -117,25 +159,15 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     });
     return sortedAllotment[0] ?? undefined;
   }, [allotment]);
-
+  
   useEffect(() => {
-    if (!contact || !profile || !lastAllotment) return; //|| isAddRateReferrerOpen
+    if (!contact || !profile || !lastAllotment || !isOpen) return; //|| isAddRateReferrerOpen
     fetchRatings(lastAllotment.referrer_id);
     if (!loadingRatings) {
       setRatingInactive(!ratings.some(r => r.is_referrer));
       setFilteredRatings(ratings.filter(r => r.contact_id === contact.id && r.rater_id === profile.user_id));
     }
   }, [contact, profile, lastAllotment, loadingRatings, isAddRateReferrerOpen]);
-
-  // const filteredRatings = useMemo (() => {
-  //   if (!lastAllotment?.referrer_id || !contact?.id || !profile?.user_id) return [];
-  //   return ratings.filter(r => r.contact_id === contact.id && r.rater_id === profile.user_id);
-  // }, [ratings, lastAllotment, profile, contact.id, isAddRateReferrerOpen]) 
-
-  // const ratingInactive = useMemo (() => {
-  //   if (!lastAllotment?.referrer_id || !ratingsFetched) return true;
-  //   return !ratings.some(r => r.referrer_id === lastAllotment.referrer_id && r.is_referrer);
-  // }, [ratings, lastAllotment?.referrer_id, ratingsFetched])
 
   const normalizeDate = (d: string | Date) => {
     const n = new Date(d);
@@ -154,32 +186,13 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
 
   const today = useMemo(() => new Date().toLocaleDateString('en-GB'), []);
 
-  
-  // const enrichedAllotments = useMemo(() => allotment.map(a => ({ ...a, _d: normalizeDate(a.date) })), [allotment]);
-
-  //  const currentAllotment = useMemo(() => {
-  //    const recent = enrichedAllotments
-  //      .filter(a => {
-  //        const n = new Date(); n.setHours(0,0,0,0);
-  //        const limit = new Date(n); limit.setDate(n.getDate() + 2);
-  //        return a._d >= n && a._d <= limit;
-  //      })
-  //      .sort((a, b) => b._d.getTime() - a._d.getTime());
-  //    return recent[0] ?? null;
-  //  }, [enrichedAllotments]);
-
-  //  const isServed = useMemo(() => {
-  //    return enrichedAllotments.some(a => a.served && new Date(a.date).toLocaleDateString('en-GB') === today);
-  //  }, [enrichedAllotments, today]);
-
   const handleShowScope = useCallback((v: string) => {setShowAll(v === 'all')}, []);
   
-//contact?.name ?? 'Contact'
   return (
     <div>
     <div className="flex items-center justify-between px-4 py-2 border-b">
       <div className="flex items-center text-sm gap-2">
-        <span className="font-sm">{String(ratingInactive)}</span>
+        <span className="font-sm">{contact?.name ?? 'Contact'}</span>
         
         </div>
           <Select
@@ -306,20 +319,36 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                   <span>
                     Visit {entry.visit_num ?? '-'} on {entryDate}
                   </span>
-                  <div className="flex justify-center">
                     {todayMatch && (
+                      <div className="flex items-center gap-1 justify-end mr-5">
                       <Checkbox
                         checked={entry.attended ?? false}
-                        disabled={loadingAllotment}
+                        disabled={isLoadingAllotment}
                         onCheckedChange={() => !entry.attended && handleMarkAttended(entry.allotment_id)}
                       />
-                    )}
-                  </div>
+                      <Printer
+                        className={`${todayMatch && entry.attended && !entry.serving && !entry.served ? 
+                          "size-4 cursor-pointer text-muted-foreground hover:text-foreground" : "size-4 invisible"}`}
+                          
+                        onClick={() => printSlip({
+                          queueNumber,
+                          name: contact?.name || '',
+                          adults: formData.adults || 0,
+                          childrenGt16: formData.children_gt16 || 0,
+                          childrenLt16: formData.children_lt16 || 0,
+                          infant: contact?.infant || false,
+                          allergies: contact?.allergies || false,
+                          vegetarian: contact?.vegetarian || false,
+                          hallal: contact?.hallal || false
+                        })}
+                      />
+                      </div>
+                    )} 
                   <div className="flex justify-center">
                     {todayMatch && (
                       <Checkbox
                         checked={entry.serving ?? false}
-                        disabled={loadingAllotment}
+                        disabled={isLoadingAllotment}
                         onCheckedChange={() => {
                           // if (entry.serving) return;
                           handleMarkServing(entry.allotment_id);
@@ -337,7 +366,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
                         <Checkbox
                           checked={entry.served ?? false}
                           onCheckedChange={() => !entry.served && handleMarkServed(entry.allotment_id)}
-                          disabled={!(entry.serving) && loadingAllotment}
+                          disabled={!(entry.serving) && isLoadingAllotment}
                         />
                       ) : (
                         // If not in the 5‑day window, show the checkbox disabled
@@ -353,7 +382,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
               <Select
                 value={newAllotmentType}
                 onValueChange={v => handleAddAllotment(v)}
-                disabled={loadingAllotment || callerReferrer}
+                disabled={isLoadingAllotment || callerReferrer}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select type" />

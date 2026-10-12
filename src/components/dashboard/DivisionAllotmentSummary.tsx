@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useProfile } from '@/hooks/useProfile';
 import { useDivisions } from '@/hooks/useDivisions';
 import { useContactAllotmentSummary, WeeklySummary } from '@/hooks/useContactAllotmentSummary';
-import { DivisionChart } from '@/components/dashboard/DivisionBeneficiaryChart';
+import { DivisionChart } from '@/components/dashboard/subcomponents/DivisionBeneficiaryChart';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';

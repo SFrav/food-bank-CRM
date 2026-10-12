@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useReferrerSummary } from "@/hooks/useReferrerSummary";
 import { useProfile } from '@/hooks/useProfile';
+import { LoadingDashboard } from '@/loading/LoadingDashboard'
 
 export function ReferrerSummary() {
   const { profile } = useProfile();
@@ -22,49 +23,10 @@ export function ReferrerSummary() {
   const totalActive = referrers.reduce((sum, r) => sum + r.beneficiaries, 0);
   // const totalWorkforce = referrers.reduce((sum, r) => sum + r.workforce, 0);
 
-  if (!profile) {
+  if (loading || !profile) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Referrer Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-12 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex justify-between">
-          <CardTitle>Referrer Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[1,2,3,4].map(i => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Referrer Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* <div className="text-sm text-destructive">
-            Error loading referrer data: {error}
-          </div> */}
-        </CardContent>
-      </Card>
-    );
+      <LoadingDashboard/>
+    )
   }
 
   if (referrers.length === 1) {

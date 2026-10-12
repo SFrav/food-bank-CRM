@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,6 +43,8 @@ export default function AddEventBulkModal({
   const [file, setFile] = useState<File | null>(null);
   const [events, setEvents] = useState<CalendarCreateInput[]>([]);
   const [fileName, setFileName] = useState<string>("");
+
+  const isMobile = useMemo(() => /Mobi|Android/i.test(navigator.userAgent), []);
 
   const stripQuotes = (s: string | null | undefined) => {
     if (!s) return "";
@@ -135,6 +137,13 @@ export default function AddEventBulkModal({
     reader.readAsText(f);
   };
 
+  const handleMobileFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    handleFiles(files);           // re‑use the same validation logic
+    e.target.value = '';          // reset the input for subsequent selects
+  };
+
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
@@ -198,6 +207,16 @@ export default function AddEventBulkModal({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isMobile ? (
+          <input
+              type="file"
+              accept=".csv"
+              multiple={false}
+              onChange={handleMobileFileChange}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-indigo-50 
+                        file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+            />
+          ) : (
           <NativeFileUploader
             onFilesSelected={handleFileSelected}
             accept={[".csv"]}
@@ -205,7 +224,7 @@ export default function AddEventBulkModal({
             maxFiles={1}
             multiple={false}
           />
-
+          )}
           {fileName && (
             <p className="text-sm text-muted-foreground">
               Selected file: {fileName}

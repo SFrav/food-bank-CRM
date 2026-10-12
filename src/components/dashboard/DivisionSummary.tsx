@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDivisionSummary } from "@/hooks/useDivisionSummary";
 import { useProfile } from '@/hooks/useProfile';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { LoadingDashboard } from '@/loading/LoadingDashboard'
 
 export function DivisionSummary() {
   const { profile } = useProfile();
@@ -24,55 +25,10 @@ export function DivisionSummary() {
   const totalReferrer = divisions.reduce((sum, d) => sum + d.referrers, 0);
   const totalWorkforce = divisions.reduce((sum, d) => sum + d.workforce, 0);
 
-  if (!profile) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Division Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-12 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex justify-between">
-          <CardTitle>Division Summary
-            <PermissionGuard permission="canManageDivisionOpen">
-              <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
-                Edit settings
-              </Button>
-            </PermissionGuard>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[1,2,3,4].map(i => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Division Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-destructive">
-            Error loading division data: {error}
-          </div>
-        </CardContent>
-      </Card>
-    );
+  if (loading || !profile) {
+    return(
+      <LoadingDashboard/>
+    )
   }
 
   const isPrivileged = ['admin', 'head'].includes(profile?.role ?? '');
@@ -116,7 +72,6 @@ export function DivisionSummary() {
     );
   }
 
-  // Privileged: show table
   return (
     <Card>
       <CardHeader>

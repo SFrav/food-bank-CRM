@@ -105,7 +105,7 @@ const handleRestore = useCallback((id: string) => {
       <ContactsTable 
         // key={refreshKey} 
         contacts={contacts}
-        loading={loading}
+        isLoading={loading}
         filterQueue={filterQueue}
         setFilterQueue={setFilterQueue}
         onDuplicateAdd={handleDuplicateAdd}

@@ -297,7 +297,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
                   <SelectValue placeholder="Select Status"/>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="pending">{isReferrer ? "Referred" : "Pending"}</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   {contact.status === 'active' ?
                     <SelectItem value="active">Active</SelectItem> : 
@@ -307,9 +307,9 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               </Select>
             </div>
             {approveEnabled && (
-            <div className="grid grid-cols-2 gap-1">
-              <div>
-              <label htmlFor="delay" className="text-sm ">Delay:</label>
+            <div className="flex flex-cols-2 gap-1 ">
+              <div className="grid ">
+                <label htmlFor="delay" className="text-sm ">Delay:</label>
               <Tooltip >
                 <TooltipTrigger>
                   <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
@@ -320,12 +320,12 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
                 </TooltipContent>
               </Tooltip>
               </div>
-              <div>
+              <div className="grid">
               <label htmlFor="delay" className="text-sm">Duration:</label>
               <Tooltip >
                 <TooltipTrigger>
                   <Input id="duration-request" name="duration_request" type='number' min={0} max={maxDuration} step={1} 
-                    value={formData.duration_request} onChange={onInputChange} placeholder={String(formData.duration_request)} />
+                    value={!formData.duration_request ? 0 : formData.duration_request } onChange={onInputChange} placeholder={String(formData.duration_request)} />
                 </TooltipTrigger> 
                   <TooltipContent>
                     <p className="text-sm">Duration required (weeks - maximum differs by branch)</p>
@@ -336,19 +336,19 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             )}
           </div>
           {approveEnabled && daySelectCondition && (
-          <div className="grid grid-cols-7 gap-2 mt-0 border-b">
+          <div className="grid grid-cols-7 gap-2 mt-1 border-b">
             {days.map(({ label, isSelected, disabled }, i) => (
-                <div key={i} className="">
-                  <label className="text-xs">{label}</label>
-                  <input
-                    type="checkbox"
-                    // hidden={disabled}
-                    disabled={disabled}
-                    checked={isSelected}// && isOpenDay}
-                    onChange={() => onDayToggle(i)}
-                    className="size-4 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
+              <div key={i} className="flex flex-col items-center gap-1">
+                <label className="text-xs">{label}</label>
+                <input
+                  type="checkbox"
+                  // hidden={disabled}
+                  disabled={disabled}
+                  checked={isSelected}// && isOpenDay}
+                  onChange={() => onDayToggle(i)}
+                  className="size-4 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
             ))}
           </div>
           )}

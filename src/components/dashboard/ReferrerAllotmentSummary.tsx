@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { useProfile } from '@/hooks/useProfile';
 import { useReferrerAllotmentSummary, ReferrerWeeklySummary } from '@/hooks/useReferrerAllotmentSummary';
-import { ReferrerBeneficiaryChart } from '@/components/dashboard/ReferrerBeneficiaryChart';
+import { ReferrerBeneficiaryChart } from '@/components/dashboard/subcomponents/ReferrerBeneficiaryChart';
 import { Input } from '@/components/ui/input';
 // import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -99,10 +99,10 @@ export const ReferrerAllotmentSummary = () => {
           </Button>
         </div>
 
-        {isSingleUser && (
+        {/* {isSingleUser && (
           <div className="text-sm text-muted-foreground p-2 bg-muted rounded-md">
           </div>
-        )}
+        )} */}
 
         {!loading && (
           <ReferrerBeneficiaryChart data={chartData} />

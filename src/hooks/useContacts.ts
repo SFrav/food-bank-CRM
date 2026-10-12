@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ViolationMessages } from '@/integrations/supabase/violationsPolicyFkey';
 import { useToast } from '@/hooks/useToast';
 
 export interface Contact {
@@ -117,7 +118,12 @@ export const useContacts = (
       const error = err as { message?: string }; 
       console.error('Contacts fetch error', err);
       setError(error.message || 'Failed to load contacts');
-      toast({ title: 'Error', description: error.message || 'Failed to load contacts', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message || 'Failed to load contacts', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

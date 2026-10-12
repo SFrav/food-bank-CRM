@@ -163,78 +163,71 @@ export const DivisionOpenTable = ({ openMap, handleUpdateOpen, filteredDivisions
           </div> ) : (
             <div className="mb-0"></div>
           )}
-        {/* <div className="grid gap-1 md:grid-cols-1 lg:grid-cols-1"> */}
           {filteredDivisions?.map(d => (
-            <div className="flex flex-row">
+            <div className="lg:flex lg:flex-row md:flex md:flex-row sm:grid">
             <Card key={d.id} className="w-[80%]">
               <CardHeader>
                 {/* <CardTitle></CardTitle> */}
                 <CardDescription className="text-full">{d.name}</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* <div className="items-end"> */}
-                <div className="grid grid-cols-7 text-sm mb-1"> 
-                  {DAY_NAMES.map((day, dayIdx) => (
-                    <label key={dayIdx} > 
-                      {day}
-                    </label> 
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 mb-1 ">
-                  {DAY_NAMES.map((day , dayIdx) => (
-                    <Switch
-                      key={dayIdx}
-                      checked={rowOpeningHours(d.id, dayIdx).is_open}
-                      disabled={openLoading}
-                      onCheckedChange={(checked) => handleUpdateOpen(
-                        d.id,
-                        dayIdx,
-                        checked,
-                        rowOpeningHours(d.id, dayIdx).open_time,
-                        rowOpeningHours(d.id, dayIdx).close_time
-                      )}
-                      className="w-11"
-                    />
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-7">
-                  {DAY_NAMES.map((_, dayIdx) => {
-                    const data = rowOpeningHours(d.id, dayIdx);
-                    return (
-                      <div className="flex gap-1" key={dayIdx}>
-                        <div className="px-1 border-r tabIndex={-1}">
-                        <label className="text-sm"> 
-                          Open
-                        </label>
-                        <Input
-                          type="time"
-                          value={formatTime(data.open_time)}
-                          onChange={(e) => {
-                            handleUpdateOpen(d.id, dayIdx, data.is_open, e.target.value, data.close_time)}
-                          }
-                          className="size-9 p-2"
+                <div className="grid lg:grid-cols-7 md:grid-cols-7 sm:grid-cols-1 text-sm mb-1"> 
+                  {DAY_NAMES.map((day, dayIdx) => {
+                   const data = rowOpeningHours(d.id, dayIdx);
+                   return(
+                    <div>
+                      <div className="grid">
+                        <label key={dayIdx} > 
+                          {day}
+                        </label> 
+                        <Switch
+                          key={dayIdx}
+                          checked={rowOpeningHours(d.id, dayIdx).is_open}
+                          disabled={openLoading}
+                          onCheckedChange={(checked) => handleUpdateOpen(
+                            d.id,
+                            dayIdx,
+                            checked,
+                            rowOpeningHours(d.id, dayIdx).open_time,
+                            rowOpeningHours(d.id, dayIdx).close_time
+                          )}
+                          className="w-11"
                         />
-                        </div>
-                        <div>
-                        <label className="text-sm"> 
-                          Close
-                        </label>
-                        <Input
-                          type="time"
-                          value={formatTime(data.close_time)}
-                          onChange={(e) => {
-                            handleUpdateOpen(d.id, dayIdx, data.is_open, data.open_time, e.target.value)}
-                          }
-                          className="size-9 p-2"
-                        />
+                        <div className="flex gap-1" key={dayIdx}>
+                          <div className="px-1 border-r tabIndex={-1}">
+                          <label className="text-sm"> 
+                            Open
+                          </label>
+                          <Input
+                            type="time"
+                            value={formatTime(data.open_time)}
+                            onChange={(e) => {
+                              handleUpdateOpen(d.id, dayIdx, data.is_open, e.target.value, data.close_time)}
+                            }
+                            className="size-9 p-2"
+                          />
+                          </div>
+                          <div>
+                          <label className="text-sm"> 
+                            Close
+                          </label>
+                          <Input
+                            type="time"
+                            value={formatTime(data.close_time)}
+                            onChange={(e) => {
+                              handleUpdateOpen(d.id, dayIdx, data.is_open, data.open_time, e.target.value)}
+                            }
+                            className="size-9 p-2"
+                          />
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                   )
+                  })
+                }
                 </div>
-                
-                {/* </div> */}
+              
               </CardContent>
             </Card>
             <Card className="w-[20%]">
@@ -251,7 +244,7 @@ export const DivisionOpenTable = ({ openMap, handleUpdateOpen, filteredDivisions
                   />
                 </CardDescription>      
               </CardHeader>  
-              <label className="text-sm text-muted-foreground ml-8.5 mb-5">
+              <label className="text-sm text-muted-foreground ml-1 mb-5 text-centered">
                 Scheduled closures
               </label>
               <CardContent className="max-h-[100px] overflow-y-auto">

@@ -14,6 +14,7 @@ import { useContacts, Contact } from '@/hooks/useContacts';
 import { useTasks, Task, TaskStatus } from '@/hooks/useTasks';
 import TaskSelected from "@/components/TaskSelected";
 import { TaskType } from "@/components/TaskType";
+import { LoadingTasks } from '@/loading/LoadingTasks';
 
 // const AddTaskModal = lazy(() =>
 //   import('@/components/modals/AddTask')
@@ -193,11 +194,9 @@ useEffect(() => {
     }
   };
 
-  if (loading && tasks.length === 0) {
+  if (loading ) { //&& tasks.length === 0
     return (
-      <div className="flex items-center justify-center p-8">
-        Loading tasks…
-      </div>
+      <LoadingTasks/>
     );
   }
 

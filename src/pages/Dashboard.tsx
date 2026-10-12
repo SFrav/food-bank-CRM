@@ -7,11 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DivisionSummary } from "@/components/dashboard/DivisionSummary";
 import { ReferrerSummary } from "@/components/dashboard/ReferrerSummary";
-import { DivisionAllotmentSummary } from "@/components/DivisionAllotmentSummary";
-import { ReferrerAllotmentSummary } from "@/components/ReferrerAllotmentSummary";
-// import { DivisionChart } from "@/components/dashboard/DivisionBeneficiaryChart";
+import { DivisionAllotmentSummary } from "@/components/dashboard/DivisionAllotmentSummary";
+import { ReferrerAllotmentSummary } from "@/components/dashboard/ReferrerAllotmentSummary";
 import { CalendarDays } from "lucide-react";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { useProfile } from "@/hooks/useProfile";
 import { PermissionGuard } from '@/components/PermissionGuard';
 
@@ -48,7 +47,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <DashboardHeader role= {role} /> 
       </div>
@@ -57,68 +55,14 @@ export default function Dashboard() {
         <ReferrerSummary/>
         <ReferrerAllotmentSummary/>
       </div>
-
       :
       <DivisionSummary />
       }
-
-      {/* <PermissionGuard permission="canManageDivisionOpen">
-        <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="size-5" />
-            Organisation level settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-        <div className="flex flex-col gap-2">
-          <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
-            Edit settings
-          </Button>
-        </div>
-        </CardContent>
-        </Card>
-      </PermissionGuard> */}
-
-      
       <PermissionGuard permission="canAccessAnalytics">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-            <DivisionAllotmentSummary/>
-        </div>
-        {/* Filters Section */}
-        {/* <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+        {/* <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end"> */}
+        <DivisionAllotmentSummary/>
+        {/* </div> */}
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Date Range</label>
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Select range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">This Month</SelectItem>
-                <SelectItem value="month">Year to Date</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <CalendarDays className="size-4" />
-              Custom Range
-            </Button>
-          </div>
-        </div>
-
-        {/* Main Dashboard Grid */}
-        {/* <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 space-y-6">
-              <DivisionChart dateRange={dateRange} />
-            </div> 
-
-          <div className="space-y-6">
-     
-          </div>
-        </div> */}
       </PermissionGuard>
     </div>
   );

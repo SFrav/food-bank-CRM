@@ -225,25 +225,25 @@ export const DivisionManagement = () => {
         {/* Create Branch */}
         <div className="space-y-4">
           <label className="text-sm font-medium text-foreground">Create branch</label>
-          <div className="flex gap-2">
-              <Input className="w-[240px]"
+          <div className="md:flex lg:flex gap-2 sm:flex sm:flex-row sm:w-auto">
+              <Input className="w-[240px] sm:w-auto"
                 placeholder="Enter branch name..."
                 value={newDivisionName}
                 onChange={handleNewDivisionName}
                 //onKeyDown={(e) => e.key === 'Enter' && handleCreateDivision()}
               />
-              <Input className="w-[240px]"
+              <Input className="w-[240px] sm:w-auto"
                 placeholder="Enter address..."
                 value={newDivisionAddress}
                 onChange={handleNewDivisionAddress}
               />
-              <Input className="w-[130px]"
+              <Input className="w-[130px] sm:w-auto"
                 placeholder="Enter postcode..."
                 value={newDivisionPostcode}
                 onChange={handleNewDivisionPostcode}
               />
               <Select value={newDivisionEntityId} onValueChange={handleCreateDivEntitySelect}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px] sm:w-auto">
                    <SelectValue placeholder="Select entity"/>
                 </SelectTrigger>
                 <SelectContent>
@@ -258,7 +258,7 @@ export const DivisionManagement = () => {
               <Select value={newDivisionRegionId} 
                       onValueChange={handleCreateDivRegionSelect}
                       disabled={newDivisionEntityId === '' && !profile?.entity_id}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px] sm:w-auto">
                    <SelectValue placeholder="Select region"/>
                 </SelectTrigger>
                 <SelectContent>

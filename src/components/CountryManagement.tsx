@@ -15,9 +15,11 @@ export const CountryManagement = () => {
   const { countries, loading, createCountry, updateCountry, refetch } = useCountries();
   const [newCountryName, setNewCountryName] = useState('');
   const [newCountryCode, setNewCountryCode] = useState('');
+  const [newCountryCurrency, setNewCountryCurrency] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingCode, setEditingCode] = useState('');
+  const [editingCurrency, setEditingCurrency] = useState('');
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -34,14 +36,19 @@ export const CountryManagement = () => {
 
     setCreating(true);
     try {
-      const { data, error } = await createCountry(newCountryName.trim(), newCountryCode.trim().toUpperCase());
+      const { data, error } = await createCountry(
+        newCountryName.trim(), 
+        newCountryCode.trim().toUpperCase(),
+        newCountryCurrency
+      );
       if(!error || data) {
         setNewCountryName('');
         setNewCountryCode('');
+        setNewCountryCurrency('');
 
       };
     } catch (err: unknown) {
-      const error = err as { message?: string }; 
+      // const error = err as { message?: string }; 
     } finally {
       setCreating(false);
     }
@@ -51,6 +58,7 @@ export const CountryManagement = () => {
     setEditingId(country.id);
     setEditingName(country.name);
     setEditingCode(country.code);
+    setEditingCurrency(country.currency_symbol);
   };
 
   const handleSave = async (id: string) => {
@@ -65,12 +73,14 @@ export const CountryManagement = () => {
         id, 
         editingName.trim() || null,
         editingCode.trim().toUpperCase() || null,
+        editingCurrency || null,
         null
       );
       if(!error || data) {
         setEditingId(null);
         setEditingName('');
         setEditingCode('');
+        setEditingCurrency('');
       }
     } catch (err: unknown) {
       const error = err as { message?: string }; 
@@ -83,12 +93,13 @@ export const CountryManagement = () => {
     setEditingId(null);
     setEditingName('');
     setEditingCode('');
+    setEditingCurrency('');
   };
 
   const handleToggleActive = async (id: string, isActive: boolean) => {
     setUpdating(id);
     try {
-      const {data, error } = await updateCountry(id, null, null, !isActive );
+      const {data, error } = await updateCountry(id, null, null, null, !isActive );
       if(!error || data) toast({ title: 'Error', description: (isActive ? 'Country deactivated' : 'Country activated'), variant: 'destructive' });
     } catch (err: unknown) {
       const error = err as { message?: string }; 
@@ -99,8 +110,10 @@ export const CountryManagement = () => {
 
   const handleNewCountryName = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewCountryName(e.target.value);}, []);
   const handleNewCountryCode = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewCountryCode(e.target.value);}, []);
+  const handleNewCountryCurrency = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setNewCountryCurrency(e.target.value);}, []);
   const handleEditCountryName = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setEditingName(e.target.value);}, []);
   const handleEditCountryCode = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setEditingCode(e.target.value);}, []);
+  const handleEditCountryCurrency = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setEditingCurrency(e.target.value);}, []);
     
   return (
     <Card>
@@ -131,8 +144,15 @@ export const CountryManagement = () => {
             placeholder="Code"
             value={newCountryCode}
             onChange={handleNewCountryCode}
-            className="flex-1 max-w-[100px]"
+            className="flex-1 max-w-[800px]"
             maxLength={6}
+          />
+          <Input
+            placeholder="Currency"
+            value={newCountryCurrency}
+            onChange={handleNewCountryCurrency}
+            className="flex-1 max-w-[50px]"
+            maxLength={1}
           />
           <Button onClick={handleCreate} disabled={creating}>
             {creating ? (
@@ -152,8 +172,9 @@ export const CountryManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Country Name</TableHead>
+                <TableHead>Name</TableHead>
                 <TableHead>Code</TableHead>
+                <TableHead>€£$¥</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
@@ -173,10 +194,11 @@ export const CountryManagement = () => {
                       {editingId === country.id ? (
                         <Input
                           value={editingName}
+                          className="max-w-[80px]"
                           onChange={handleEditCountryName}
                         />
                       ) : (
-                        <span className="font-medium">{country.name}</span>
+                        <span className="font-medium max-w-[80px]">{country.name}</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -184,13 +206,25 @@ export const CountryManagement = () => {
                         <Input
                           value={editingCode}
                           onChange={handleEditCountryCode}
-                          className="max-w-[80px]"
+                          className="w-[45px]"
                           maxLength={6}
                         />
                       ) : (
                         <Badge variant="outline" className="font-mono">
                           {country.code}
                         </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingId === country.id ? (
+                        <Input
+                          value={editingCurrency}
+                          onChange={handleEditCountryCurrency}
+                          className="w-[35px]"
+                          maxLength={1}
+                        />
+                      ) : (
+                        <span className="font-medium">{country.currency_symbol}</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -203,7 +237,7 @@ export const CountryManagement = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {getDate(country.created_at)}
+                      <span className="w-[50px]">{getDate(country.created_at)}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

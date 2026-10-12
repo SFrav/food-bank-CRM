@@ -31,21 +31,14 @@ export const useReferrerAllotmentSummary = (
     setError(undefined);
     try {
 
-      if (mode === 'caller') {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_allotment_by_caller_summary', {
-          p_start_ts: startDate.toISOString(),
-          p_end_ts: endDate.toISOString(),
-        });
-        if (rpcErr) throw rpcErr;
-        setData(rpcData as ReferrerWeeklySummary[] | undefined);
-      } else if (mode === 'entity') {
-        const { data, error: rpcErr } = await supabase.rpc('get_allotment_by_entity_summary', {
-          p_start_ts: startDate.toISOString(),
-          p_end_ts: endDate.toISOString(),
-        });
-        if (rpcErr) throw rpcErr;
-        setData(data as ReferrerWeeklySummary[] | undefined);
-      }
+      const { data: rpcData, error: rpcErr } = await supabase.rpc(mode === 'caller' ? 
+        'get_allotment_by_caller_summary' : 'get_allotment_by_entity_summary', {
+        p_start_ts: startDate.toISOString(),
+        p_end_ts: endDate.toISOString(),
+      });
+      if (rpcErr) throw rpcErr;
+      setData(rpcData as ReferrerWeeklySummary[] | undefined);
+
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error(err);
@@ -54,7 +47,7 @@ export const useReferrerAllotmentSummary = (
     } finally {
       setLoading(false);
     }
-  }, [mode, toast]);
+  }, [mode]);
 
   return { data, fetch: fetchSummary, loading, error };
 };

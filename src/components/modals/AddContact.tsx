@@ -622,9 +622,10 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
           {approveEnabled && (
             <div className="grid grid-cols-2 gap-1">
               <div>      
-                <label htmlFor="delay" className="text-sm">Delay:</label>     
+                     
                 <Tooltip >
                   <TooltipTrigger>
+                    <label htmlFor="delay" className="text-sm">Delay:</label>
                     <Input id="delayed-days" name="delayed_days" type='number' min={0} max={30} step={1} 
                     value={formData.delayed_days} onChange={handleInputChange} placeholder={String(formData.delayed_days)} />
                     </TooltipTrigger> 
@@ -638,7 +639,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 <Tooltip >
                   <TooltipTrigger>
                     <Input id="duration-request" name="duration_request" type='number' min={0} max={maxDuration} step={1} 
-                      value={formData.duration_request} onChange={handleInputChange} placeholder={String(formData.duration_request)} />
+                      value={!formData.duration_request ? 0 : formData.duration_request} onChange={handleInputChange} placeholder={String(formData.duration_request)} />
                   </TooltipTrigger> 
                   <TooltipContent>
                     <p className="text-sm">Duration required (weeks - maximum differs by branch)</p>

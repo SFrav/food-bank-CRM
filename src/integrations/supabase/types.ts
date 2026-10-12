@@ -162,13 +162,16 @@ export type Database = {
       contacts: {
         Row: {
           adults_count: number | null
+          age_bracket: Database["public"]["Enums"]["age_enum"] | null
           allergies: boolean | null
           children_gt16: number | null
           children_lt16: number | null
           created_at: string | null
           created_by: string | null
           delayed_days: number | null
+          duration_request: number | null
           email: string | null
+          gender: Database["public"]["Enums"]["gender_enum"] | null
           hallal: boolean | null
           id: string
           infant: boolean | null
@@ -186,13 +189,16 @@ export type Database = {
         }
         Insert: {
           adults_count?: number | null
+          age_bracket?: Database["public"]["Enums"]["age_enum"] | null
           allergies?: boolean | null
           children_gt16?: number | null
           children_lt16?: number | null
           created_at?: string | null
           created_by?: string | null
           delayed_days?: number | null
+          duration_request?: number | null
           email?: string | null
+          gender?: Database["public"]["Enums"]["gender_enum"] | null
           hallal?: boolean | null
           id?: string
           infant?: boolean | null
@@ -210,13 +216,16 @@ export type Database = {
         }
         Update: {
           adults_count?: number | null
+          age_bracket?: Database["public"]["Enums"]["age_enum"] | null
           allergies?: boolean | null
           children_gt16?: number | null
           children_lt16?: number | null
           created_at?: string | null
           created_by?: string | null
           delayed_days?: number | null
+          duration_request?: number | null
           email?: string | null
+          gender?: Database["public"]["Enums"]["gender_enum"] | null
           hallal?: boolean | null
           id?: string
           infant?: boolean | null
@@ -254,6 +263,7 @@ export type Database = {
           attended: boolean
           contact_id: string
           date: string
+          division_id: string | null
           id: string
           served: boolean
           serving: boolean
@@ -266,6 +276,7 @@ export type Database = {
           attended?: boolean
           contact_id: string
           date: string
+          division_id?: string | null
           id?: string
           served?: boolean
           serving?: boolean
@@ -278,6 +289,7 @@ export type Database = {
           attended?: boolean
           contact_id?: string
           date?: string
+          division_id?: string | null
           id?: string
           served?: boolean
           serving?: boolean
@@ -378,6 +390,7 @@ export type Database = {
           approved_by: string | null
           contact_id: string
           created_at: string | null
+          division_id: string | null
           first_referred_by: string | null
           id: string
           message: string | null
@@ -389,6 +402,7 @@ export type Database = {
           approved_by?: string | null
           contact_id: string
           created_at?: string | null
+          division_id?: string | null
           first_referred_by?: string | null
           id?: string
           message?: string | null
@@ -400,6 +414,7 @@ export type Database = {
           approved_by?: string | null
           contact_id?: string
           created_at?: string | null
+          division_id?: string | null
           first_referred_by?: string | null
           id?: string
           message?: string | null
@@ -419,6 +434,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrer_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
             referencedColumns: ["id"]
           },
           {
@@ -542,21 +564,21 @@ export type Database = {
         Row: {
           division_id: string
           id: string
-          setting_key: string
+          setting_key: Database["public"]["Enums"]["division_setting_enum"]
           setting_value: string | null
           updated_at: string | null
         }
         Insert: {
           division_id: string
           id?: string
-          setting_key: string
+          setting_key: Database["public"]["Enums"]["division_setting_enum"]
           setting_value?: string | null
           updated_at?: string | null
         }
         Update: {
           division_id?: string
           id?: string
-          setting_key?: string
+          setting_key?: Database["public"]["Enums"]["division_setting_enum"]
           setting_value?: string | null
           updated_at?: string | null
         }
@@ -650,6 +672,7 @@ export type Database = {
       entities: {
         Row: {
           code: string | null
+          country_id: string
           created_at: string
           created_by: string | null
           id: string
@@ -660,6 +683,7 @@ export type Database = {
         }
         Insert: {
           code?: string | null
+          country_id: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -670,6 +694,7 @@ export type Database = {
         }
         Update: {
           code?: string | null
+          country_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -678,14 +703,22 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entities_entity_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entity_settings: {
         Row: {
           division_id: string | null
           entity_id: string
           id: string
-          setting_key: string
+          setting_key: Database["public"]["Enums"]["entity_setting_enum"]
           setting_value: string | null
           updated_at: string | null
         }
@@ -693,7 +726,7 @@ export type Database = {
           division_id?: string | null
           entity_id: string
           id?: string
-          setting_key: string
+          setting_key: Database["public"]["Enums"]["entity_setting_enum"]
           setting_value?: string | null
           updated_at?: string | null
         }
@@ -701,7 +734,7 @@ export type Database = {
           division_id?: string | null
           entity_id?: string
           id?: string
-          setting_key?: string
+          setting_key?: Database["public"]["Enums"]["entity_setting_enum"]
           setting_value?: string | null
           updated_at?: string | null
         }
@@ -872,6 +905,77 @@ export type Database = {
           },
         ]
       }
+      referrer_rating: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          note: string | null
+          rate_enumeration: number | null
+          rate_inform: number | null
+          rate_screening: number | null
+          rate_support: number | null
+          referrer_id: string
+          updated_At: string | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          rate_enumeration?: number | null
+          rate_inform?: number | null
+          rate_screening?: number | null
+          rate_support?: number | null
+          referrer_id: string
+          updated_At?: string | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          rate_enumeration?: number | null
+          rate_inform?: number | null
+          rate_screening?: number | null
+          rate_support?: number | null
+          referrer_id?: string
+          updated_At?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrer_rating_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrer_rating_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrer_rating_rater_id_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "referrer_rating_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       regions: {
         Row: {
           code: string
@@ -1020,21 +1124,21 @@ export type Database = {
       user_settings: {
         Row: {
           id: string
-          setting_key: string
+          setting_key: Database["public"]["Enums"]["user_setting_enum"]
           setting_value: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           id?: string
-          setting_key: string
+          setting_key: Database["public"]["Enums"]["user_setting_enum"]
           setting_value?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           id?: string
-          setting_key?: string
+          setting_key?: Database["public"]["Enums"]["user_setting_enum"]
           setting_value?: string | null
           updated_at?: string | null
           user_id?: string
@@ -1054,13 +1158,16 @@ export type Database = {
       contacts_queue: {
         Row: {
           adults: number | null
+          age_bracket: Database["public"]["Enums"]["age_enum"] | null
           allergies: boolean | null
           attended_at: string | null
           children_gt16: number | null
           children_lt16: number | null
           created_at: string | null
           delayed_days: number | null
+          duration_request: number | null
           email: string | null
+          gender: Database["public"]["Enums"]["gender_enum"] | null
           hallal: boolean | null
           id: string | null
           infant: boolean | null
@@ -1132,7 +1239,12 @@ export type Database = {
     Functions: {
       admin_clear_audit_logs: { Args: { p_filters: Json }; Returns: number }
       admin_create_entity: {
-        Args: { p_code?: string; p_name: string; p_referrer?: boolean }
+        Args: {
+          p_code?: string
+          p_country_id: string
+          p_name: string
+          p_referrer?: boolean
+        }
         Returns: string
       }
       admin_delete_entity: { Args: { p_entity_id: string }; Returns: boolean }
@@ -1176,10 +1288,14 @@ export type Database = {
         Args: {
           p_address?: string
           p_adults?: number
+          p_age_bracket?: Database["public"]["Enums"]["age_enum"]
           p_children_gt16?: number
           p_children_lt16?: number
+          p_days?: number[]
           p_delayed_days?: number
+          p_duration_request?: number
           p_email?: string
+          p_gender?: Database["public"]["Enums"]["gender_enum"]
           p_name?: string
           p_notes?: string
           p_owner_id?: string
@@ -1198,12 +1314,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_country: {
+        Args: { p_code: string; p_name: string }
+        Returns: string
+      }
       create_division: {
         Args: {
           p_entity_id: string
           p_head_id?: string
           p_name: string
           p_postcode: string
+          p_region_id: string
           p_street_address: string
         }
         Returns: string
@@ -1241,10 +1362,24 @@ export type Database = {
         }
         Returns: string
       }
-      create_region: {
-        Args: { p_code: string; p_name: string }
+      create_referrer_rating: {
+        Args: {
+          p_contact_id: string
+          p_created_by: string
+          p_note: string
+          p_rate_enumeration: number
+          p_rate_inform: number
+          p_rate_screening: number
+          p_rate_support: number
+          p_referrer_id: string
+        }
         Returns: string
       }
+      create_region: {
+        Args: { p_code: string; p_country_id: string; p_name: string }
+        Returns: string
+      }
+      date_trunc_day: { Args: { val: string }; Returns: string }
       delete_calendar: { Args: { p_id: string }; Returns: boolean }
       delete_contact: { Args: { p_id: string }; Returns: boolean }
       delete_contact_day_single: { Args: { p_id: string }; Returns: boolean }
@@ -1253,6 +1388,7 @@ export type Database = {
       delete_division: { Args: { p_id: string }; Returns: boolean }
       delete_division_closed: { Args: { p_id: string }; Returns: boolean }
       delete_organisation: { Args: { p_id: string }; Returns: boolean }
+      delete_referrer_rating: { Args: { p_id: string }; Returns: boolean }
       delete_region: { Args: { p_id: string }; Returns: boolean }
       get_allotment: {
         Args: { p_contact_id: string }
@@ -1262,7 +1398,9 @@ export type Database = {
           approver_org: string
           attended: boolean
           date: string
+          division_id: string
           referrer_code: string
+          referrer_id: string
           referrer_name: string
           referrer_org: string
           served: boolean
@@ -1270,6 +1408,36 @@ export type Database = {
           updated_at: string
           visit_num: number
           visit_type: Database["public"]["Enums"]["allotment_type_enum"]
+        }[]
+      }
+      get_allotment_by_caller_summary: {
+        Args: { p_end_ts: string; p_start_ts: string }
+        Returns: {
+          absent: number
+          cases: number
+          referrals: number
+          week_start: string
+          workforce: number
+        }[]
+      }
+      get_allotment_by_entity_summary: {
+        Args: { p_end_ts: string; p_start_ts: string }
+        Returns: {
+          absent: number
+          cases: number
+          referrals: number
+          week_start: string
+          workforce: number
+        }[]
+      }
+      get_allotment_summary: {
+        Args: { p_division_id: string; p_end_ts: string; p_start_ts: string }
+        Returns: {
+          absent: number
+          cases: number
+          dropins: number
+          referrals: number
+          week_start: string
         }[]
       }
       get_audit_logs: {
@@ -1324,8 +1492,10 @@ export type Database = {
           p_street_address: string
         }
         Returns: {
+          age_bracket: Database["public"]["Enums"]["age_enum"]
           created_at: string
           email: string
+          gender: Database["public"]["Enums"]["gender_enum"]
           id: string
           name: string
           notes: string
@@ -1352,12 +1522,15 @@ export type Database = {
         Args: { p_order_desc?: boolean }
         Returns: {
           adults: number
+          age_bracket: Database["public"]["Enums"]["age_enum"]
           allergies: boolean
           children_gt16: number
           children_lt16: number
           created_at: string
           delayed_days: number
+          duration_request: number
           email: string
+          gender: Database["public"]["Enums"]["gender_enum"]
           hallal: boolean
           id: string
           infant: boolean
@@ -1377,13 +1550,16 @@ export type Database = {
         Args: { p_order_desc?: boolean }
         Returns: {
           adults: number
+          age_bracket: Database["public"]["Enums"]["age_enum"]
           allergies: boolean
           attended_at: string
           children_gt16: number
           children_lt16: number
           created_at: string
           delayed_days: number
+          duration_request: number
           email: string
+          gender: Database["public"]["Enums"]["gender_enum"]
           hallal: boolean
           id: string
           infant: boolean
@@ -1397,6 +1573,16 @@ export type Database = {
           street_address: string
           user_id: string
           vegetarian: boolean
+        }[]
+      }
+      get_countries: {
+        Args: never
+        Returns: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
         }[]
       }
       get_division_closed: {
@@ -1445,6 +1631,7 @@ export type Database = {
           entity_id: string
           head_id: string
           id: string
+          is_active: string
           manager_id: string
           name: string
           postcode: string
@@ -1456,6 +1643,8 @@ export type Database = {
         Args: never
         Returns: {
           code: string
+          country_id: string
+          country_name: string
           created_at: string
           created_by: string
           id: string
@@ -1506,17 +1695,53 @@ export type Database = {
           website: string
         }[]
       }
-      get_profile_names: {
-        Args: never
+      get_referrals_by_caller_summary: {
+        Args: { p_entity_id?: string }
         Returns: {
-          full_name: string
-          user_id: string
+          beneficiaries: number
+          id: string
+          name: string
+          pending_beneficiaries: number
+          workforce: number
+        }[]
+      }
+      get_referrer_rating_ave: {
+        Args: { p_caller_region_id: string }
+        Returns: {
+          entity_name: string
+          last_rating: string
+          rate_enumeration: number
+          rate_inform: number
+          rate_screening: number
+          rate_support: number
+          referrer_id: string
+          referrer_name: string
+        }[]
+      }
+      get_referrer_ratings: {
+        Args: { p_referrer_id: string }
+        Returns: {
+          contact_id: string
+          created_at: string
+          id: string
+          is_referrer: boolean
+          note: string
+          rate_enumeration: number
+          rate_inform: number
+          rate_screening: number
+          rate_support: number
+          rater_id: string
+          referrer_id: string
+          updated_at: string
         }[]
       }
       get_regions: {
         Args: never
         Returns: {
           code: string
+          country_id: string
+          country_name: string
+          created_at: string
           id: string
           is_active: boolean
           name: string
@@ -1567,6 +1792,7 @@ export type Database = {
         Returns: {
           division_id: string
           entity_id: string
+          full_name: string
           region_id: string
           role: string
         }[]
@@ -1637,6 +1863,7 @@ export type Database = {
           p_contact_id: string
           p_delayed_days: number
           p_division_id: string
+          p_duration_request: number
           p_exclusion_weeks: number
           p_frequency: number
         }
@@ -1648,6 +1875,7 @@ export type Database = {
           p_contact_id: string
           p_contact_name: string
           p_new_status: string
+          p_owner_entity_id: string
           p_owner_id: string
           p_postcode: string
         }
@@ -1675,11 +1903,14 @@ export type Database = {
         Args: {
           p_address?: string
           p_adults?: number
+          p_age_bracket?: Database["public"]["Enums"]["age_enum"]
           p_allergies?: boolean
           p_children_gt16?: number
           p_children_lt16?: number
           p_delayed_days?: number
+          p_duration_request?: number
           p_email?: string
+          p_gender?: Database["public"]["Enums"]["gender_enum"]
           p_hallal?: boolean
           p_id?: string
           p_infant?: boolean
@@ -1695,13 +1926,16 @@ export type Database = {
         }
         Returns: {
           adults_count: number | null
+          age_bracket: Database["public"]["Enums"]["age_enum"] | null
           allergies: boolean | null
           children_gt16: number | null
           children_lt16: number | null
           created_at: string | null
           created_by: string | null
           delayed_days: number | null
+          duration_request: number | null
           email: string | null
+          gender: Database["public"]["Enums"]["gender_enum"] | null
           hallal: boolean | null
           id: string
           infant: boolean | null
@@ -1724,6 +1958,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_country: {
+        Args: {
+          p_code: string
+          p_id: string
+          p_is_active: boolean
+          p_name: string
+        }
+        Returns: boolean
+      }
       update_division: {
         Args: {
           p_entity_id: string
@@ -1731,6 +1974,7 @@ export type Database = {
           p_id: string
           p_name: string
           p_postcode: string
+          p_region_id: string
           p_street_address: string
         }
         Returns: boolean
@@ -1739,9 +1983,23 @@ export type Database = {
         Args: { p_date: string; p_id: string }
         Returns: boolean
       }
+      update_referrer_rating: {
+        Args: {
+          p_contact_id: string
+          p_note: string
+          p_rate_enumeration: number
+          p_rate_inform: number
+          p_rate_screening: number
+          p_rate_support: number
+          p_referrer_id: string
+          p_updated_by: string
+        }
+        Returns: boolean
+      }
       update_region: {
         Args: {
           p_code: string
+          p_country_id: string
           p_id: string
           p_is_active: boolean
           p_name: string
@@ -1822,8 +2080,28 @@ export type Database = {
       }
     }
     Enums: {
+      age_enum: "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65"
       allotment_type_enum: "referral" | "drop_in"
       beneficiary_enum: "pending" | "active" | "inactive" | "banned" | "merged"
+      contact_pref_key_enum:
+        | "infant"
+        | "allergies"
+        | "vegetarian"
+        | "hallal"
+        | "no_cooking"
+        | "no_freezer"
+        | "gluten_free"
+      division_setting_enum:
+        | "fee"
+        | "allotment_weeks"
+        | "exclusion_weeks"
+        | "frequency"
+      entity_setting_enum:
+        | "referrer_request"
+        | "contact_notify"
+        | "contact_approve"
+        | "contact_ban"
+      gender_enum: "male" | "female" | "undefined"
       notification_type_enum:
         | "alert"
         | "dm"
@@ -1842,6 +2120,12 @@ export type Database = {
         | "staff"
         | "volunteer"
         | "pending"
+      user_setting_enum:
+        | "dark_mode"
+        | "notification_email"
+        | "notification_tasks"
+        | "notification_calendar"
+        | "two_FA"
       user_status_enum: "active" | "inactive" | "suspended"
     }
     CompositeTypes: {
@@ -1973,8 +2257,31 @@ export const Constants = {
   },
   public: {
     Enums: {
+      age_enum: ["le24", "25-34", "35-44", "45-54", "55-64", "ge65"],
       allotment_type_enum: ["referral", "drop_in"],
       beneficiary_enum: ["pending", "active", "inactive", "banned", "merged"],
+      contact_pref_key_enum: [
+        "infant",
+        "allergies",
+        "vegetarian",
+        "hallal",
+        "no_cooking",
+        "no_freezer",
+        "gluten_free",
+      ],
+      division_setting_enum: [
+        "fee",
+        "allotment_weeks",
+        "exclusion_weeks",
+        "frequency",
+      ],
+      entity_setting_enum: [
+        "referrer_request",
+        "contact_notify",
+        "contact_approve",
+        "contact_ban",
+      ],
+      gender_enum: ["male", "female", "undefined"],
       notification_type_enum: [
         "alert",
         "dm",
@@ -1994,6 +2301,13 @@ export const Constants = {
         "staff",
         "volunteer",
         "pending",
+      ],
+      user_setting_enum: [
+        "dark_mode",
+        "notification_email",
+        "notification_tasks",
+        "notification_calendar",
+        "two_FA",
       ],
       user_status_enum: ["active", "inactive", "suspended"],
     },

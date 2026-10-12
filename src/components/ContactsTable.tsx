@@ -3,25 +3,26 @@ import { Search, Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
+// import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { StatusBadge } from '@/components/StatusBadge';
+// import { StatusBadge } from '@/components/StatusBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { ContactRow } from '@/components/ContactRow';
 import { AddContactModal } from '@/components/modals/AddContact';
 import { MergeContactModal } from '@/components/modals/MergeContact';
-import { useContacts, Contact } from '@/hooks/useContacts';
+import { Contact } from '@/hooks/useContacts';
 import { useDivisions } from '@/hooks/useDivisions';
 import { useDivisionOpen } from '@/hooks/useDivisionOpen';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 import { CheckedState } from '@radix-ui/react-checkbox';
+import { LoadingContactsTable } from '@/loading/LoadingContactsTable';
 
 interface ContactsTableProps {
   contacts: Contact[];
-  loading: boolean;
+  isLoading: boolean;
   filterQueue: boolean;
   setFilterQueue: (value: boolean) => void;
   onDuplicateAdd: (dup: Contact) => void;
@@ -31,7 +32,7 @@ interface ContactsTableProps {
 
 export const ContactsTable: React.FC<ContactsTableProps> = ({
   contacts,
-  loading,
+  isLoading,
   filterQueue,
   setFilterQueue,
   onDuplicateAdd,
@@ -56,11 +57,13 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   const [secondaryMerge, setSecondaryMerge] = useState<Contact | null>(null);
   const [isDivOpen, setIsDivOpen] = useState(false);
 
-  const checkCurrentDayOpen = (divisionId: string, day: number) =>
-    openMap[divisionId]?.[day] ? true : false;
+  const checkCurrentDayOpen = useCallback((divisionId: string, day: number) => {
+    if(!divisionId) return false;
+    return openMap[divisionId]?.[day]?.is_open === true  ? true : false;
+  }, [profile, openMap])
   
   const stableRefetch = useCallback((q: boolean) => refetch(q), [refetch]);
-  const stableFetchOpen = useCallback((id: string) => fetchOpen(id), [fetchOpen]);
+  // const stableFetchOpen = useCallback((id: string) => fetchOpen(id), [fetchOpen]);
 
   useEffect(() => {
     if (selected.size !== 2) return;
@@ -76,11 +79,16 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   }, [selected, contacts, stableRefetch]); 
 
   useEffect(() => {
-    if (profile?.division_id && !openMap[profile.division_id]) {
-      fetchOpen(profile.division_id);
-      setIsDivOpen(checkCurrentDayOpen(profile?.division_id, new Date().getDay()));
-    }
-  }, [profile?.division_id, stableFetchOpen]);
+    if (!divisions) return;
+    const targetId = profile?.division_id ?? (
+    !['all', 'org-wide', 'unassigned', ''].includes(filterTermBranch ?? '')
+      ? divisions.filter(d => d.manager_id === filterTermBranch)[0].id
+      : undefined
+    );
+    if (!targetId || targetId === 'all' || targetId === 'unassigned') return;
+    fetchOpen(targetId);
+    setIsDivOpen(checkCurrentDayOpen(targetId, new Date().getDay()));
+  }, [profile?.division_id, divisions, filterTermBranch, fetchOpen, checkCurrentDayOpen]);
 
   // const toggleSelection = (id: string, checked: boolean) => {
   //   setSelected(prev => {
@@ -104,9 +112,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
 
   const filteredContacts = useMemo(() => {
     //const { divisions: divisionsAll } = useDivisions();
-    
     const search = searchTerm.trim().toLowerCase();
-
     return contacts.filter(contact => {
       const status = contact.status?.toLowerCase();
 
@@ -169,7 +175,11 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {setSearchTerm(e.target.value); setSelected(new Set());}, [])
   const handleBranchChange = useCallback((e: string) => {setFilterTermBranch(e); setSelected(new Set());}, [])
   const handleStatusChange = useCallback((e: string) => {setFilterTermStatus(e); setSelected(new Set());}, [])
-  const handleQueueChange = useCallback((checked: boolean) => {setFilterQueue(checked); refetch(checked);}, [refetch])
+  const handleQueueChange = useCallback((checked: boolean) => {
+    setFilterQueue(checked); 
+    // if (profile && filterTermBranch !== profile?.division_id) setFilterTermBranch(profile?.division_id); 
+    refetch(checked);
+  }, [refetch])
   const handleSearchClear = useCallback(() => {setSearchTerm(''); setFilterTermStatus('all'); setFilterTermBranch('all')}, [])
   
 
@@ -214,6 +224,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                   value={searchTerm}
                   onChange={handleSearchChange}
                   className="pl-10 w-full sm:w-[300px]"
+                  disabled={isLoading}
                 />
               </div>
               <div className="relative w-full mt-2 sm:mt-0 sm:w-auto">
@@ -222,6 +233,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                   <Select 
                     value={filterTermBranch} 
                     onValueChange={handleBranchChange} 
+                    disabled={isLoading || filterQueue}
                   >
                     <SelectTrigger className="w-full sm:w-[120px] sm:h-[15px]">
                       <SelectValue placeholder="Branch filter" />
@@ -245,6 +257,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                   <Select
                     value={filterTermStatus} 
                     onValueChange={handleStatusChange} 
+                    disabled={isLoading}
                   >
                     <SelectTrigger className="w-full sm:w-[120px] sm:h-[15px]">
                       <SelectValue placeholder="Status filter" />
@@ -265,6 +278,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                     <Switch
                       id="queue"
                       onCheckedChange={handleQueueChange}
+                      disabled={isLoading}
                     />
                   </div>
                 </PermissionGuard>
@@ -279,7 +293,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
               )}
               <PermissionGuard permission="canApproveBeneficiaries">
                 <Button className="w-[50%] sm:w-full" 
-                  variant="outline" onClick={exportToCSV} disabled={filteredContacts.length === 0}>
+                  variant="outline" onClick={exportToCSV} disabled={filteredContacts.length === 0 || isLoading}>
                   <Download className="size-4 mr-0" />Export CSV
                 </Button>
               </PermissionGuard>
@@ -287,10 +301,11 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
           </div>
           </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full size-8 border-b-2 border-primary" />
-            </div>
+          {isLoading ? (
+            <LoadingContactsTable/>
+            // <div className="flex justify-center py-8">
+            //   <div className="animate-spin rounded-full size-8 border-b-2 border-primary" />
+            // </div>
           ) : filteredContacts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {/* {searchTerm ? '' : 'No contacts yet.'}
@@ -335,7 +350,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
             </div>
           )}
           
-          {filteredContacts.length > 0 ? (
+          {filteredContacts.length > 0 && !isLoading ? (
             <div className="flex justify-between items-center mt-4 text-sm text-muted-foreground">
               <span>
                 Showing {filteredContacts.length} of {totalContacts.length} beneficiaries
@@ -351,7 +366,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
             </div>
           ) : (
           <div className="flex justify-between items-center mt-4 text-sm text-muted-foreground">
-            <span>
+            <span hidden={isLoading}>
               No contacts match your search
             </span>
           {searchTerm && selected.size !==2  && <Button variant="ghost" size="sm" onClick={handleSearchClear}>Clear search</Button>} 

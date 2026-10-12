@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils';
 
 interface EditContactModalProps {
   isOpen: boolean;
-  
   isServing: boolean;
   onClose: () => void;
   onContactUpdated: () => void;
@@ -103,6 +102,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const { contactDays, upsertContactDays, fetchContactDays, deleteContactDays} = useContactDays();
   const { allotment, markAttendance, markAllotmentServing, markServed, insertDiscretionary, 
     loading: loadingAllotment, fetch: fetchAllotment, error: errorAllotment} = useContactAllotment(contact?.id ?? null);
+  // const { data: allotmentSummary, fetch: fetchSummary, loading: loadingSummary } = useContactAllotmentSummary();
   const [newAllotmentType, setNewAllotmentType] = useState<'referral' | 'drop_in' | ''>('');
   const [newAllotmentNote, setNewAllotmentNote] = useState('');
   // const [adding, setAdding] = useState(false);
@@ -276,7 +276,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleMarkAttended = async (entryId: string) => {
     if (!entryId) return;
     const { success } = await markAttendance(entryId);
-    // if(success) await fetchAllotment();
+    // if (success) {
+    // }
   };
 
   const handleMarkServing = async (entryId: string) => {
@@ -533,11 +534,13 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
             <TabsContent value="allotment" className="space-y-6">
               <ContactEditAllotment
+                isOpen={isOpen}
                 contact={localContact}
                 formData={formData}
                 handleInputChange={handleInputChange}
                 handleSubmit={handleSubmit}
                 isLoading={isLoading}
+                isLoadingAllotment={loadingAllotment}
                 isDirty={isDirty}
                 // isServing={isServing}
                 handleMarkServing={handleMarkServing}
@@ -546,7 +549,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                 handleToggleVegetarian={handleToggleVegetarian}
                 handleToggleHallal={handleToggleHallal}
                 handleAddAllotment={handleAddAllotment}
-                loadingAllotment={loadingAllotment} //@disabled in hook to avoid UI flicker on load
                 allotment={allotment}
                 newAllotmentType={newAllotmentType}
                 // setNewAllotmentType={setNewAllotmentType}

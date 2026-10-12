@@ -3,8 +3,8 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { ChevronLeft, ChevronRight, Plus, MoreHorizontal, Edit, Trash2, MapPin, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LoadingCalendarView } from '@/loading/LoadingCalendarView';
 
 export type CalendarEvent = {
   id: string;
@@ -72,11 +72,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   if (isLoading)
     return (
-      <Card>
-        <CardContent className="p-8 flex justify-center">
-          <div className="animate-spin rounded-full size-8 border-b-2 border-primary" />
-        </CardContent>
-      </Card>
+      <LoadingCalendarView />
     );
   
   return (

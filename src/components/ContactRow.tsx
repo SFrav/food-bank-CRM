@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
+import { CheckedState } from '@radix-ui/react-checkbox';
+// import { Printer } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { Contact } from '@/hooks/useContacts';
 import { ContactAllotment, useContactAllotment } from '@/hooks/useContactAllotment';
-
-import { CheckedState } from '@radix-ui/react-checkbox';
 
 interface ContactRowProps {
   contact: Contact;
@@ -49,6 +49,8 @@ export const ContactRow = React.memo(({
 
     const showCheckbox = !filterQueue && totalCount > 1
 
+    const queueNum = index + 1;
+
     return(
     <TableRow
       //  key={contact.id}
@@ -68,7 +70,7 @@ export const ContactRow = React.memo(({
           </TableCell>
         ) : (
           <TableCell className="font-medium size-4">
-            {index + 1}
+            {queueNum}
           </TableCell>
         )}
         <TableCell className="sm:table-cell sm:max-w-[100px] sm:line-clamp-2">{contact.name}</TableCell>
@@ -104,9 +106,12 @@ export const ContactRow = React.memo(({
         </TableCell>
         <TableCell className="text-xs text-muted-foreground pl-3 pr-3 sm:table-cell sm:max-w-[120px]">
           {lastAttended ? (
+            <div className="flex items-center gap-1">
+              
             <span className="sm:table-cell sm:max-w-[80px]">
               {new Date(lastAttended.date).toLocaleDateString('en-GB')}
             </span>
+          </div>
           ) : (
             <span className="line-clamp-2"> &hellip; </span>
           )}
