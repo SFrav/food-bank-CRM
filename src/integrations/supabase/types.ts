@@ -2117,8 +2117,8 @@ export type Database = {
         | "manager"
         | "referrer"
         | "branch_manager"
-        | "staff"
-        | "volunteer"
+        | "specialist"
+        | "associate"
         | "pending"
       user_setting_enum:
         | "dark_mode"
@@ -2298,8 +2298,8 @@ export const Constants = {
         "manager",
         "referrer",
         "branch_manager",
-        "staff",
-        "volunteer",
+        "specialist",
+        "associate",
         "pending",
       ],
       user_setting_enum: [

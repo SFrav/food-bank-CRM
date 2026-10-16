@@ -6,7 +6,7 @@ import CalendarStatusIcon from "@/components/CalendarStatusIcon"
 
 interface Task {
   id: string;
-  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
+  entry_type: "referrer_request" | "beneficiary_request" | "specialist_todo" | "associate_todo" | "event";
   beneficiary_id: string;
   beneficiary_name?: string;
   pic_id?: string;
@@ -45,9 +45,9 @@ export default function TaskSelected({
         return Phone;
       case "beneficiary_request":
         return Baby;
-      case "staff_todo":
+      case "specialist_todo":
         return ShipWheel;
-      case "volunteer_todo":
+      case "associate_todo":
         return Gem;
       default:
         return Phone;
@@ -59,8 +59,8 @@ export default function TaskSelected({
       call: "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100",
       beneficiary_request:
         "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
-      staff_todo: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
-      volunteer_todo:
+      specialist_todo: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+      associate_todo:
         "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
     };
     return variants[type as keyof typeof variants] ?? variants.call;

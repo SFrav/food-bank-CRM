@@ -23,7 +23,7 @@ interface NotificationsContextType {
   unreadBellCount: number;
   loading: boolean;
   createNotification: (p_title: string, p_message: string, p_link: string, p_type: 'alert' | 'dm', p_target_user: string | null, 
-    p_org_role: 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null) => Promise<{ success: boolean; error?: unknown }>; 
+    p_org_role: 'referrer' | 'branch_manager' | 'specialist' | 'associate' | null) => Promise<{ success: boolean; error?: unknown }>; 
   markAsRead: (id: string) => Promise<{ success: boolean; error?: string | undefined; }>; 
   markAllAsRead: () => Promise<{ success: boolean; error?: string | undefined; }>;
   refetch: () => Promise<void>;
@@ -90,7 +90,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     p_link: string,
     p_type: 'alert' | 'dm',
     p_target_user: string | null = null,
-    p_org_role: 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null = null,
+    p_org_role: 'referrer' | 'branch_manager' | 'specialist' | 'associate' | null = null,
     p_calendar_id: string | null = null
   ) => {
     try {

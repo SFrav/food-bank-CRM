@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/hooks/useAuth';
 import type { CalendarEvent } from '@/components/CalendarView';
@@ -10,7 +11,7 @@ type Calendar = {
   subject?: string;
   scheduled_at: string;
   location?: string
-  entry_type: string; // "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
+  entry_type: string; // "referrer_request" | "beneficiary_request" | "specialist_todo" | "associate_todo" | "event";
   status: "scheduled" | "done" | "cancelled";
   notes?: string;
   created_at: string;
@@ -46,7 +47,12 @@ export function useCalendar() {
       const error = err as { message?: string }; 
       console.error('Contacts fetch error', err);
       setError(error.message || 'Failed to load events');
-      toast({ title: 'Error', description: 'Failed to load events', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: 'Failed to load events', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -65,7 +71,12 @@ export function useCalendar() {
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      toast({ title: 'Error', description: 'Failed to delete calendar entry', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: 'Failed to delete calendar entry', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   }, [user]);

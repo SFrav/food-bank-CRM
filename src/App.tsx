@@ -67,7 +67,7 @@ const App = () => (
             } />
             <Route path="/admin/users" element={
               <ProtectedRoute>
-                <RoleBasedRoute allowedRoles={['admin', 'head']}>
+                <RoleBasedRoute allowedRoles={['manager','admin', 'head']}>
                   <CRMLayout>
                     <Suspense fallback={<div className="p-4">Loading User Data &hellip;</div>}>
                     <lazyPages.AdminUsers/>
@@ -104,7 +104,7 @@ const App = () => (
             {/* Dashboards */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <RoleBasedRoute allowedRoles={['referrer', 'volunteer', 'staff', 'branch_manager', 'manager', 'head', 'admin']}>
+                <RoleBasedRoute allowedRoles={['referrer', 'associate', 'specialist', 'branch_manager', 'manager', 'head', 'admin']}>
                   <CRMLayout>
                     <Dashboard />
                   </CRMLayout>
@@ -142,7 +142,7 @@ const App = () => (
             } />
             <Route path="/referrers" element={
               <ProtectedRoute>
-                <RoleBasedRoute allowedRoles={['staff', 'branch_manager', 'manager', 'head', 'admin']}>
+                <RoleBasedRoute allowedRoles={['specialist', 'branch_manager', 'manager', 'head', 'admin']}>
                   <CRMLayout>
                     <Referrers />
                   </CRMLayout>

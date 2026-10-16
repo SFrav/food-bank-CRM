@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit3, Loader2 } from 'lucide-react';
 import { useCountries, Country } from '@/hooks/useCountries';
 import { useEntities } from '@/hooks/useEntities';
 import { useToast } from '@/hooks/useToast';
-import { Badge } from '@/components/ui/badge';
+
 
 export const EntityManagement = () => {
   const { countries, loading: loadingCounty, refetch: refetchCountry } = useCountries();
@@ -128,16 +129,9 @@ export const EntityManagement = () => {
     const { error } = await updateEntity(id, { is_active: !currentStatus });
     
     if (error) {
-      toast({
-        title: "Error",
-        description: error,
-        variant: "destructive",
-      });
+      toast({title: "Error", description: error, variant: "destructive"});
     } else {
-      toast({
-        title: "Success",
-        description: `Entity ${!currentStatus ? 'activated' : 'deactivated'} successfully`,
-      });
+      toast({title: "Success", description: `Entity ${!currentStatus ? 'activated' : 'deactivated'} successfully`});
       // Trigger refresh event
       try {
         window.dispatchEvent(new CustomEvent('org-units-changed'));

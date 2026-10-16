@@ -133,7 +133,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveReassignments: false,
       } as PermissionSet;
 
-    case 'staff':
+    case 'specialist':
       return {
         ...BASE_CRUD,
         canAccessUserManagement: false,
@@ -153,7 +153,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveReassignments: false,
       } as PermissionSet;
 
-    case 'volunteer':
+    case 'Associate':
       return {
         ...BASE_CRUD,
         canAccessUserManagement: false,

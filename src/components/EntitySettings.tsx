@@ -110,8 +110,8 @@ export const EntitySettingsTable = () => {
                               <SelectItem value="head">Head</SelectItem>
                               <SelectItem value="manager">Manager</SelectItem>
                               <SelectItem value="branch_manager">Branch Manager</SelectItem>
-                              <SelectItem value="staff">Staff</SelectItem>
-                              <SelectItem value="volunteer">Volunteer</SelectItem>
+                              <SelectItem value="specialist">Specialist</SelectItem>
+                              <SelectItem value="associate">Associate</SelectItem>
                             </SelectContent>
                           </Select>
                       </TableCell>

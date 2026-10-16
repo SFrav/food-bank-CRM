@@ -14,7 +14,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAdminUsers, Users } from '@/hooks/useAdminUsers';
 import { PermissionGuard } from '@/components/PermissionGuard';
 
-type TargetRole = 'referrer' | 'branch_manager' | 'staff' | 'volunteer' | null
+type TargetRole = 'referrer' | 'branch_manager' | 'specialist' | 'associate' | null
 
 const getTypeIcon = (type: Notification['type']) => {
   switch (type) {
@@ -259,8 +259,8 @@ const NotificationsPage: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="branch_manager">Branch Manager</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="volunteer">Volunteer</SelectItem>
+                  <SelectItem value="specialist">Specialist</SelectItem>
+                  <SelectItem value="associate">Associate</SelectItem>
                   <SelectItem value="referrer">Referrer</SelectItem>
                 </SelectContent>
               </Select>

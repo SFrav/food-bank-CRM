@@ -38,9 +38,16 @@ export function DivisionSummary() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="size-5" />
-            {div.name}
+          <CardTitle className="flex justify-between">
+            <div className="flex items-centre gap-2">
+              <User className="size-5" />
+              {div.name}
+            </div>
+            <PermissionGuard permission="canManageDivisionOpen">
+              <Button className="w-[100px]" onClick={goTo('/admin/orgs')}>
+                Edit settings
+              </Button>
+            </PermissionGuard>
           </CardTitle>
         </CardHeader>
         <CardContent>

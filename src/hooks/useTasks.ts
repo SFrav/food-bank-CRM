@@ -1,11 +1,12 @@
 import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
 // import type { Task } from '@/integrations/supabase/types';  
 
 export interface Task {
   id: string;
-  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
+  entry_type: "referrer_request" | "beneficiary_request" | "specialist_todo" | "associate_todo" | "event";
   beneficiary_id: string;
   beneficiary_name?: string;
   pic_id?: string;
@@ -16,8 +17,6 @@ export interface Task {
   created_by: string;
   created_at: string;
 }
-
-export type TaskStatus = 'scheduled' | 'done' | 'cancelled';
 
 export function useTasks() { 
   const { toast } = useToast();
@@ -43,7 +42,7 @@ export function useTasks() {
     fetch();
   }, [fetch]);
 
-  const updateStatus = useCallback(async (id: string, status: TaskStatus) => {
+  const updateStatus = useCallback(async (id: string, status: Task["status"]) => {
     try {
       const { data, error } = await supabase.rpc("update_calendar_status", {
         p_id: id,
@@ -56,7 +55,12 @@ export function useTasks() {
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(err);
-      toast({ title: 'Error', description: error.message ?? 'Failed to update status', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message ?? 'Failed to update status', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   }, []); 
@@ -72,7 +76,12 @@ export function useTasks() {
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(error);
-      toast({ title: 'Error', description: error.message ?? 'Failed to delete', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message ?? 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   }, [fetch]); 

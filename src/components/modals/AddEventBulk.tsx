@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { NativeFileUploader } from '@/components/FileDropzone';
-import { useCalendarForm, CalendarCreateInput, TaskT, TaskStatusT } from "@/hooks/useCalendarForm";
+import { useCalendarForm, CalendarCreateInput} from "@/hooks/useCalendarForm";
+import { Task } from "@/hooks/useTasks";
 
 interface AddEventBulkModalProps {
   isOpen: boolean;
@@ -13,14 +14,14 @@ interface AddEventBulkModalProps {
 }
 
 type EventRecord = {
-  entry_type: TaskT;
+  entry_type: Task["entry_type"];
   title: string | null;
   event_title: string | null;
   name: string | null;
   location: string | null;
   date: string;
   time: string;
-  status: TaskStatusT;
+  status: Task["status"];
   description: string | null;
 };
 
@@ -53,7 +54,7 @@ export default function AddEventBulkModal({
 
   const toISO = (dateStr?: string, timeStr = "10:00:00"): string | null => {
     if (!dateStr) return null;
-    const cleaned = stripQuotes(dateStr).trim();
+    const cleaned = stripQuotes(dateStr).replace(/\r/g, "").trim();
     if (!cleaned) return null;
 
     const dateParts = cleaned.includes("/") ? cleaned.split("/") : cleaned.split("-");
@@ -75,7 +76,7 @@ export default function AddEventBulkModal({
     const paddedMonth = month.toString().padStart(2, "0");
     const paddedDay = day.toString().padStart(2, "0");
 
-    let time = timeStr.trim();
+    let time = timeStr?.trim() || "10:00:00";;
     if (time.length === 5) time += ":00";
 
     const isoString = `${year}-${paddedMonth}-${paddedDay}T${time}`;
@@ -86,6 +87,7 @@ export default function AddEventBulkModal({
 
   const parseCSV = (text: string) => {
     const cleaned = text.replace(/^\uFEFF/, "");
+    // const rows = cleaned.split(/[\r\n]+/).filter(l => l.trim().length);
     const rows = cleaned.split(/\r?\n/).filter(l => l.trim().length);
     if (rows.length === 0) return [];
     const headers = rows[0]
@@ -101,52 +103,84 @@ export default function AddEventBulkModal({
     });
   };
 
-  const handleFileSelected = (files: File[]) => {
+  const handleFileSelected = async (
+    files: File[]
+  ): Promise<CalendarCreateInput[]> => {
+    if (!files.length) return [];
     const f = files[0];
     setFile(f);
     setFileName(f.name);
-    const reader = new FileReader();
+    const content = await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as string);
+      r.onerror = () => rej(r.error);
+      r.readAsText(f);
+    });
+    const rows = parseCSV(content);
+    const mapped = rows
+      .filter((row) => row.date)
+      .map((row: EventRecord) => ({
+        p_entry_type: "event" as Task["entry_type"],
+        p_subject:
+          stripQuotes(row.title) ||
+          stripQuotes(row.event_title) ||
+          stripQuotes(row.name) ||
+          "",
+        p_location: stripQuotes(row.location) || null,
+        p_beneficiary_id: null,
+        p_pic_id: null,
+        p_scheduled_at: toISO(row.date, row.time) ?? null,
+        p_status: stripQuotes(row.status) as Task["status"] ?? "scheduled",
+        p_notes: stripQuotes(row.description) || null,
+        p_created_by: user?.id,
+      }))
+      .filter((e) => e.p_subject && e.p_scheduled_at);
+    setEvents(mapped);
 
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      const rows = parseCSV(content);
-      console.log("CSV rows parsed:", rows.length);   // debug line
-      const mapped = rows
-        .filter((row) => row.date)
-        .map((row: EventRecord) => ({
-          entry_type: "event" as TaskT,
-          subject:
-            stripQuotes(row.title) ||
-            stripQuotes(row.event_title) ||
-            stripQuotes(row.name) ||
-            "",
-          location: stripQuotes(row.location) || null,
-          beneficiary_id: null,
-          pic_id: null,
-          scheduled_at: toISO(row.date, row.time) ?? null,
-          status: stripQuotes(row.status) as TaskStatusT ?? "scheduled" as TaskStatusT,
-          notes: stripQuotes(row.description) || null,
-          created_by: user?.id,
-        }))
-        .filter((e) => e.subject && e.scheduled_at);
-
-      console.log("Valid events to submit:", mapped.length); // debug line
-      setEvents(mapped);
-    };
-
-    reader.readAsText(f);
+    return mapped;
   };
 
-  const handleMobileFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-    handleFiles(files);           // re‑use the same validation logic
-    e.target.value = '';          // reset the input for subsequent selects
-  };
+  const handleMobileFileChange = async ( //@Modal closes on mobile devices when chaning back from file browser application. Workaround: immediate submit
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(e.currentTarget.files || []);
+    if (!files.length) return;
+    const mappedEvents = await handleFileSelected(files);
+    if (!mappedEvents.length) {
+      toast({
+        title: "Error",
+        description: "No valid events parsed from file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const { success } = await createEventBulk(mappedEvents);
+      if (success) {
+        toast({
+          title: "Success",
+          description: `${mappedEvents.length} events added.`,
+        });
+        setFile(null);
+        setFileName("");
+        setEvents([]);   
+        onClose();     
+      }
+    } catch (err) {
+      console.error("Bulk insert error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to add bulk events.",
+        variant: "destructive",
+      });
+    }
+    e.currentTarget.value = ""; 
+  };   
+
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-
+    toast({ title: "Submit called", description: `Events=${events.length}` });  
     if (!user) {
       toast({
         title: "Error",
@@ -155,7 +189,6 @@ export default function AddEventBulkModal({
       });
       return;
     }
-
     if (events.length === 0) {
       toast({
         title: "Error",
@@ -164,13 +197,16 @@ export default function AddEventBulkModal({
       });
       return;
     }
-
     setIsLoading(true);
     try {
       const { success, error } = await createEventBulk(events);
-      if(!success) {
-      return;
-      }
+      // if(!success) {
+      // return;
+      // }
+      toast({
+        title: "Submit Result",
+        description: `Success: ${success} | Error: ${error ?? "none"}`,
+      });
       setEvents([]);
       setFile(null);
       setFileName("");
@@ -178,6 +214,11 @@ export default function AddEventBulkModal({
     } catch (err: unknown) {
       // const error = err as { message?: string }; 
       console.error("Bulk add error:", err);
+      toast({
+        title: "Error",
+        description: `Failed to add bulk events: ${(err as Error).message}`,
+        variant: "destructive",
+      });
       // toast({
       //   title: "Error",
       //   description: "Failed to add bulk events.",
@@ -218,7 +259,7 @@ export default function AddEventBulkModal({
             />
           ) : (
           <NativeFileUploader
-            onFilesSelected={handleFileSelected}
+            onFilesSelected={handleFileSelected} //{async (files) => { await handleFileSelected(files);}}
             accept={[".csv"]}
             maxSize={5 * 1024 * 1024}
             maxFiles={1}

@@ -96,8 +96,8 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
   //@role based permissions
   // const isManager = ['manager', 'branch_manager'].includes(profile?.role ?? '');
   const isReferrer = profile?.role === 'referrer';
-  const isStaff = profile?.role === 'staff';
-  const isVolunteer = profile?.role === 'volunteer';
+  const isSpecialist = profile?.role === 'specialist';
+  const isAssociate = profile?.role === 'associate';
 
   const referralCondition = useMemo(() => {
     const toPending = formData.status === 'pending' && contact.status === 'inactive';
@@ -157,7 +157,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
           <Label htmlFor="name">Name *</Label>
           <Input id="name" 
             name="name" 
-            disabled={isReferrer || isStaff || isVolunteer}
+            disabled={isReferrer || isSpecialist || isAssociate}
             value={formData.name} onChange={onInputChange} placeholder="Full name" required />
         </div>
         <div className="space-y-2">
@@ -165,7 +165,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
           <Input id="email" 
             name="email" 
             type="email" 
-            disabled={ isStaff || isVolunteer}
+            disabled={ isSpecialist || isAssociate}
             value={formData.email} onChange={onInputChange} placeholder="Email address" />
         </div>
       </div>
@@ -244,7 +244,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               className="sr-only w-[0%]"
             />
             <Select
-              disabled={isLoadingRegions || regions.length === 0 || isReferrer || isStaff || isVolunteer}
+              disabled={isLoadingRegions || regions.length === 0 || isReferrer || isSpecialist || isAssociate}
               value={formData.region_id || "none"}
               onValueChange={onRegionChange}
             >
@@ -269,7 +269,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
             />
             <Select
               required={formData.status === 'active'}
-              disabled={isLoadingDivisions || divsRegion.length === 0 || isVolunteer}
+              disabled={isLoadingDivisions || divsRegion.length === 0 || isAssociate}
               value={divsRegionValueCondition && contact.status !== 'active' ? '' : formData.owner_id}
               onValueChange={onDivisionChange}
             >
@@ -291,7 +291,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               <Select
                 value={formData.status}
                 onValueChange={onStatusChange}
-                disabled={isVolunteer}
+                disabled={isAssociate}
               >
                 <SelectTrigger className="sm:w-full">
                   <SelectValue placeholder="Select Status"/>

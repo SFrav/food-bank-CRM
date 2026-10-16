@@ -8,7 +8,7 @@ export interface UserProfile {
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  role: 'pending' | 'referrer' | 'volunteer' |  'staff' | 'branch_manager' | 'manager' | 'head' | 'admin';
+  role: 'pending' | 'referrer' | 'associate' |  'specialist' | 'branch_manager' | 'manager' | 'head' | 'admin';
   entity_id: string | null;
   entity?: string | null;
   division_id: string | null;
@@ -16,8 +16,6 @@ export interface UserProfile {
   region_id: string | null;
   region: string | null;
   manager_id?: string | null;
-  user_status: 'active' | 'inactive' | 'resigned' | 'terminated' | 'leave';
-  is_active: boolean;
   created_at: string;
   updated_at: string | null;
 }
@@ -82,7 +80,7 @@ export const useProfile = () => {
   const isHead = () => profile?.role === 'head';
   const isManager = () => profile?.role === 'manager';
   const isAccountManager = () => profile?.role === 'branch_manager';
-  const isStaff = () => profile?.role === 'staff';
+  const isSpecialist = () => profile?.role === 'specialist';
   const isPending = () => profile?.role === 'pending';
   const hasRole = (r: UserProfile['role']) => profile?.role === r;
 
@@ -97,7 +95,7 @@ export const useProfile = () => {
       head: 'Level Head',
       manager: 'Level Manager',
       branch_manager: 'Branch Manager',
-      staff: 'Staff',
+      specialist: 'Specialist',
       pending: 'Pending Approval',
     };
     return names[profile?.role ?? ''] ?? profile?.role ?? '';
@@ -116,7 +114,7 @@ export const useProfile = () => {
     isHead,
     isManager,
     isAccountManager,
-    isStaff,
+    isSpecialist,
     isPending,
     getRoleDisplayName,
     getDisplayName: () => profile?.full_name ?? ''

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
 
 
@@ -47,7 +48,12 @@ export const useContactAllotmentSummary = (
       const error = err as { message?: string };
       console.error(err);
       setError(true);
-      toast({ title: 'Error', description: error.message || "Failed to load", variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message || "Failed to load", variant: 'destructive' });
     } finally {
       setLoading(false);
     }

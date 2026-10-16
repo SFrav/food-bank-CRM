@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleBadge } from '@/components/RoleBadge';
+import { Badge } from '@/components/ui/badge';
 import { Users, useAdminUsers } from '@/hooks/useAdminUsers';
 // import EditUserModal from '@/components/modals/EditUser';
 import { useProfile } from '@/hooks/useProfile';
@@ -18,7 +19,7 @@ const EditUserModal = lazy(() =>
   import('@/components/modals/EditUser')
 );
 
-type RoleFilter = 'all' | 'admin' | 'head' | 'manager' | 'referrer' | 'branch_manager' | 'staff' | 'volunteer' |  'pending';
+type RoleFilter = 'all' | 'admin' | 'head' | 'manager' | 'referrer' | 'branch_manager' | 'specialist' | 'associate' |  'pending';
 
 export default function AdminUsers() {
   const { profile } = useProfile();
@@ -41,7 +42,16 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<Users | null>(null);
   const [savingUsers, setSavingUsers] = useState<Set<string>>(new Set());
 
-  const filteredUsers = useMemo(() => users ?? [], [users]);
+  const filteredUsers = useMemo(() => { 
+    if (!profile?.entity_id && !profile?.division_id) return users;
+    if (!profile?.division_id) return users.filter(u => u.entity_id === profile?.entity_id) ?? []
+    return users.filter(u => u.division_id === profile?.division_id) ?? []
+  }, [users, profile]);
+
+  const filteredRegions = useMemo (() => {
+    if (!profile?.region_id) return regions ?? [];
+    return regions.filter(r => r.id === profile?.region_id) ?? []
+  }, [regions, profile?.region_id])
 
   const saveUserRole = useCallback(async (
     userId: string,
@@ -52,7 +62,15 @@ export default function AdminUsers() {
     regionId: string | null
   ) => {
     setSavingUsers(prev => new Set(prev).add(userId));
-    const result = await updateUserProfile(userId, role as Users['role'], entityId, divisionId, managerId, regionId);
+    const result = await updateUserProfile(
+      userId, {
+      role: role as Users['role'], 
+      is_active: null,
+      entityId, 
+      divisionId, 
+      managerId, 
+      regionId
+    });
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
     if (result.success) {
       // toast({description: 'User updated successfully', variant: 'default'});
@@ -61,6 +79,23 @@ export default function AdminUsers() {
     }
     return result;
   }, [updateUserProfile]);
+
+  const toggleUserStatus = async (id: string, currentStatus: boolean, entityId: string, divisionId: string, regionId: string) => {
+    const { error } = await updateUserProfile(id, 
+      { is_active: !currentStatus, entityId: entityId, divisionId: divisionId, regionId: regionId });
+    
+    if (error) {
+      toast({title: "Error", description: error, variant: "destructive"});
+    } else {
+      toast({title: "Success", description: `User ${!currentStatus ? 'activated' : 'deactivated'} successfully`});
+      // Trigger refresh event
+      try {
+        window.dispatchEvent(new CustomEvent('org-units-changed'));
+      } catch (e) {
+        console.error('Failed to dispatch refresh event:', e);
+      }
+    }
+  };
 
   const handleDeleteUser = useCallback(async (userId: string) => {
     setSavingUsers(prev => new Set(prev).add(userId));
@@ -74,7 +109,7 @@ export default function AdminUsers() {
     return result;
   }, [deleteUser, refetch]);
 
-  const handleEditClose = useCallback(() => setSelectedUser(null), []);
+  //const handleEditClose = useCallback(() => setSelectedUser(null), []);
 
   return (
     <div className="space-y-6">
@@ -101,8 +136,8 @@ export default function AdminUsers() {
                 <SelectContent>
           <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="pending">Pending Assignment</SelectItem>
-          <SelectItem value="volunteer">Volunteer</SelectItem>
-          <SelectItem value="staff">Staff Member</SelectItem>
+          <SelectItem value="associate">Associate</SelectItem>
+          <SelectItem value="specialist">Specialist</SelectItem>
           <SelectItem value="branch_manager">Food Bank Manager</SelectItem>
           <SelectItem value="manager">Level Manager</SelectItem>
           <SelectItem value="head">Level Head</SelectItem>
@@ -122,6 +157,7 @@ export default function AdminUsers() {
                     <TableHead className="min-w-[140px]">Name</TableHead>
                     <TableHead className="min-w-[180px] hidden sm:table-cell">Email</TableHead>
                     <TableHead className="w-[200px]">Role</TableHead>
+                    <TableHead className="w-[80px]">Status</TableHead>
                     <TableHead className="min-w-[120px] text-right text-muted-foreground text-xs font-normal">
                       Entity
                     </TableHead>
@@ -159,6 +195,17 @@ export default function AdminUsers() {
                     <TableCell>
                       <RoleBadge role={user.role} />
                     </TableCell>
+                    <TableCell>
+                        <Badge 
+                          variant={user.is_active ? "default" : "secondary"}
+                          className="cursor-pointer"
+                          onClick={(e) => {e.stopPropagation(); 
+                            toggleUserStatus(user.id, user.is_active, user.entity_id, user.division_id, user.region_id)
+                          }}
+                        >
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
                       {savingUsers.has(user.id)
                         ? <div className="inline-block size-3 animate-spin border border-current border-t-transparent rounded-full" />
@@ -174,18 +221,18 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
       </PermissionGuard>
-      {!!selectedUser && (
+      {!!selectedUser && !usersLoading && (
         <Suspense fallback={<div className="p-4">Loading Modal &hellip;</div>}>
           <EditUserModal
             //key={selectedUser?.id ?? 'modal'} //@Workaround to resolve this issue: "Internal React error: Expected static flag was missing.". Not related to lazy load. Adding usersLoading checks to modal didn't resolve
             user={selectedUser}
             isOpen={!!selectedUser}
             usersLoading={usersLoading}
-            onClose={handleEditClose}
+            onClose={() => setSelectedUser(null)}
             onSave={saveUserRole}
             onDelete={handleDeleteUser}
             entities={entities}
-            regions={regions}
+            regions={filteredRegions}
             currentUserRole={profile?.role}
             currentUserId={profile?.id}
           />

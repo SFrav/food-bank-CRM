@@ -62,24 +62,21 @@ const EditUserModal = ({
     entityId === 'none' ? null : entityId
   );
 
-  // Sync local state when user changes
   useEffect(() => {
-    if (!isOpen || usersLoading) return;
-    //console.log('EditUserModal user:', user);
-    if (user) {
+    if (isOpen && user) {
       setRole(user.role);
       setRegionId(user.region_id ?? '');
       setEntityId(user.entity_id || 'none');
       setDivisionId(user.division_id ?? 'none');
       setConfirmDelete(false);
+    } else if (!isOpen) {
+      setConfirmDelete(false);
     }
-  }, [user, isOpen, usersLoading]);
-
-  // if (!user) return null;
+  }, [isOpen, user]);
 
   const isSelf = user.id === currentUserId;
   const isAdminTarget = user.role === 'admin';
-  const canManage = currentUserRole === 'admin'
+  const canManage = ['admin', 'head'].includes(currentUserRole)
     ? !isSelf
     : currentUserRole === 'manager'
       ? user.role !== 'admin' && user.role !== 'manager'
@@ -111,10 +108,10 @@ const EditUserModal = ({
     const result = await onSave(
       user.id,
       role,
-      entityId === 'none' ? null : entityId,
-      divisionId === 'none' ? null : divisionId,
+      (!entityId || entityId === 'none') ? null : entityId,
+      (!divisionId || divisionId === 'none') ? null : divisionId,
       user.manager_id ?? null,
-      regionId === 'none' ? null : regionId,
+      (!regionId || regionId === 'none') ? null : regionId,
     );
     setIsSaving(false);
     if (result.success) onClose();
@@ -164,13 +161,13 @@ const EditUserModal = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pending Assignment</SelectItem>
-                  <SelectItem value="volunteer">Volunteer</SelectItem>
-                  <SelectItem value="staff">Staff Member</SelectItem>
+                  <SelectItem value="associate">Associate</SelectItem>
+                  <SelectItem value="specialist">Specialist</SelectItem>
                   <SelectItem value="branch_manager">Food Bank Manager</SelectItem>
                   <SelectItem value="manager">Level Manager</SelectItem>
-                  <SelectItem value="head">Level Head</SelectItem>
-                  <SelectItem value="referrer">Referrer</SelectItem>
-                  <SelectItem value="admin">System Administrator</SelectItem>
+                  <SelectItem value="head" disabled={currentUserRole !== 'admin'}>Level Head</SelectItem>
+                  <SelectItem value="referrer" disabled={currentUserRole !== 'admin'}>Referrer</SelectItem>
+                  <SelectItem value="admin" disabled={currentUserRole !== 'admin'}>System Administrator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -181,10 +178,10 @@ const EditUserModal = ({
               <Select
                 value={regionId || 'none'}
                 onValueChange={(v) => setRegionId(v === 'none' ? '' : v)}
-                disabled={isSaving}
+                disabled={isSaving || !['admin', 'head', 'manager'].includes(currentUserRole)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Optional" />
+                  <SelectValue placeholder="Select region" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">
@@ -202,7 +199,7 @@ const EditUserModal = ({
             {/* Entity */}
             <div className="space-y-1">
               <Label>Entity</Label>
-              <Select value={entityId} onValueChange={setEntityId} disabled={isSaving}>
+              <Select value={entityId} onValueChange={setEntityId} disabled={isSaving || !['admin'].includes(currentUserRole)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select entity" />
                 </SelectTrigger>
@@ -225,7 +222,7 @@ const EditUserModal = ({
               <Select
                 value={divisionId}
                 onValueChange={setDivisionId}
-                disabled={divisionsLoading || entityId === 'none' || isSaving}
+                disabled={divisionsLoading || entityId === 'none' || isSaving || !['admin', 'head', 'manager'].includes(currentUserRole)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select branch" />

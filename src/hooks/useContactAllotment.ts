@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
 
 export interface ContactAllotment {
@@ -40,7 +41,12 @@ export const useContactAllotment = (contactId: string | null) => {
           const error = err as { message?: string }; 
           console.error(err);
           setError(true); //error.message || 'Failed to load allotment');
-          toast({ title: 'Error', description: error.message || 'Failed to load allotment', variant: 'destructive' });
+          try {
+            ViolationMessages(err, 'Failed to fetch contact.');
+          } catch (customError) {
+            toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+          }
+          // toast({ title: 'Error', description: error.message || 'Failed to load allotment', variant: 'destructive' });
         } finally {
         setLoading(false);
       }
@@ -61,7 +67,12 @@ export const useContactAllotment = (contactId: string | null) => {
         const error = err as { message?: string };
         console.error(err);
         setError(true);
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+        // toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return { success: false, error: error.message };
       } finally {
         setLoading(false);
@@ -83,7 +94,12 @@ export const useContactAllotment = (contactId: string | null) => {
         const error = err as { message?: string }; 
         console.error(err);
         setError(true);
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+        // toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return { success: false, error: error.message };
       } finally {
         setLoading(false);
@@ -105,7 +121,12 @@ export const useContactAllotment = (contactId: string | null) => {
         const error = err as { message?: string };
         console.error(err);
         setError(true);
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+        // toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return { success: false, error: error.message };
       } finally {
         setLoading(false);
@@ -138,7 +159,12 @@ export const useContactAllotment = (contactId: string | null) => {
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error('Error inserting allotment:', err);
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return { success: false, error: error.message };
     } finally {
       setLoading(false);

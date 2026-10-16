@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
+import { Task } from "@/hooks/useTasks";
 
 type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
@@ -13,7 +15,7 @@ type Beneficiary = {
 
 type Calendar = {
   id: string;
-  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
+  entry_type: "referrer_request" | "beneficiary_request" | "specialist_todo" | "associate_todo" | "event";
   subject?: string;
   location?: string
   beneficiary_id: string;
@@ -33,24 +35,21 @@ type useCalendarFormProps = {
 };
 
 export interface CalendarCreateInput {
-  entry_type: TaskT;
-  subject?: string | null;
-  location?: string | null;
-  beneficiary_id?: string | null;
-  pic_id?: string | null;
-  scheduled_at: string;
-  status: TaskStatusT;
-  notes?: string | null;
-  created_by: string;
+  p_entry_type: Task["entry_type"];
+  p_subject?: string | null;
+  p_location?: string | null;
+  p_beneficiary_id?: string | null;
+  p_pic_id?: string | null;
+  p_scheduled_at: string;
+  p_status: Task["status"];
+  p_notes?: string | null;
+  p_created_by: string;
 }
 
 const roundToNearestQuarter = (date: Date) => {
   const ms = 15 * 60 * 1000;          // 15 minutes in ms
   return new Date(Math.round(date.getTime() / ms) * ms);
 };
-
-export type TaskT = "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
-export type TaskStatusT = "scheduled" | "done" | "cancelled";
 
 export function useCalendarForm({
   initialCalendar,
@@ -107,11 +106,12 @@ export function useCalendarForm({
       return { success: true };
     } catch (err: unknown) {
       console.error(err);
-      toast({
-        title: "Error",
-        description: "Failed to create calendar entry.",
-        variant: "destructive",
-      });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({title: "Error", description: "Failed to create calendar entry.", variant: "destructive"});
       return { success: false, error: err };
     } finally {
       setIsSubmitting(false);
@@ -131,11 +131,12 @@ export function useCalendarForm({
       return { success: true };
     } catch (err: unknown) {
       console.error(err);
-      toast({
-        title: "Error",
-        description: "Bulk insert failed.",
-        variant: "destructive",
-      });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({title: "Error", description: "Bulk insert failed.", variant: "destructive" });
       return { success: false, error: err };
     } finally {
       setIsSubmitting(false);
@@ -177,11 +178,12 @@ export function useCalendarForm({
       return { success: true };
     } catch (err: unknown) {
       console.error(err);
-      toast({
-        title: "Error",
-        description: "Failed to update calendar.",
-        variant: "destructive",
-      });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: "Error", description: "Failed to update calendar.", variant: "destructive"});
       return { success: false, error: err };
     } finally {
       setIsSubmitting(false);

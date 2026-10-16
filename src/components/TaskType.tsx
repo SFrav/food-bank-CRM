@@ -18,8 +18,8 @@ export function TaskType({
           <SelectItem value="all">📣 All</SelectItem>
           <SelectItem value="referrer_request">📞 Referrer Request</SelectItem>
           <SelectItem value="beneficiary_request">👨‍👩‍👧‍👦 Beneficiary Request</SelectItem>
-          <SelectItem value="staff_todo">🧭 Staff TODO</SelectItem>
-          <SelectItem value="volunteer_todo">💎 Volunteer TODO</SelectItem>
+          <SelectItem value="specialist_todo">🧭 Specialist TODO</SelectItem>
+          <SelectItem value="associate_todo">💎 Associate TODO</SelectItem>
         </SelectContent>
       </Select>
   );

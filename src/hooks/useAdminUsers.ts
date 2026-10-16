@@ -6,7 +6,8 @@ export interface Users {
   id: string;
   email: string;
   full_name: string | null;
-  role: 'pending' | 'referrer' | 'volunteer' |  'staff' | 'branch_manager' | 'manager' | 'head' | 'admin';
+  role: 'pending' | 'referrer' | 'associate' |  'specialist' | 'branch_manager' | 'manager' | 'head' | 'admin';
+  is_active: boolean;
   entity_id: string | null;
   division_id: string | null;
   manager_id: string | null;
@@ -27,8 +28,8 @@ export function useAdminUsers(query: string, roleFilter: string) {
     manager: 'manager',
     referrer: 'referrer',
     branch_manager: 'branch_manager',
-    staff: 'staff',
-    volunteer: 'volunteer',
+    specialist: 'specialist',
+    Associate: 'associate',
     pending: 'pending',
   };
 
@@ -64,25 +65,25 @@ export function useAdminUsers(query: string, roleFilter: string) {
   }, [fetchUsers]);
 
   const updateUserProfile = async (
-    userId: string,
-    role: 'admin' | 'head' | 'manager' | 'referrer' | 'branch_manager' | 'staff' | 'volunteer' |  'pending',
+    userId: string, updates: {
+    role?: 'admin' | 'head' | 'manager' | 'referrer' | 'branch_manager' | 'specialist' | 'associate' |  'pending',
+    is_active?: boolean,
     entityId?: string | null,
-    teamId?: string | null,
+    divisionId?: string | null,
     managerId?: string | null,
     regionId?: string | null
+    }
   ) => {
     try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc(
-        'admin_update_user_profile',
-        {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('admin_update_user_profile', {
           p_profile_id: userId,
-          p_role: role,
-          p_entity_id: entityId ?? null,
-          p_division_id: teamId ?? null,
-          p_manager_id: managerId ?? null,
-          p_region_id: regionId ?? null
-        },
-      );
+          p_role: updates.role ?? null,
+          p_is_active: updates.is_active ?? null,
+          p_entity_id: updates.entityId ?? null,
+          p_division_id: updates.divisionId ?? null,
+          p_manager_id: updates.managerId ?? null,
+          p_region_id: updates.regionId ?? null
+        });
 
       if (rpcError) {
         console.error('RPC Update Error:', rpcError);
@@ -102,10 +103,11 @@ export function useAdminUsers(query: string, roleFilter: string) {
           u.id === userId
             ? {
                 ...u,
-                role,
-                entity_id: entityId,
-                division_id: teamId,
-                manager_id: managerId,
+                role: updates.role,
+                is_active: updates.is_active,
+                entity_id: updates.entityId,
+                division_id: updates.divisionId,
+                manager_id: updates.managerId,
               }
             : u,
         ),

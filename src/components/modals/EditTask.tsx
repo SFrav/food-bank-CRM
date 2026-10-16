@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCalendarForm, TaskT, TaskStatusT } from "@/hooks/useCalendarForm";
+import { useCalendarForm } from "@/hooks/useCalendarForm";
+import { Task } from "@/hooks/useTasks";
 import { TaskType } from "@/components/TaskType";
 
 interface Beneficiary {
@@ -13,19 +14,19 @@ interface Beneficiary {
   name: string;
 }
 
-interface Task {
-  id: string;
-  entry_type: "referrer_request" | "beneficiary_request" | "staff_todo" | "volunteer_todo" | "event";
-  beneficiary_id: string;
-  beneficiary_name?: string;
-  pic_id?: string;
-  pic_name?: string;
-  scheduled_at: string;
-  status: "scheduled" | "done" | "cancelled";
-  notes?: string;
-  created_by: string;
-  created_at: string;
-}
+// interface Task {
+//   id: string;
+//   entry_type: "referrer_request" | "beneficiary_request" | "specialist_todo" | "Associate_todo" | "event";
+//   beneficiary_id: string;
+//   beneficiary_name?: string;
+//   pic_id?: string;
+//   pic_name?: string;
+//   scheduled_at: string;
+//   status: "scheduled" | "done" | "cancelled";
+//   notes?: string;
+//   created_by: string;
+//   created_at: string;
+// }
 
 interface EditTaskProps {
   isOpen: boolean;
@@ -78,7 +79,7 @@ export default function EditTaskModal({
             <Label htmlFor="task-type">Task Type *</Label>
             <TaskType
               value={form.entry_type}
-              onChange={(v: TaskT) => setForm({ ...form, entry_type: v })}
+              onChange={(v: Task['entry_type']) => setForm({ ...form, entry_type: v })}
             />
           </div>
 
@@ -117,7 +118,7 @@ export default function EditTaskModal({
             <Label htmlFor="status">Status</Label>
             <Select
               value={form.status}
-              onValueChange={(v: TaskStatusT) => setForm({ ...form, status: v })}
+              onValueChange={(v: Task["status"]) => setForm({ ...form, status: v })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />

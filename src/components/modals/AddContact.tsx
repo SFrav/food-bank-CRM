@@ -98,8 +98,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const referralCondition = formData.status === 'pending' || formData.status === 'active';
   
   const canApprove = ['head', 'manager', 'branch_manager'].includes(profile?.role ?? '');
-  const isStaff = profile?.role === 'staff';
-  const isVolunteer = profile?.role === 'volunteer';
+  const isSpecialist = profile?.role === 'specialist';
+  const isAssociate = profile?.role === 'associate';
   const isReferrer = profile?.role === 'referrer';
 
   const activeRegions = regions.filter(r => r.is_active === true)
@@ -108,7 +108,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     if (!profile || !isOpen) return;
     const divs = divisions.filter((d) => d.region_id === formData.region_id && d.is_active);
     setDivsRegion(divs);
-    if (isVolunteer || isStaff || isReferrer) setFormData(prev => ({ ...prev, region_id: profile?.region_id })); //@role based restriction on region - initialise data
+    if (isAssociate || isSpecialist || isReferrer) setFormData(prev => ({ ...prev, region_id: profile?.region_id })); //@role based restriction on region - initialise data
     if (!isOpen || nameInit ==='' || formData.name !== '') return;
     setFormData(prev => ({ ...prev, name: nameInit }));
   }, [profile, isOpen, formData.region_id, formData.name, nameInit, divisions]);
@@ -564,7 +564,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 readOnly
               />
               <Select
-                disabled={regions.length === 0 || isReferrer || isStaff || isVolunteer}
+                disabled={regions.length === 0 || isReferrer || isSpecialist || isAssociate}
                 value={formData.region_id || ""}
                 onValueChange={handleRegionChange}
               >
@@ -607,7 +607,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             <Select
               value={formData.status}
               onValueChange={handleStatusChange}
-              disabled={isVolunteer}
+              disabled={isAssociate}
             >
               <SelectTrigger className="sm:w-full">
                 <SelectValue placeholder="Select Status"/>

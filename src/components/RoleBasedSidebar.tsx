@@ -93,7 +93,7 @@ export const RoleBasedSidebar = ({
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
-      case 'staff':
+      case 'specialist':
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },
@@ -104,7 +104,7 @@ export const RoleBasedSidebar = ({
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
-      case 'volunteer':
+      case 'associate':
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Beneficiaries', url: '/beneficiaries', icon: ContactRound },

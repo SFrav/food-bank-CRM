@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 
@@ -49,6 +50,11 @@ export function useReferrerRating(referrerId?: string) {
       const error = err as { message?: string };
       console.error('Error fetching average rating:', err);
       setError(error.message);
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
       setAverageRatings([]);
     } finally {
       setLoading(false);
@@ -67,6 +73,11 @@ export function useReferrerRating(referrerId?: string) {
       const error = err as { message?: string };
       console.error('Error fetching ratings:', err);
       setError(error.message);
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
       setRatings([]);
     } finally {
       setLoading(false);
@@ -113,7 +124,12 @@ export function useReferrerRating(referrerId?: string) {
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error('Error creating rating:', err);
-      toast({ title: 'Error', description: error.message || 'Failed to create rating', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message || 'Failed to create rating', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   }, [profile]);
@@ -149,7 +165,12 @@ export function useReferrerRating(referrerId?: string) {
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error('Error updating rating:', err);
-      toast({ title: 'Error', description: error.message || 'Failed to update rating', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message || 'Failed to update rating', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   }, [profile]);
@@ -163,7 +184,12 @@ export function useReferrerRating(referrerId?: string) {
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error('Error deleting rating:', err);
-      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
   }, []);

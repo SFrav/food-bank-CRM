@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ViolationMessages } from '@/integrations/supabase/violationsPolicyFkey';
+import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
 
 export interface Contact {
@@ -222,7 +222,12 @@ export const useContacts = (
       } catch (err: unknown) {
         const error = err as { message?: string };
         console.error(err);
-        toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+        try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+        // toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
         return { success: false, data: null, error: error.message };
       } finally {
         setLoading(false);
@@ -269,7 +274,12 @@ export const useContacts = (
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error(err);
-      toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+      try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+      // toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
       return { success: false, error: error.message };
     } finally {
       setLoading(false);  
@@ -309,7 +319,12 @@ export const useContacts = (
       } catch (err: unknown) {
         const error = err as { message?: string };
         console.error('Delete error', err);
-        toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+        try {
+        ViolationMessages(err, 'Failed to fetch contact.');
+      } catch (customError) {
+        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      }
+        // toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
         return { success: false, error: error.message };
       }
     }, [fetch]);

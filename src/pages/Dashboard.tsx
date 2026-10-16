@@ -14,7 +14,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { useProfile } from "@/hooks/useProfile";
 import { PermissionGuard } from '@/components/PermissionGuard';
 
-type AllowedRoles = "branch_manager" | "volunteer" | "staff" | "referrer" | "manager" | "head" | "admin";
+type AllowedRoles = "branch_manager" | "associate" | "specialist" | "referrer" | "manager" | "head" | "admin";
 
 export default function Dashboard() {
   const { profile } = useProfile();
