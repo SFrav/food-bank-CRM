@@ -75,7 +75,7 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
   const { profile } = useProfile();
   const { divisions } = useDivisions();
   const { settingsMap, fetchSettings } = useDivisionSettings();
-  const { ratings, loading: loadingRatings, fetchRatings } = useReferrerRating();
+  
   const { data: allotmentSummary, fetch: fetchSummary, loading: loadingSummary } = useContactAllotmentSummary();
   const { printSlip } = usePrintSlip();
   const [divId, setDivId] = useState('');
@@ -159,15 +159,17 @@ const ContactEditAllotment: React.FC<ContactEditAllotmentProps> = ({
     });
     return sortedAllotment[0] ?? undefined;
   }, [allotment]);
+
+  const { ratings, loading: loadingRatings } = useReferrerRating(lastAllotment?.referrer_id);
   
   useEffect(() => {
     if (!contact || !profile || !lastAllotment || !isOpen) return; //|| isAddRateReferrerOpen
-    fetchRatings(lastAllotment.referrer_id);
+    // fetchRatings(lastAllotment.referrer_id);
     if (!loadingRatings) {
       setRatingInactive(!ratings.some(r => r.is_referrer));
       setFilteredRatings(ratings.filter(r => r.contact_id === contact.id && r.rater_id === profile.user_id));
     }
-  }, [contact, profile, lastAllotment, loadingRatings, isAddRateReferrerOpen]);
+  }, [contact, ratings, profile, lastAllotment, loadingRatings, isAddRateReferrerOpen]);
 
   const normalizeDate = (d: string | Date) => {
     const n = new Date(d);

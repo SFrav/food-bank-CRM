@@ -56,7 +56,7 @@ export default function Profile() {
         // }));
 
         // if (refetch) {
-          await refetch();     
+          //await refetch();     
         // }
       }
     } catch (error) {

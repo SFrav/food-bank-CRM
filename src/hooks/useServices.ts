@@ -63,7 +63,7 @@ export function useServices(
       setServices(data as Service[] ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error fetching services:', err);
+      // console.error('Error fetching services:', err);
       setError(error.message);
       setServices([]);
     } finally {
@@ -100,7 +100,7 @@ export function useServices(
       return { success: true, error: null };
   } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error creating service:', err);
+      // console.error('Error creating service:', err);
       toast({ title: 'Error', description: error.message || 'Failed to create service', variant: 'destructive' });
       return { success: false, error: error.message };
   }
@@ -119,7 +119,7 @@ export function useServices(
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error deleting service:', err);
+      // console.error('Error deleting service:', err);
       toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }

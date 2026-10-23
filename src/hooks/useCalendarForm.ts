@@ -105,7 +105,7 @@ export function useCalendarForm({
       onSuccess();
       return { success: true };
     } catch (err: unknown) {
-      console.error(err);
+      // console.error(err);
       try {
         ViolationMessages(err, 'Failed to fetch contact.');
       } catch (customError) {
@@ -130,7 +130,7 @@ export function useCalendarForm({
       onSuccess();
       return { success: true };
     } catch (err: unknown) {
-      console.error(err);
+      // console.error(err);
       try {
         ViolationMessages(err, 'Failed to fetch contact.');
       } catch (customError) {
@@ -177,7 +177,7 @@ export function useCalendarForm({
       onSuccess();
       return { success: true };
     } catch (err: unknown) {
-      console.error(err);
+      // console.error(err);
       try {
         ViolationMessages(err, 'Failed to fetch contact.');
       } catch (customError) {

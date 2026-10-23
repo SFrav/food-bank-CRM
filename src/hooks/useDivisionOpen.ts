@@ -36,7 +36,7 @@ export const useDivisionOpen = () => {
       return local;
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error('Error fetching division opening hours:', err);
+      // console.error('Error fetching division opening hours:', err);
       toast({
         title: 'Error',
         description: 'Could not load division opening hours',
@@ -69,7 +69,7 @@ export const useDivisionOpen = () => {
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error('Error updating division opening hours:', err);
+      // console.error('Error updating division opening hours:', err);
       toast({
         title: 'Error',
         description: 'Could not save opening hours',

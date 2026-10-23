@@ -98,10 +98,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const { settingsMap, fetchSettings} = useDivisionSettings();
   // const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { deleteContact, updateContact, refetch: fetchContacts } = useContacts();
-  const { notes, fetch: fetchNotes } = useContactNotes(contact?.id ?? null);
-  const { contactDays, upsertContactDays, fetchContactDays, deleteContactDays} = useContactDays();
+  const { notes, refetch: fetchNotes } = useContactNotes(contact?.id ?? null);
+  const { contactDays, upsertContactDays, deleteContactDays} = useContactDays(contact?.id ?? null);
   const { allotment, markAttendance, markAllotmentServing, markServed, insertDiscretionary, 
-    loading: loadingAllotment, fetch: fetchAllotment, error: errorAllotment} = useContactAllotment(contact?.id ?? null);
+    loading: loadingAllotment, error: errorAllotment} = useContactAllotment(contact?.id ?? null);
   // const { data: allotmentSummary, fetch: fetchSummary, loading: loadingSummary } = useContactAllotmentSummary();
   const [newAllotmentType, setNewAllotmentType] = useState<'referral' | 'drop_in' | ''>('');
   const [newAllotmentNote, setNewAllotmentNote] = useState('');
@@ -123,8 +123,16 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   // const [showAllotment, setShowAllotment] = useState(isServing);
   const [servingOngoing, setServingOngoing] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
+  // const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
   // const [openDays, setOpenDays] = useState<Record<number, boolean>>({});
+
+
+  const selectedDays: Set<number> = useMemo(() => {
+    if (contactDays) {
+    return new Set(contactDays.filter((d: any) => d.is_available).map((d: any) => d.day_of_week));
+    }
+    return new Set()
+  }, [contactDays]);
 
   const isDirty = useMemo(() => {
     if (!contact) return false;
@@ -171,17 +179,16 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     }
   }, [restoredFormData, restoredConditions, initialConditions, contact, isOpen]);
 
-  useEffect(() => {
-    if (!contact || !isOpen) return;
-    setSelectedDays(new Set(contactDays.filter((d: any) => d.is_available).map((d: any) => d.day_of_week)));
-  }, [contactDays]);
+  // useEffect(() => {
+  //   if (!contact || !isOpen) return;
+  //   setSelectedDays(new Set(contactDays.filter((d: any) => d.is_available).map((d: any) => d.day_of_week)));
+  // }, [contactDays]);
 
   useEffect(() => {
     if (!contact || !isOpen) return;
     setConfirmDelete(false);
     setLocalContact(contact);
-    fetchContactDays(contact.id);
-    setSelectedDays(new Set(contactDays.filter((d: any) => d.is_available).map((d: any) => d.day_of_week)));
+    // setSelectedDays(new Set(contactDays.filter((d: any) => d.is_available).map((d: any) => d.day_of_week)));
   }, [contact?.id, isOpen]);
 
   useEffect(() => {
@@ -209,10 +216,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   const handleDivisionChange = useCallback(async(v: string) => { setFormData(prev => (
     {...prev, owner_id: v}));
-    setSelectedDays(new Set());
-    await deleteContactDays(contact.id);
+    // setSelectedDays(new Set());
+    await deleteContactDays();
   }
-, [setFormData, setSelectedDays, deleteContactDays, contact?.id]);
+, [setFormData, deleteContactDays, contact?.id]);
 
   const handleStatusChange = useCallback((v: Contact["status"]) => setFormData(prev => (
     {...prev, status: v})
@@ -239,11 +246,11 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     }
     if (!contact) return;
     setDeleting(true);
-    const { success, error } = await deleteContact(contact.id);
+    const { success } = await deleteContact(contact.id);
     setDeleting(false);
     if (!success) return;
     onClose();
-    onContactUpdated();
+    // onContactUpdated();
   };
 
   const maxDaysSelectable = useMemo(() => { 
@@ -265,12 +272,12 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleDayToggle = useCallback(async(day: number) => {
     if (!contact) return;
     //?contactDays - sync with this toggle
-    const newSet = new Set(selectedDays);
+    const newSet = selectedDays;
     if (newSet.has(day)) newSet.delete(day);
     else newSet.add(day);
     if (newSet.size > maxDaysSelectable) return;
-    setSelectedDays(newSet);
-    await upsertContactDays(contact.id, day, newSet.has(day));
+    // setSelectedDays(newSet);
+    await upsertContactDays(day, newSet.has(day));
   }, [contact, selectedDays, maxDaysSelectable]);
 
   const handleMarkAttended = async (entryId: string) => {
@@ -282,7 +289,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   const handleMarkServing = async (entryId: string) => {
     if (!contact) return;
-      const { success, error } = await markAllotmentServing(entryId);
+      const { success } = await markAllotmentServing(entryId);
       if(!success) {
         setServingOngoing(false);
         // await fetchAllotment();
@@ -295,12 +302,13 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
 
   const handleMarkServed = async (entryId: string) => {
     if (!entryId) return;
-    const { success, error } = await markServed(entryId);
+    const { success } = await markServed(entryId);
     if(!success) {
       // await fetchAllotment();
+      setServingOngoing(false);
       return;
     }
-    onContactUpdated();
+    // onContactUpdated();
     setServingOngoing(false);
     // await fetchAllotment();
   };
@@ -309,9 +317,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     setNewAllotmentType(type);
 
     if (type === '' || !user?.id) return;
+    const userId = user.id;
 
     const note = type === 'referral' ? 'Rescheduled visit' : 'Approved drop‑in';
-    const { success } = await insertDiscretionary(type as "referral" | "drop_in", note, user.id);
+    const { success } = await insertDiscretionary({type, note, userId});
     if(success){
       // await fetchAllotment();
       setNewAllotmentType('');
@@ -385,7 +394,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     };
 
     try {
-      const { success, error } = await updateContact({
+      const { success } = await updateContact({
         id: contact.id,
         name: formData.name.trim(),
         email: formData.email.trim() || null,
@@ -406,7 +415,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         notes: formData.notes_new.trim() || null 
       });
       if (!success) return;
-      onContactUpdated();
+      // onContactUpdated();
       // if (showAllotment) return; 
       setIsFullScreen(false);
       setCondition1(false);

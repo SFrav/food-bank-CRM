@@ -46,7 +46,7 @@ export const useContactAllotmentSummary = (
       setData(rpcData as Summary[]);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error(err);
+      // console.error(err);
       setError(true);
       try {
         ViolationMessages(err, 'Failed to fetch contact.');

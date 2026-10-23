@@ -32,7 +32,7 @@ export const useDivisionClosed = () => {
       // return divisionClosed;
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error('Error fetching division closed dates:', err);
+      // console.error('Error fetching division closed dates:', err);
       toast({
         title: 'Error',
         description: 'Could not load division closed dates',
@@ -55,7 +55,7 @@ export const useDivisionClosed = () => {
       return { success: true }
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(error);
+      // console.error(error);
       toast({ title: 'Error', description: error.message || 'Failed to create', variant: 'destructive' });
       return { success: false, error: error.message };
     }
@@ -76,7 +76,7 @@ export const useDivisionClosed = () => {
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error('Error updating division closing date:', err);
+      // console.error('Error updating division closing date:', err);
       toast({
         title: 'Error',
         description: 'Could not save closed date',

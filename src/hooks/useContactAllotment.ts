@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
+import { queryKeys } from './queryKeys';
 
 export interface ContactAllotment {
   allotment_id: string;
@@ -22,170 +24,140 @@ export interface ContactAllotment {
   updated_at: string;
 }
 
-export const useContactAllotment = (contactId: string | null) => {
-  const [allotment, setAllotment] = useState<ContactAllotment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<boolean | undefined>();
-  const { toast } = useToast();
-
-  const fetch = useCallback(async () => {
-    if (!contactId) return;
-    setLoading(true);
-    setError(undefined);
-    try{
-      const { data, error: rpcErr } = await supabase
-        .rpc('get_allotment', { p_contact_id: contactId });
-      if (rpcErr) throw rpcErr;
-      setAllotment(data as ContactAllotment[] ?? []);
-        } catch (err: unknown) {
-          const error = err as { message?: string }; 
-          console.error(err);
-          setError(true); //error.message || 'Failed to load allotment');
-          try {
-            ViolationMessages(err, 'Failed to fetch contact.');
-          } catch (customError) {
-            toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-          }
-          // toast({ title: 'Error', description: error.message || 'Failed to load allotment', variant: 'destructive' });
-        } finally {
-        setLoading(false);
-      }
-    }, [contactId]);
-
-  const markAttendance = useCallback(
-    async (id: string) => {
-      setLoading(true);
-      setError(undefined);
-      try {
-        const { data, error: rpcErr } = await supabase.rpc('mark_allotment_attendance', { p_id: id});
-        if (rpcErr) throw rpcErr;
-        setAllotment(prev => prev.map(n => (n.allotment_id === id ? { ...n, attended: true } : n)));
-        // await fetch();
-        setError(false);
-        return { success: true };
-      } catch (err: unknown) { 
-        const error = err as { message?: string };
-        console.error(err);
-        setError(true);
-        try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-      }
-        // toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        return { success: false, error: error.message };
-      } finally {
-        setLoading(false);
-      }
-    }, [contactId]);
-
-  const markAllotmentServing = useCallback(
-    async (id: string) => {
-      setLoading(true);
-      setError(undefined);
-      try {
-        const { error: rpcErr } = await supabase.rpc('mark_allotment_serving', { p_id: id});
-        setAllotment(prev => prev.map(n => n.allotment_id === id ? { ...n, serving: !n.serving } : n));
-        if (rpcErr) throw rpcErr;
-        await fetch();
-        setError(false);
-        return { success: true, error: false };
-      } catch (err: unknown) {
-        const error = err as { message?: string }; 
-        console.error(err);
-        setError(true);
-        try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-      }
-        // toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        return { success: false, error: error.message };
-      } finally {
-        setLoading(false);
-      }
-    }, [contactId]);
-
-  const markServed = useCallback(
-    async (id: string) => {
-      setLoading(true)
-      setError(undefined);
-      try {
-        const { data, error: rpcErr } = await supabase.rpc('mark_allotment_served', { p_id: id});
-        setAllotment(prev => prev.map(n => n.allotment_id === id ? { ...n, served: true } : n));
-        if (rpcErr) throw rpcErr;
-        // await fetch();
-        setError(false);
-        return { success: true };
-      } catch (err: unknown) { 
-        const error = err as { message?: string };
-        console.error(err);
-        setError(true);
-        try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-      }
-        // toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        return { success: false, error: error.message };
-      } finally {
-        setLoading(false);
-      }
-    }, [contactId]);
-
-  const insertDiscretionary = useCallback(
-    async (
-      type: "referral" | "drop_in" | "",
-      note: string,
-      userId: string
-    ) => {
-      if (!contactId) return { success: false, error: 'No contact' };
-      setLoading(true);
-      try{
-      const { data, error: rpcErr } = await supabase.rpc(
-        'insert_allotment_discretionary', {
-          p_contact_id: contactId,
-          p_user_id: userId,
-          p_type: type || "drop_in",
-          p_date: new Date().toISOString(),
-          p_note: note,
-        }
-      ).single();
-      
-      if (rpcErr) throw rpcErr;
-      await fetch();
-      // toast({ title: 'Success', description: 'Visit approved' });
-      return { success: true };
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      console.error('Error inserting allotment:', err);
-      try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-      }
-      // toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-      
-    }
+export const allotmentQueryOptions = (contactId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.allotment(contactId),
+    enabled: !!contactId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_allotment', { p_contact_id: contactId });
+      if (error) throw error;
+      return (data ?? []) as ContactAllotment[];
     },
-    [contactId]
-  );
+  });
 
-  useEffect(() => {
-    fetch();
-  }, [contactId]);
+type Result = { success: true } | { success: false; error?: string };
 
-  return { 
-    allotment, 
-    fetch, 
-    loading,
-    error,
-    markAttendance,
-    markAllotmentServing,
-    markServed,
-    insertDiscretionary
+const toResult = async (promise: Promise<unknown>): Promise<Result> => {
+  try {
+    await promise;
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: (err as { message?: string }).message };
+  }
+};
+
+export const useContactAllotment = (contactId: string | undefined) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const query = useQuery(allotmentQueryOptions(contactId));
+  const allotmentKey = queryKeys.allotment(contactId);
+
+  const allotment = query.data ?? []; 
+
+  const attendance = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('mark_allotment_attendance', { p_id: id });
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: allotmentKey });
+      const previous = queryClient.getQueryData<ContactAllotment[]>(allotmentKey);
+      queryClient.setQueryData<ContactAllotment[]>(allotmentKey, (old) =>
+        old?.map((n) => (n.allotment_id === id ? { ...n, attended: true } : n))
+      );
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      // console.log(err);
+      if (context?.previous) queryClient.setQueryData(allotmentKey, context.previous);
+      let finalMessage = 'Could not mark attendance';
+      try { ViolationMessages(err, finalMessage); } catch (e: any) { finalMessage = e.message; }
+      toast({ title: 'Error', description: finalMessage, variant: 'destructive' });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: allotmentKey }),
+  });
+
+  const serving = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('mark_allotment_serving', { p_id: id });
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: allotmentKey });
+      const previous = queryClient.getQueryData<ContactAllotment[]>(allotmentKey);
+      queryClient.setQueryData<ContactAllotment[]>(allotmentKey, (old) =>
+        old?.map((n) => n.allotment_id === id ? { ...n, serving: !n.serving } : n)
+      );
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      // console.log(err);
+      if (context?.previous) queryClient.setQueryData(allotmentKey, context.previous);
+      let finalMessage = 'Could not update serving status';
+      try { ViolationMessages(err, finalMessage); } catch (e: any) { finalMessage = e.message; }
+      toast({ title: 'Error', description: finalMessage, variant: 'destructive' });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: allotmentKey }),
+  });
+
+  const served = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('mark_allotment_served', { p_id: id });
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: allotmentKey });
+      const previous = queryClient.getQueryData<ContactAllotment[]>(allotmentKey);
+      queryClient.setQueryData<ContactAllotment[]>(allotmentKey, (old) =>
+        old?.map((n) => n.allotment_id === id ? { ...n, served: true } : n)
+      );
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      // console.log(err);
+      if (context?.previous) queryClient.setQueryData(allotmentKey, context.previous);
+      let finalMessage = 'Could not mark as served';
+      try { ViolationMessages(err, finalMessage); } catch (e: any) { finalMessage = e.message; }
+      toast({ title: 'Error', description: finalMessage, variant: 'destructive' });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: allotmentKey }),
+  });
+
+  const discretionary = useMutation({
+    mutationFn: async (vars: { type: "referral" | "drop_in" | "", note: string, userId: string }) => {
+      if (!contactId) throw new Error('Invalid selection');
+      const { error } = await supabase.rpc('insert_allotment_discretionary', {
+        p_contact_id: contactId,
+        p_user_id: vars.userId,
+        p_type: vars.type || "drop_in",
+        p_date: new Date().toISOString(),
+        p_note: vars.note,
+      });
+      if (error) throw error;
+    },
+    onError: (err) => {
+      // console.log(err);
+      let finalMessage = 'Failed to insert discretionary allotment';
+      try { ViolationMessages(err, finalMessage); } catch (e: any) { finalMessage = e.message; }
+      toast({ title: 'Error', description: finalMessage, variant: 'destructive' });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: allotmentKey }),
+  });
+
+  const markAttendance = useCallback(async (id: string) => toResult(attendance.mutateAsync(id)), [attendance]);
+  const markAllotmentServing = useCallback(async (id: string) => toResult(serving.mutateAsync(id)), [serving]);
+  const markServed = useCallback(async (id: string) => toResult(served.mutateAsync(id)), [served]);
+  const insertDiscretionary = useCallback(async (vars: { type: "referral" | "drop_in" | "", note: string, userId: string }) => toResult(discretionary.mutateAsync(vars)), [discretionary]);
+
+  return {
+    allotment,
+    loading: query.isLoading || attendance.isPending || serving.isPending ||
+      served.isPending || discretionary.isPending,
+    error: query.error,
+    markAttendance: markAttendance,
+    markAllotmentServing: markAllotmentServing,
+    markServed: markServed,
+    insertDiscretionary: insertDiscretionary,
+    // refetch: () => query.refetch(),
   };
 };

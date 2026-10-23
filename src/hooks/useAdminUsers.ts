@@ -60,7 +60,6 @@ export function useAdminUsers(query: string, roleFilter: string) {
   }, [fetchUsers]);
 
   const refetch = useCallback(() => {
-    // sessionStorage.clear();
     fetchUsers();
   }, [fetchUsers]);
 
@@ -79,10 +78,10 @@ export function useAdminUsers(query: string, roleFilter: string) {
           p_profile_id: userId,
           p_role: updates.role ?? null,
           p_is_active: updates.is_active ?? null,
-          p_entity_id: updates.entityId ?? null,
-          p_division_id: updates.divisionId ?? null,
-          p_manager_id: updates.managerId ?? null,
-          p_region_id: updates.regionId ?? null
+          p_entity_id: updates.entityId || null,
+          p_division_id: updates.divisionId || null,
+          p_manager_id: updates.managerId || null,
+          p_region_id: updates.regionId || null
         });
 
       if (rpcError) {
@@ -93,7 +92,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
       if (rpcResult === false || rpcResult === null) {
         return {
           success: false,
-          error: 'Update failed: User profile not found or update failed.',
+          error: 'Failed to update user',
         };
       }
 
@@ -108,13 +107,12 @@ export function useAdminUsers(query: string, roleFilter: string) {
                 entity_id: updates.entityId,
                 division_id: updates.divisionId,
                 manager_id: updates.managerId,
+                region_id: updates.regionId,
               }
             : u,
         ),
       );
 
-      // Re‑cache the list
-      // sessionStorage.clear();
       refetch();
 
       return { success: true };
@@ -135,8 +133,6 @@ export function useAdminUsers(query: string, roleFilter: string) {
         console.error('Delete failed:', error);
         return { success: false, error: error };
       }
-
-      //// sessionStorage.clear();
       refetch();
       return { success: true };
     } catch (err: unknown) {

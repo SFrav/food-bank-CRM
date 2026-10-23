@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check, Trash2, X } from 'lucide-react';
-import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RoleBadge } from '@/components/RoleBadge';
 import { Users } from '@/hooks/useAdminUsers';
-import { useDivisions } from '@/hooks/useDivisions'; 
-import { supabase } from '@/integrations/supabase/client';
+import { useDivisions } from '@/hooks/useDivisions';
+import { useProfile } from '@/hooks/useProfile';
 
 interface UserRow {
   id: string;
@@ -22,7 +21,6 @@ interface UserRow {
 }
 
 interface Entity { id: string; name: string; is_active: boolean; }
-// interface Division { id: string; name: string; }
 interface Region { id: string; name: string; is_active: boolean; }
 
 interface EditUserModalProps {
@@ -50,24 +48,31 @@ const EditUserModal = ({
   entities, regions, currentUserRole, currentUserId,
 }: EditUserModalProps) => {
   if (!user) return null;
+  const { profile } = useProfile();
   const [role, setRole] = useState<Users['role']>('pending');
-  const [regionId, setRegionId] = useState<string>('');
-  const [entityId, setEntityId] = useState<string>('none');
-  const [divisionId, setDivisionId] = useState<string>('none');
+  const [regionId, setRegionId] = useState<string | null>(null);
+  const [entityId, setEntityId] = useState<string | null>(null);
+  const [divisionId, setDivisionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const { divisions: filteredDivisions, loading: divisionsLoading } = useDivisions(
-    entityId === 'none' ? null : entityId
-  );
+  const { divisions, divManagerCheck, loading: divisionsLoading } = useDivisions();
+
+  const filteredDivisions = useMemo (() => {
+    if(entityId || profile?.entity_id) {
+      const e = entityId ?? profile?.entity_id;
+      return divisions.filter(d => d.entity_id === e);
+    }
+    return [];
+  }, [divisions, entityId, profile?.entity_id])
 
   useEffect(() => {
     if (isOpen && user) {
       setRole(user.role);
-      setRegionId(user.region_id ?? '');
-      setEntityId(user.entity_id || 'none');
-      setDivisionId(user.division_id ?? 'none');
+      setRegionId(user.region_id);
+      setEntityId(user.entity_id);
+      setDivisionId(user.division_id);
       setConfirmDelete(false);
     } else if (!isOpen) {
       setConfirmDelete(false);
@@ -78,40 +83,33 @@ const EditUserModal = ({
   const isAdminTarget = user.role === 'admin';
   const canManage = ['admin', 'head'].includes(currentUserRole)
     ? !isSelf
-    : currentUserRole === 'manager'
-      ? user.role !== 'admin' && user.role !== 'manager'
+    : currentUserRole === 'manager' ? user.role !== 'admin' && user.role !== 'manager'
+      : currentUserRole === 'branch_manager' ? user.role !== 'admin' && user.role !== 'manager' && user.role !== 'branch_manager'
       : false;
 
   const isDirty =
     role !== user.role ||
-    (regionId || '') !== (user.region_id ?? '') ||
-    (entityId === 'none' ? null : entityId) !== user.entity_id ||
-    (divisionId === 'none' ? null : divisionId) !== user.division_id;
+    regionId !== user.region_id ||
+    entityId !== user.entity_id ||
+    divisionId !== user.division_id;
 
   const handleSave = async () => {
+    
+    
+
     setIsSaving(true);
-
-    if (role === 'branch_manager' && divisionId !== 'none') {
-      const { data, error } = await supabase.rpc('get_manager_by_division', {
-        p_division_id: divisionId,
-      });
-
-      if (error || !data) {
-        setIsSaving(false);
-        toast.error(
-          "The selected division has no manager. Please assign one first."
-        );
-        return;
-      }
+    if(!['admin', 'head'].includes(role)) {
+      const { success, error } = await divManagerCheck(divisionId === 'none' ? null : divisionId, role)
+      if (!success || error) {setIsSaving(false); return;}
     }
       
     const result = await onSave(
       user.id,
       role,
-      (!entityId || entityId === 'none') ? null : entityId,
-      (!divisionId || divisionId === 'none') ? null : divisionId,
+      entityId === 'none' ? null : entityId,
+      divisionId === 'none' ? null : divisionId,
       user.manager_id ?? null,
-      (!regionId || regionId === 'none') ? null : regionId,
+      regionId === 'none' ? null : regionId
     );
     setIsSaving(false);
     if (result.success) onClose();
@@ -148,7 +146,6 @@ const EditUserModal = ({
           </div>
         ) : (
           <div className="space-y-4 py-2">
-            {/* Role */}
             <div className="space-y-1">
               <Label>Role</Label>
               <Select
@@ -177,7 +174,7 @@ const EditUserModal = ({
               <Label>Region</Label>
               <Select
                 value={regionId || 'none'}
-                onValueChange={(v) => setRegionId(v === 'none' ? '' : v)}
+                onValueChange={(v) => setRegionId(v === 'none' ? null : v)}
                 disabled={isSaving || !['admin', 'head', 'manager'].includes(currentUserRole)}
               >
                 <SelectTrigger>
@@ -222,7 +219,7 @@ const EditUserModal = ({
               <Select
                 value={divisionId}
                 onValueChange={setDivisionId}
-                disabled={divisionsLoading || entityId === 'none' || isSaving || !['admin', 'head', 'manager'].includes(currentUserRole)}
+                disabled={divisionsLoading || entityId === null || isSaving || !['admin', 'head', 'manager'].includes(currentUserRole)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select branch" />

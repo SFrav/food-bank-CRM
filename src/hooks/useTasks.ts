@@ -31,7 +31,7 @@ export function useTasks() {
       setTasks(data as Task[]);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(err);
+      // console.error(err);
       toast({ title: 'Error', description: error.message ?? 'Failed to load tasks', variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -54,7 +54,7 @@ export function useTasks() {
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(err);
+      // console.error(err);
       try {
         ViolationMessages(err, 'Failed to fetch contact.');
       } catch (customError) {
@@ -75,7 +75,7 @@ export function useTasks() {
 
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(error);
+      // console.error(error);
       try {
         ViolationMessages(err, 'Failed to fetch contact.');
       } catch (customError) {

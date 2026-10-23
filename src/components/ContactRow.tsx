@@ -1,12 +1,11 @@
 import React, { useMemo } from 'react';
 import { CheckedState } from '@radix-ui/react-checkbox';
-// import { Printer } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { Contact } from '@/hooks/useContacts';
-import { ContactAllotment, useContactAllotment } from '@/hooks/useContactAllotment';
+// import { ContactAllotment, useContactAllotment } from '@/hooks/useContactAllotment';
 
 interface ContactRowProps {
   contact: Contact;
@@ -27,25 +26,25 @@ export const ContactRow = React.memo(({
      onCheckedChange,
      onEdit
    }: ContactRowProps) => {
-    const { allotment, loading: loadingAllotment} = useContactAllotment(contact?.id ?? null);
+    // const { allotment, loading: loadingAllotment} = useContactAllotment(contact?.id ?? null);
 
-    const lastAllotment = useMemo<ContactAllotment | undefined>(() => {
-      if (!allotment || allotment.length === 0) return undefined;
-      const sortedAllotment = [...allotment].sort((a, b) => {
-        return new Date(b.date).getTime() - new Date(a.date).getTime(); 
-      });
-      return sortedAllotment[0] ?? undefined;
-    }, [allotment]);
+    // const lastAllotment = useMemo<ContactAllotment | undefined>(() => {
+    //   if (!allotment || allotment.length === 0) return undefined;
+    //   const sortedAllotment = [...allotment].sort((a, b) => {
+    //     return new Date(b.date).getTime() - new Date(a.date).getTime(); 
+    //   });
+    //   return sortedAllotment[0] ?? undefined;
+    // }, [allotment]);
 
-    const lastAttended = useMemo<ContactAllotment | undefined>(() => {
-      if (!allotment || allotment.length === 0) return undefined;
-      const sortedAllotment = [...allotment].sort((a, b) => {
-        return new Date(b.date).getTime() - new Date(a.date).getTime(); 
-      });
+    // const lastAttended = useMemo<ContactAllotment | undefined>(() => {
+    //   if (!allotment || allotment.length === 0) return undefined;
+    //   const sortedAllotment = [...allotment].sort((a, b) => {
+    //     return new Date(b.date).getTime() - new Date(a.date).getTime(); 
+    //   });
 
-      const lastAttended = sortedAllotment.find(a => a.attended);
-      return lastAttended ?? undefined;
-    }, [allotment]);
+    //   const lastAttended = sortedAllotment.find(a => a.attended);
+    //   return lastAttended ?? undefined;
+    // }, [allotment]);
 
     const showCheckbox = !filterQueue && totalCount > 1
 
@@ -96,20 +95,20 @@ export const ContactRow = React.memo(({
           )}
         </TableCell>
         <TableCell className="text-xs text-muted-foreground pl-3 pr-3 sm:table-cell sm:max-w-[120px]">
-          {lastAllotment?.referrer_code ? (
+          {contact.referrer_code ? (
             <span className="sm:table-cell sm:max-w-[80px]">
-              {lastAllotment?.referrer_code}
+              {contact.referrer_code}
             </span>
           ) : (
             <span className="line-clamp-2"> &hellip; </span>
           )}
         </TableCell>
         <TableCell className="text-xs text-muted-foreground pl-3 pr-3 sm:table-cell sm:max-w-[120px]">
-          {lastAttended ? (
+          {contact.attended_at ? (
             <div className="flex items-center gap-1">
               
             <span className="sm:table-cell sm:max-w-[80px]">
-              {new Date(lastAttended.date).toLocaleDateString('en-GB')}
+              {new Date(contact.attended_at).toLocaleDateString('en-GB')}
             </span>
           </div>
           ) : (
@@ -127,10 +126,12 @@ export const ContactRow = React.memo(({
     );
   }, (prev, next) => {
     return (
-      prev.contact.id === next.contact.id &&
+      prev.contact === next.contact &&
       prev.selected === next.selected &&
       prev.filterQueue === next.filterQueue &&
       prev.totalCount === next.totalCount &&
-      prev.index === next.index
+      prev.index === next.index &&
+      prev.onEdit === next.onEdit &&
+      prev.onCheckedChange === next.onCheckedChange
     );
   });

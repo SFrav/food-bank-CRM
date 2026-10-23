@@ -72,11 +72,11 @@ export default function AdminUsers() {
       regionId
     });
     setSavingUsers(prev => { const s = new Set(prev); s.delete(userId); return s; });
-    if (result.success) {
-      // toast({description: 'User updated successfully', variant: 'default'});
-    } else {
-      toast({ title: 'Error', description: result.error || 'Failed to update user', variant: 'destructive' });
-    }
+    // if (result.success) {
+    //   // toast({description: 'User updated successfully', variant: 'default'});
+    // } else {
+    //   toast({ title: 'Error', description: result.error || 'Failed to update user', variant: 'destructive' });
+    // }
     return result;
   }, [updateUserProfile]);
 

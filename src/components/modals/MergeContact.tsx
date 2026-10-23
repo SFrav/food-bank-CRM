@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 //import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-// import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/hooks/useToast';
 import { useContacts, Contact } from '@/hooks/useContacts';
 import { useRegions } from '@/hooks/useRegions';
 import { cn } from '@/lib/utils';
@@ -39,9 +39,9 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
   secondary: initialSecondary,
 }) => {
   if (!initialPrimary || !initialSecondary) return null;
-  const { mergeContacts } = useContacts();
+  const { mergeContacts, error } = useContacts();
   const { regions } = useRegions();
-  // const { toast } = useToast();
+  const { toast } = useToast();
 
   const [primary, setPrimary] = useState<Contact>(initialPrimary);
   const [secondary, setSecondary] = useState<Contact>(initialSecondary);
@@ -90,12 +90,15 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
 
    const executeMerge = async () => {
      setIsLoading(true);
-     const { success, error } = await mergeContacts(primary.id, secondary.id);
+     console.log('[merge a]', primary.id, secondary.id);
+     const result = await mergeContacts(primary.id, secondary.id);
      setIsLoading(false);
-     if (!success) {
-      //  toast({ title: 'Error', description: error ?? 'Merge failed', variant: 'destructive' });
+     if (!result) {
+      console.log(result);
+      // setMergeError(result.error ?? 'Failed to merge'); return;
+      //  toast({ title: 'Error', description: 'Merge failed', variant: 'destructive' });
      } else {
-      //  toast({ title: 'Success', description: 'Contacts merged' });
+       toast({ title: 'Success', description: 'Contacts merged' });
        onMerged();
        onClose();
      }
@@ -113,7 +116,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
 
    const handleReviewMerge = useCallback(() => setShowMergeWarning(false), []);
 
-   const handleApproveMerge = useCallback(() => { setShowMergeWarning(false);  executeMerge; } ,[]);
+   const handleApproveMerge = useCallback(() => { setShowMergeWarning(false); executeMerge(); } ,[]);
 
   return (
     <div>

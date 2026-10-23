@@ -34,6 +34,7 @@ export const useSystemSettings = () => {
       if (rpcErr) throw rpcErr;
       setSettings(data || []);
     } catch (err: unknown) {
+      // console.error(err);
       const error = err as { message?: string }; 
       setError(error.message);
     } finally {
@@ -57,6 +58,7 @@ export const useSystemSettings = () => {
       await fetchSettings();
       return { data: data || null, error: null };
     } catch (err: unknown) {
+      // console.error(err);
       const error = err as { message?: string }; 
       return { data: null, error: error.message };
     }

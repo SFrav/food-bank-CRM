@@ -42,9 +42,8 @@ export default function Contacts() {
     saveToStorage(minimised);
   }, [minimised]);
 
-  const handleContactUpdated = useCallback(() => {
-    refetch(filterQueue);
-    // setRefreshKey(k => k + 1);
+  const handleContactUpdated = useCallback(async() => {
+    // await refetch(filterQueue);
   }, [filterQueue]);
 
   const handleDuplicateAdd = useCallback((dup: Contact) => {

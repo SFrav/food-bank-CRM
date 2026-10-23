@@ -62,7 +62,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
     return openMap[divisionId]?.[day]?.is_open === true  ? true : false;
   }, [profile, openMap])
   
-  const stableRefetch = useCallback((q: boolean) => refetch(q), [refetch]);
+  // const stableRefetch = useCallback((q: boolean) => refetch(q), [refetch]);
   // const stableFetchOpen = useCallback((id: string) => fetchOpen(id), [fetchOpen]);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
       setMergeDialogOpen(true);
       // setSelected(new Set());
     }
-  }, [selected, contacts, stableRefetch]); 
+  }, [selected, contacts]); 
 
   useEffect(() => {
     if (!divisions) return;
@@ -198,12 +198,12 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
   }, []);
 
   const handleAdd = () => {
-    refetch(filterQueue);
+    //refetch(filterQueue);
     setSearchTerm('');
   }
 
   const handleMerged = () => {
-    refetch(filterQueue);
+    //refetch(filterQueue);
     setSelected(new Set());
   };
 

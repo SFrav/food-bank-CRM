@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, AlertTriangle, Target, CheckSquare, Brain, Settings as SettingsIcon, Search, Clock } from 'lucide-react';
-import { useNotifications, Notification } from '@/hooks/useNotificationsContext';
+import { useNotifications, Notification } from '@/hooks/useNotifications';
 // import { useCreateNotifications } from "@/hooks/useNotifications";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminUsers, Users } from '@/hooks/useAdminUsers';

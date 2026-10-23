@@ -13,16 +13,17 @@ interface SyncedTable {
 const byUser = (userId: string) => `user_id=eq.${userId}`;
 
 export const SYNCED_TABLES: SyncedTable[] = [
-  {
-    table: 'notifications_user',
-    filter: byUser,
-    invalidates: (u) => [queryKeys.notifications(u)],
-  },
-  {
-    table: 'user_settings',
-    filter: byUser,
-    invalidates: (u) => [queryKeys.settings(u), queryKeys.notifications(u)],
-  },
+  // { table: 'user_profile', filter: byUser, invalidates: (u) => [queryKeys.profile(u)] },
+  { table: 'notifications_user', filter: byUser, invalidates: (u) => [queryKeys.notifications(u)] },
+  { table: 'user_settings', filter: byUser, invalidates: (u) => [queryKeys.userSettings(u), queryKeys.notifications(u)]},
+
+  { table: 'contacts', invalidates: () => [queryKeys.contacts()] },
+
+  // also add queryKeys.contactsLists()?
+  { table: 'contact_days',  invalidates: () => [queryKeys.contactsDays()] },
+  { table: 'contact_notes', invalidates: () => [queryKeys.contactsNotes()] },
+  { table: 'contacts_allotment',    invalidates: () => [queryKeys.allotment()] },
+  { table: 'referrer_rating',    invalidates: () => [queryKeys.referrerRating()] },
 ];
 
 const DEBOUNCE_MS = 150;
@@ -34,7 +35,7 @@ export const useRealtimeSync = () => {
 
   useEffect(() => {
     if (!userId) {
-      queryClient.clear();
+      queryClient.clear(); // signed out: don't leak one user's cache to the next
       return;
     }
 
@@ -54,33 +55,34 @@ export const useRealtimeSync = () => {
       }
     };
 
-    const channel = supabase.channel(`sync:${userId}`);
-
-    for (const { table, filter, invalidates } of SYNCED_TABLES) {
-      channel.on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table,
-          ...(filter ? { filter: filter(userId) } : {}),
-        },
-        () => invalidateSoon(invalidates(userId)),
-      );
-    }
-
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        queryClient.invalidateQueries();
-      }
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.error(`Realtime sync problem: ${status}`);
-      }
-    });
+    const channels = SYNCED_TABLES.map(({ table, filter, invalidates }) =>
+      supabase
+        .channel(`sync:${table}:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table,
+            ...(filter ? { filter: filter(userId) } : {}),
+          },
+          (payload) => {
+            // if (import.meta.env.DEV) console.log(`[realtime] ${table}`, payload.eventType);
+            invalidateSoon(invalidates(userId));
+          },
+        )
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            invalidateSoon(invalidates(userId));
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error(`[realtime] ${table}: ${status}`, err?.message ?? '');
+          }
+        }),
+    );
 
     return () => {
       timers.forEach(clearTimeout);
-      supabase.removeChannel(channel);
+      channels.forEach((channel) => supabase.removeChannel(channel));
     };
   }, [userId, queryClient]);
 };

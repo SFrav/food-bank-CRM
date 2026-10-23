@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StarRating } from "@/components/ui/star-rating"
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,7 @@ const EditReferrerRate: React.FC<RateReferrerProps> = ({
   contactId
 }) => {
   const { profile } = useProfile();
-  const { updateRating, loading } = useReferrerRating();
+  const { updateRating, loading: isLoading } = useReferrerRating(referrerId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [ratingScreen, setRatingScreen] = useState(filteredRatings?.rate_screening ?? 5)
@@ -35,15 +35,15 @@ const EditReferrerRate: React.FC<RateReferrerProps> = ({
   const [note, setNote] = useState(filteredRatings?.note ?? '')
 
   useEffect(() => {
-      if (!contactId || !filteredRatings || !profile) return; //|| isAddRateReferrerOpen
-      if (!loading) {
+      if (isOpen || !filteredRatings) return; 
+      if (!isLoading) {
         setRatingScreen(filteredRatings.rate_screening);
         setRatingSupport(filteredRatings.rate_support);
         setRatingInform(filteredRatings.rate_inform);
         setRatingEnumeration(filteredRatings.rate_enumeration);
-        setNote(filteredRatings.note);
+        setNote(filteredRatings.note ?? '');
       }
-    }, [contactId, filteredRatings, profile, loading]);
+    }, [isOpen, filteredRatings]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -51,23 +51,22 @@ const EditReferrerRate: React.FC<RateReferrerProps> = ({
   }, []);
 
   const handleClose = () => {
-    setRatingScreen(5);
-    setRatingSupport(5);
-    setRatingInform(5);
-    setRatingEnumeration(5);
+    // setRatingScreen(5);
+    // setRatingSupport(5);
+    // setRatingInform(5);
+    // setRatingEnumeration(5);
     onClose();
   };
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    if (!profile) {
-      return;
-    }
+    if (!profile || !filteredRatings) return;
     setIsSubmitting(true);
     try {
-      const { success, error } = await updateRating({
-        referrer: referrerId,
-        contact: contactId || null,
+      const { success } = await updateRating({
+        id: filteredRatings.id,
+        referrer: filteredRatings.referrer_id,
+        contact: filteredRatings.contact_id,
         rating_screen: ratingScreen || null,
         rating_support: ratingSupport || null,
         rating_inform: ratingInform || null,
@@ -75,9 +74,7 @@ const EditReferrerRate: React.FC<RateReferrerProps> = ({
         notes: note.trim() || null,
         updated_by: profile?.user_id,
       });
-      if (!success) {
-        throw new Error(error);
-      }
+      // if (!success) throw new Error('Failed to update rating');
       handleClose();
     } catch (error) {
       console.error('Error:', error);

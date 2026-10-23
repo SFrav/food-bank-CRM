@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
+import { profileQueryOptions } from './useProfile';
 
 export interface Division {
   id: string;
@@ -39,7 +40,7 @@ export function useDivisions(
       setDivisions(data ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error fetching divisions:', err);
+      // console.error('Error fetching divisions:', err);
       setError(error.message);
       setDivisions([]);
     } finally {
@@ -74,7 +75,7 @@ export function useDivisions(
       return { success: true }
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(error);
+      // console.error(error);
       toast({ title: 'Error', description: error.message || 'Failed to create', variant: 'destructive' });
       return { success: false, error: error.message };
     }
@@ -104,11 +105,34 @@ export function useDivisions(
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(err);
+      // console.error(err);
       toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
       return { data: null, error: error.message };
     }
   };
+
+  const divManagerCheck = useCallback( async (id: string, role: string) => {
+    if (!['admin', 'head'].includes(role) && id) {
+    setLoading(true)
+    try{
+      const { data, error: rpcErr } = await supabase.rpc('get_manager_by_division', {
+        p_division_id: id,
+      });
+      if (rpcErr) throw rpcErr;
+      return { success: true };
+    } catch (err: unknown) {
+      const error = err as { message?: string }; 
+      toast({ title: 'Error', description: 'The selected division has no manager. Please assign one first', variant: 'destructive' });
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false)
+    }
+  }
+  if (!id) {
+    toast({ title: 'Error', description: 'Users with this role must be assigned to a branch', variant: 'destructive' });
+    return { success: false };
+  }
+  }, []);
 
   const deleteDivision = useCallback(
     async (id: string) => {
@@ -124,9 +148,7 @@ export function useDivisions(
       toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  },
-  [fetchDivisions]
-);
+  }, [fetchDivisions]);
 
   return {
     divisions,
@@ -135,6 +157,7 @@ export function useDivisions(
     createDivision,
     updateDivision,
     deleteDivision,
+    divManagerCheck,
     refetch: fetchDivisions,
   };
 }

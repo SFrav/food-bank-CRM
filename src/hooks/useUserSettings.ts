@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/useToast';
+import { queryKeys } from './queryKeys';
+import type { Notification } from './useNotifications';
 
 export interface UserSettings {
   dark_mode?: string;
@@ -11,100 +14,111 @@ export interface UserSettings {
   two_FA?: string;
 }
 
+//@ change notification_email from 'dm' when email implemented
+const NOTIFICATION_TYPE_BY_SETTING: Record<string, Notification['type']> = {
+  notification_tasks: 'task',
+  notification_calendar: 'calendar',
+  notification_email: 'dm',
+};
+
+const EMPTY_SETTINGS: UserSettings = {}; // stable reference
+
+export const settingsQueryOptions = (userId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.userSettings(userId),
+    enabled: !!userId,
+    queryFn: async (): Promise<UserSettings> => {
+      const { data, error } = await supabase.rpc('get_user_settings', { p_user_id: userId as string });
+      if (error) throw error;
+
+      const map: Record<string, string> = {};
+      for (const row of (data ?? []) as { setting_key: string; setting_value: string }[]) {
+        map[row.setting_key] = row.setting_value;
+      }
+      return map as UserSettings;
+    },
+  });
+
 export const useUserSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [settings, setSettings] = useState<UserSettings>({});
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const userId = user?.id;
+  const settingsKey = queryKeys.userSettings(userId);
 
-  const fetchSettings = useCallback(async () => {
-    if (!user) {
-      setSettings({});
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.rpc('get_user_settings', {
-        p_user_id: user.id
-      });
+  const query = useQuery(settingsQueryOptions(userId));
 
-      if (error) throw error;
+  const update = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      if (!userId) throw new Error('Not signed in');
 
-      const settingsMap: Record<string, string> = {};
-      if (data) {
-        data.forEach((setting) => {
-          settingsMap[setting.setting_key] = setting.setting_value;
+      const p_type = NOTIFICATION_TYPE_BY_SETTING[key];
+      if (p_type && value === 'false') {
+        const { error } = await supabase.rpc('mark_notifications_read_by_type', {
+          p_type,
+          p_org_role: null,
         });
+        if (error) console.error('RPC Error:', error); 
       }
-      setSettings(settingsMap as UserSettings);
-      return { success: true };
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error('Error fetching settings:', err);
-      // toast({
-      //   title: 'Error',
-      //   description: 'Failed to load your settings.',
-      //   variant: 'destructive',
-      // });
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  }, [user]); 
 
-  const updateSetting = useCallback(async (key: string, value: string) => {
-    if (!user) return;
-
-    try {
-      if (key.startsWith('notification_') && value === 'false') {
-        let p_type: "alert" | "calendar" | "referral" | "dm" | "task" | "ref_decision" | "system"; // string | undefined;
-        let p_org_role: string | undefined;
-
-        if (key === 'notification_tasks') p_type = 'task';
-        if (key === 'notification_calendar') p_type = 'calendar';
-        if (key === 'notification_email') p_type = 'dm'; 
-
-        if (p_type) {
-          const { data, error: rpcError } = await supabase.rpc('mark_notifications_read_by_type', {
-            p_type,
-            p_org_role: null,
-          });
-
-          if (rpcError) {
-            console.error('RPC Error:', rpcError);
-          }
-        }
-      }
-      const { data, error } = await supabase.rpc('upsert_user_setting', {
-        p_user_id: user.id,
+      const { error } = await supabase.rpc('upsert_user_setting', {
+        p_user_id: userId,
         p_setting_key: key,
         p_setting_value: value,
       });
-
       if (error) throw error;
-      fetchSettings()
-      setSettings(prev => ({ ...prev, [key]: value }));
-      return { success: true };
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
+    },
+
+    onMutate: async ({ key, value }) => {
+      await queryClient.cancelQueries({ queryKey: settingsKey });
+      const previous = queryClient.getQueryData<UserSettings>(settingsKey);
+      queryClient.setQueryData<UserSettings>(settingsKey, (old) => ({ ...old, [key]: value }));
+      return { previous };
+    },
+
+    onError: (err, _vars, context) => {
+      // console.log(err);
+      if (context?.previous) queryClient.setQueryData(settingsKey, context.previous); // roll back
       console.error('Error updating setting:', err);
       toast({
         title: 'Error',
         description: 'Could not save your settings.',
         variant: 'destructive',
       });
-      return { success: false, error: error.message };
-    }
-  }, [user]);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications(userId) });
+    },
+  });
 
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+  const { mutateAsync: updateAsync } = update;
+  const { refetch } = query;
 
-  return { 
-    settings, 
-    loading, 
-    fetchSettings, 
-    updateSetting };
+  const updateSetting = useCallback(
+    async (key: string, value: string) => {
+      try {
+        await updateAsync({ key, value });
+        return { success: true as const };
+      } catch (err) {
+        return { success: false as const, error: (err as { message?: string }).message };
+      }
+    },
+    [updateAsync],
+  );
+
+  const fetchSettings = useCallback(async () => {
+    const result = await refetch();
+    return result.isError
+      ? { success: false as const, error: result.error.message }
+      : { success: true as const };
+  }, [refetch]);
+
+  return {
+    settings: query.data ?? EMPTY_SETTINGS,
+    loading: query.isLoading,
+    error: query.error,
+    fetchSettings,
+    updateSetting,
+  };
 };

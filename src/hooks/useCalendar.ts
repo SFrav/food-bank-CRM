@@ -45,7 +45,7 @@ export function useCalendar() {
       })));
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Contacts fetch error', err);
+      // console.error('Contacts fetch error', err);
       setError(error.message || 'Failed to load events');
       try {
         ViolationMessages(err, 'Failed to fetch contact.');

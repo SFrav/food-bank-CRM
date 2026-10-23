@@ -40,7 +40,7 @@ export const useEntitySettings = () => {
       setSettingsMap(prev => ({ ...prev, [entity_id]: local as EntitySettings }));
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error fetching settings:', err);
+      // console.error('Error fetching settings:', err);
       toast({
         title: 'Error',
         description: 'Could not load entity settings.',
@@ -68,7 +68,7 @@ export const useEntitySettings = () => {
       await fetchSettings(entity_id);
       return { success: true };
     } catch (err: unknown) {
-      console.error('Error updating setting:', err);
+      // console.error('Error updating setting:', err);
       toast({
         title: 'Error',
         description: 'Could not save settings.',

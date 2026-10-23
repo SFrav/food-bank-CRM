@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ViolationMessages } from '@/integrations/supabase/violations';
 import { useToast } from '@/hooks/useToast';
+import { queryKeys } from './queryKeys';
 
 export interface Contact {
   id: string;
@@ -27,6 +29,8 @@ export interface Contact {
   created_at?: string;
   owner_id?: string;
   user_id: string;
+  referrer_code?: string;
+  attended_at?: string;
 }
 
 export interface ContactDuplicate {
@@ -47,155 +51,155 @@ export interface ContactDuplicate {
   user_id: string;
 }
 
-export interface UseContactsReturn {
-  contacts: Contact[];
-  isExactMatch: boolean;
-  loading: boolean;
-  // isLoading: boolean;
-  error?: string;
-  refetch: (filterQueue: boolean) => Promise<void>;
-  checkDuplicates: (params: { email?: string | null; 
-    phone?: string | null; 
-    name?: string | null; 
-    street_address?: string | null; 
-    postcode?: string | null; 
-  }) => Promise<ContactDuplicate[]>;
-  updateContact: (c: Contact) => Promise<{ success: boolean; error?: string }>;
-  // updatePreferences: (c: Contact) => Promise<{ success: boolean; error?: string }>;
-  mergeContacts: (primaryId: string, secondaryId: string) => Promise<{ success: boolean; error?: string }>;
-  deleteContact: (id: string) => Promise<{ success: boolean; error?: string }>;
-  createContact: (data: {
-    name: string;
-    email: string | null;
-    gender: "male" | "female" | "undefined" | null;
-    age_bracket:  "le24" | "25-34" | "35-44" | "45-54" | "55-64" | "ge65" | null;
-    phone: string | null;
-    street_address: string | null;
-    postcode: string | null;
-    region_id: string | null;
-    adults?: number | null;
-    children_gt16?: number | null;
-    children_lt16?: number | null;
-    notes: string | null;
-    status: "pending" | "active" | "inactive" | "banned" | "merged";
-    delayed_days: number | 7;
-    duration_request?: number | null
-    user_id: string;
-    owner_id?: string;
-  }, days?: number[]) => Promise<{ success: boolean; data?: string; error?: string }>;
-  // setFilterQueue: (b: boolean) => void;
-}
+export type NewContact = Omit<Contact, 'id'> & { id?: string };
 
-const validateContact = (c: Contact) => {
-  const errs: Record<string, string> = {};
-  if (!c.name) errs.name = 'Name is required';
-  if (c.email && !/^[^@]+@[^@]+\.[^@]+$/.test(c.email))
-    errs.email = 'Invalid email';
+type DuplicateParams = {
+  email?: string | null;
+  phone?: string | null;
+  name?: string | null;
+  street_address?: string | null;
+  postcode?: string | null;
+};
+
+type Result<T = undefined> = { success: true; data: T } | { success: false; error?: string };
+
+const errorText = (err: unknown, fallback: string): string => {
+  try {ViolationMessages(err as Error, fallback);}
+  catch (e) {if (e instanceof Error) return e.message;}
+  return (err as {message?: string})?.message || fallback;
+};
+
+const toResult = async <T>(promise: Promise<T>, fallback = 'Request failed'): Promise<Result<T>> => {
+  try {
+    return { success: true, data: await promise };
+  } catch (err) {
+    return { success: false, error: errorText(err, fallback) };
+  }
+};
+
+const validateContact = (c: NewContact): string[] => {
+  const errs: string[] = [];
+  if (!c.name) errs.push('Name is required');
+  if (c.email && !/^[^@]+@[^@]+\.[^@]+$/.test(c.email)) errs.push('Invalid email');
   return errs;
 };
 
-export const useContacts = (
-  orderDesc: boolean = false,
-  // filterQueue: boolean = false,
-): UseContactsReturn => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [isExactMatch, setIsExact] = useState<boolean>(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined | null>(undefined);
-  // const [tick, setTick] = useState(0);
-  const { toast } = useToast();
+const EMPTY_CONTACTS: Contact[] = [];
 
-  const fetch = useCallback(async (filterQueue: boolean = false) => {
-    setLoading(true);
-    setError(undefined);
-    try {
+export const contactsQueryOptions = (orderDesc: boolean, filterQueue: boolean) =>
+  queryOptions({
+    queryKey: queryKeys.contactsList(orderDesc, filterQueue),
+    queryFn: async () => {
       const fn = filterQueue ? 'get_contacts_queue' : 'get_contacts';
-      const { data, error: err } = await supabase
-        .rpc(fn, { p_order_desc: orderDesc });
-      if (err) throw err;
-      setContacts(data as Contact[] ?? []);
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error('Contacts fetch error', err);
-      setError(error.message || 'Failed to load contacts');
-      try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+      const { data, error } = await supabase.rpc(fn, { p_order_desc: orderDesc });
+      if (error) throw error;
+      return (data ?? []) as Contact[];
+    },
+  });
+
+const fetchDuplicates = async (exact: boolean, p: DuplicateParams) => {
+  const { data, error } = await supabase.rpc('get_contact_duplicates', {
+    p_exact: exact,
+    p_email: p.email ?? null,
+    p_phone: p.phone ?? null,
+    p_name: p.name ?? null,
+    p_street_address: p.street_address ?? null,
+    p_postcode: p.postcode ?? null,
+  });
+  if (error) throw error;
+  return (data ?? []) as ContactDuplicate[];
+};
+
+type Snapshot = [QueryKey, Contact[] | undefined][];
+
+function useContactMutation<TVars>({
+  mutationFn,
+  patch,
+  invalidate = [queryKeys.contactsLists()],
+  errorMessage,
+  toastOnError = true,
+}: {
+  mutationFn: (vars: TVars) => Promise<unknown>;
+  patch?: (old: Contact[], vars: TVars) => Contact[];
+  invalidate?: QueryKey[];
+  toastOnError?: boolean;
+  errorMessage: string;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const contactsKey = queryKeys.contactsLists();
+
+  return useMutation({
+    mutationFn,
+
+    onMutate: async (vars: TVars): Promise<{ snapshots: Snapshot }> => {
+      if (!patch) return { snapshots: [] };
+      await queryClient.cancelQueries({ queryKey: contactsKey });
+      const snapshots = queryClient.getQueriesData<Contact[]>({ queryKey: contactsKey });
+      queryClient.setQueriesData<Contact[]>({ queryKey: contactsKey }, (old) => (old ? patch(old, vars) : old));
+      return { snapshots };
+    },
+
+    onError: (err, _vars, context) => {
+      // console.log(err);
+      context?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data)); // roll back
+      if(toastOnError) {
+        toast({ title: 'Error', description: errorText(err, errorMessage), variant: 'destructive' });
       }
-      // toast({ title: 'Error', description: error.message || 'Failed to load contacts', variant: 'destructive' });
-    } finally {
-      setLoading(false);
+      // let message = errorMessage;
+      // try {
+      //   ViolationMessages(err as Error, errorMessage);
+      // } catch (e) {
+      //   if (e instanceof Error) message = e.message;
+      // }
+      // toast({ title: 'Error', description: message, variant: 'destructive' });
+    },
+    onSettled: async () => {
+      await Promise.all(invalidate.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+  });
+}
+
+export const useContacts = (orderDesc: boolean = false, initialFilterQueue: boolean = false) => {
+  const { toast } = useToast();
+  // const queryClient = useQueryClient();
+  const [filterQueue, setFilterQueue] = useState(initialFilterQueue);
+  // useEffect(() => {
+  //   setFilterQueue(initialFilterQueue);
+  // }, [initialFilterQueue]);
+
+  const [isExactMatch, setIsExactMatch] = useState(false);
+
+  const query = useQuery(contactsQueryOptions(orderDesc, filterQueue));
+  const contacts = query.data ?? EMPTY_CONTACTS;
+
+
+  const refetch = useCallback(
+    async (nextFilterQueue?: boolean) => {
+      if (typeof nextFilterQueue === 'boolean' && nextFilterQueue !== filterQueue) {
+        // await queryClient.fetchQuery({ ...contactsQueryOptions(orderDesc, nextFilterQueue), staleTime: 0 });
+        setFilterQueue(nextFilterQueue);
+        return;
+      }
+      await query.refetch();
+    },
+    [filterQueue, orderDesc, query.refetch],
+  );
+
+  const checkDuplicates = useCallback(async (params: DuplicateParams): Promise<ContactDuplicate[]> => {
+    const exact = await fetchDuplicates(true, params);
+    if (exact.length > 0) {
+      setIsExactMatch(true);
+      return exact.slice(0, 4);
     }
-  }, [orderDesc]);
-
-  useEffect(() => {
-    fetch(false);
-  }, []); //, tick
-
-  const refetch = useCallback(async (filterQueue: boolean = false) => {
-    // setTick(prev => prev + 1);
-    await fetch(filterQueue);
+    setIsExactMatch(false);
+    return (await fetchDuplicates(false, params)).slice(0, 4);
   }, []);
 
-  const checkDuplicates = async (params: {
-    email?: string | null;
-    phone?: string | null;
-    name?: string | null;
-    street_address?: string | null;
-    postcode?: string | null;
-  }): Promise<ContactDuplicate[]> => {
-    const {
-      email = null,
-      phone = null,
-      name = null,
-      street_address = null,
-      postcode = null,
-    } = params;
-
-    const { data: exact, error: exactErr } = await supabase
-      .rpc('get_contact_duplicates', {
-        p_exact: true,
-        p_email: email,
-        p_phone: phone,
-        p_name: name,
-        p_street_address: street_address,
-        p_postcode: postcode,
-      });
-
-    if (exactErr) throw exactErr;
- 
-    if (exact && exact.length > 0) {
-      setIsExact(true);
-      return exact.slice(0, 4) as ContactDuplicate[];
-    }
-
-    const { data: fuzzy, error: fuzzyErr } = await supabase
-      .rpc('get_contact_duplicates', {
-        p_exact: false,
-        p_email: email,
-        p_phone: phone,
-        p_name: name,
-        p_street_address: street_address,
-        p_postcode: postcode,
-      });
-
-    if (fuzzyErr) throw fuzzyErr;
-
-    setIsExact(false);
-    return fuzzy?.slice(0, 4) as ContactDuplicate[] ?? [];
-  };
-
-  const createContact = useCallback(
-      async (c: Contact, days?: number[]) => {
-        const errs = validateContact(c);
-        if (Object.keys(errs).length) {
-          toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
-          return { success: false, error: 'Validation failed' };
-        }
-        setLoading(true);
-        try{
-        const { data, error: rpcError } = await supabase.rpc('create_contact', {
+  const create = useContactMutation({
+    mutationFn: async ({ contact: c, days }: { contact: NewContact; days?: number[] }) => {
+      const { data, error } = await supabase
+        .rpc('create_contact', {
           p_name: c.name,
           p_email: c.email,
           p_gender: c.gender,
@@ -214,131 +218,106 @@ export const useContacts = (
           p_user_id: c.user_id,
           p_owner_id: c.owner_id,
           p_days: days ?? null,
-        }).single();
+        })
+        .single();
+      if (error) throw error;
+      return data as string;
+    },
+    toastOnError: false,
+    errorMessage: 'Failed to create new entry',
+  });
 
-        if (rpcError) throw rpcError;
-        await fetch();
-        return { success: true, data: data};
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        console.error(err);
-        try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-      }
-        // toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
-        return { success: false, data: null, error: error.message };
-      } finally {
-        setLoading(false);
-        }
-      }, [fetch]);
+  const update = useContactMutation({
+    mutationFn: async (c: Contact) => {
+      const { data, error } = await supabase
+        .rpc('update_contact', {
+          p_id: c.id,
+          p_name: c.name,
+          p_email: c.email,
+          p_gender: c.gender,
+          p_age_bracket: c.age_bracket,
+          p_phone: c.phone,
+          p_address: c.street_address,
+          p_postcode: c.postcode,
+          p_region_id: c.region_id,
+          p_adults: c.adults,
+          p_children_gt16: c.children_gt16,
+          p_children_lt16: c.children_lt16,
+          p_infant: c.infant,
+          p_allergies: c.allergies,
+          p_vegetarian: c.vegetarian,
+          p_hallal: c.hallal,
+          p_status: c.status,
+          p_delayed_days: c.delayed_days,
+          p_duration_request: c.duration_request ?? null,
+          p_user_id: c.user_id,
+          p_owner_id: c.owner_id,
+          p_notes: c.notes,
+        })
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    patch: (old, c) => old.map((row) => (row.id === c.id ? { ...row, ...c } : row)),
+    toastOnError: false,
+    errorMessage: 'Update failed',
+  });
 
-  const updateContact = useCallback(
-    async (c: Contact) => {
-      // const errs = validateContact(c);
-      // if (Object.keys(errs).length) {
-      //   toast({ title: 'Validation Error', description: Object.values(errs).join('. '), variant: 'destructive' });
-      //   return { success: false, error: 'Validation failed' };
-      // }
-      setLoading(true);
-      try{
-      const { data, error: rpcError } = await supabase.rpc('update_contact', {
-        p_id: c.id,
-        p_name: c.name,
-        p_email: c.email,
-        p_gender: c.gender,
-        p_age_bracket: c.age_bracket,
-        p_phone: c.phone,
-        p_address: c.street_address, 
-        p_postcode: c.postcode,
-        p_region_id: c.region_id,
-        p_adults: c.adults,
-        p_children_gt16: c.children_gt16, 
-        p_children_lt16: c.children_lt16, 
-        p_infant: c.infant, 
-        p_allergies: c.allergies,
-        p_vegetarian: c.vegetarian,
-        p_hallal: c.hallal,
-        p_status: c.status,
-        p_delayed_days: c.delayed_days,
-        p_duration_request: c.duration_request ?? null,
-        p_user_id: c.user_id,
-        p_owner_id: c.owner_id,
-        p_notes: c.notes,
-      }).single();
-    
-      if (rpcError) throw rpcError;
-      await fetch();
-      return { success: true };
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error(err);
-      try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
-      }
-      // toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);  
-     }    
-    }, [fetch]);
+  const remove = useContactMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase.rpc('delete_contact', { p_id: id });
+      if (error) throw error;
+    },
+    patch: (old, { id }) => old.filter((row) => row.id !== id),
+    invalidate: [queryKeys.contacts()], // days/notes/allotments of the contact change too
+    toastOnError: false,
+    errorMessage: 'Failed to delete',
+  });
 
-  const mergeContacts = async (primaryId: string, secondaryId: string) => {
-    setLoading(true);
-    setError(undefined);
-    try{
-      const { data, error: rpcErr } = await supabase.rpc('merge_contacts', {
-        p_primary: primaryId,
-        p_secondary: secondaryId,
-      });
-      if (rpcErr) throw rpcErr;
-      await fetch();
-      return { success: true };
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      console.error('Merge error', err);
-      setError(error.message); 
-      toast({ title: 'Error', description: error.message || 'Failed to merge', variant: 'destructive' });
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }      
-  };
+  const merge = useContactMutation({
+    mutationFn: async ({ primaryId, secondaryId }: { primaryId: string; secondaryId: string }) => {
+      const { error } = await supabase.rpc('merge_contacts', { p_primary: primaryId, p_secondary: secondaryId });
+      
+      if (error) throw error;
+    },
+    invalidate: [queryKeys.contacts()],
+    toastOnError: true,
+    errorMessage: 'Failed to merge entries',
+  });
 
-  const deleteContact = useCallback(
-    async (id: string) => {
-      try {
-        const { error: rpcErr } = await supabase.rpc('delete_contact', { p_id: id });
-        if (rpcErr) throw rpcErr;
-        await fetch();
-        // toast({ title: 'Success', description: 'Contact deleted successfully' });
-        return { success: true };
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        console.error('Delete error', err);
-        try {
-        ViolationMessages(err, 'Failed to fetch contact.');
-      } catch (customError) {
-        toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
+  const { mutateAsync: createAsync } = create;
+  const { mutateAsync: updateAsync } = update;
+  const { mutateAsync: deleteAsync } = remove;
+  const { mutateAsync: mergeAsync } = merge;
+
+  const createContact = useCallback(
+    async (c: NewContact, days?: number[]): Promise<Result<string>> => {
+      const errs = validateContact(c);
+      if (errs.length) {
+        toast({ title: 'Validation Error', description: errs.join('. '), variant: 'destructive' });
+        return { success: false, error: 'Validation failed' };
       }
-        // toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
-        return { success: false, error: error.message };
-      }
-    }, [fetch]);
+      toResult(createAsync({ contact: c, days }));
+    },
+    [createAsync, toast],
+  );
+
+  const updateContact = useCallback((c: Contact) => toResult(updateAsync(c)), [updateAsync]);
+  const deleteContact = useCallback((id: string) => toResult(deleteAsync({ id })), [deleteAsync]);
+  const mergeContacts = useCallback(
+    (primaryId: string, secondaryId: string) => toResult(mergeAsync({ primaryId, secondaryId }), 'Failed to merge'),
+    [mergeAsync],
+  );
 
   return {
     contacts,
     isExactMatch,
-    loading,
-    error,
+    loading: query.isLoading || create.isPending || update.isPending || remove.isPending || merge.isPending,
+    error: query.error?.message,
     refetch,
     createContact,
     updateContact,
-    // updatePreferences,
-    checkDuplicates, 
+    checkDuplicates,
     mergeContacts,
     deleteContact,
   };

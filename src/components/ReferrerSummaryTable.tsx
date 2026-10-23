@@ -10,7 +10,7 @@ import { useReferrerRating, ReferrerRatingAverage } from '@/hooks/useReferrerRat
 
 export const ReferrerSummaryTable = () => {
   const { profile } = useProfile();
-  const { averageRatings, fetchAverageRatings, loading } = useReferrerRating();
+  const { averageRatings, loading } = useReferrerRating(null);
   // const [loading, setLoading] = useState(true);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedReferrerId, setSelectedReferrerId] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export const ReferrerSummaryTable = () => {
   const handleOpenHistory = useCallback((referrerId: string) => {
     setSelectedReferrerId(referrerId);
     setIsHistoryOpen(true);
-  }, []);
+  }, [averageRatings]);
 
   if (loading) return <div className="flex justify-center py-8"><div className="animate-spin rounded-full size-8 border-b-2 border-primary" /></div>;
 
@@ -64,7 +64,7 @@ export const ReferrerSummaryTable = () => {
       <ReferrerRatingHistory
           isOpen={isHistoryOpen}
           onClose={() => setIsHistoryOpen(false)}
-          referrerId={selectedReferrerId ?? ''}
+          referrerId={selectedReferrerId}
         />
     </div>
   );

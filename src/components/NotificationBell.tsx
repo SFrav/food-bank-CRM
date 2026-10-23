@@ -3,7 +3,7 @@ import { Bell, Clock, AlertTriangle, Target, CheckSquare, Brain, Settings } from
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useNotifications, Notification } from '@/hooks/useNotificationsContext';
+import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
 
 const getTypeIcon = (type: Notification['type']) => {

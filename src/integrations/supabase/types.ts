@@ -388,37 +388,37 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          contact_id: string
+          contact_id: string | null
           created_at: string | null
           division_id: string | null
           first_referred_by: string | null
           id: string
           message: string | null
-          referrer_id: string
+          referrer_id: string | null
           updated_at: string | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          contact_id: string
+          contact_id?: string | null
           created_at?: string | null
           division_id?: string | null
           first_referred_by?: string | null
           id?: string
           message?: string | null
-          referrer_id: string
+          referrer_id?: string | null
           updated_at?: string | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          contact_id?: string
+          contact_id?: string | null
           created_at?: string | null
           division_id?: string | null
           first_referred_by?: string | null
           id?: string
           message?: string | null
-          referrer_id?: string
+          referrer_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -457,6 +457,7 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          currency_symbol: string | null
           id: string
           is_active: boolean
           name: string
@@ -466,6 +467,7 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          currency_symbol?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -475,6 +477,7 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          currency_symbol?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -917,7 +920,7 @@ export type Database = {
           rate_screening: number | null
           rate_support: number | null
           referrer_id: string
-          updated_At: string | null
+          updated_at: string | null
         }
         Insert: {
           contact_id: string
@@ -930,7 +933,7 @@ export type Database = {
           rate_screening?: number | null
           rate_support?: number | null
           referrer_id: string
-          updated_At?: string | null
+          updated_at?: string | null
         }
         Update: {
           contact_id?: string
@@ -943,7 +946,7 @@ export type Database = {
           rate_screening?: number | null
           rate_support?: number | null
           referrer_id?: string
-          updated_At?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1054,7 +1057,6 @@ export type Database = {
           phone: string | null
           region_id: string | null
           role: Database["public"]["Enums"]["role_enum"]
-          status: Database["public"]["Enums"]["user_status_enum"]
           updated_at: string
           user_id: string | null
         }
@@ -1070,7 +1072,6 @@ export type Database = {
           phone?: string | null
           region_id?: string | null
           role?: Database["public"]["Enums"]["role_enum"]
-          status?: Database["public"]["Enums"]["user_status_enum"]
           updated_at?: string
           user_id?: string | null
         }
@@ -1086,7 +1087,6 @@ export type Database = {
           phone?: string | null
           region_id?: string | null
           role?: Database["public"]["Enums"]["role_enum"]
-          status?: Database["public"]["Enums"]["user_status_enum"]
           updated_at?: string
           user_id?: string | null
         }
@@ -1262,6 +1262,7 @@ export type Database = {
         Args: {
           p_division_id?: string
           p_entity_id?: string
+          p_is_active?: boolean
           p_manager_id?: string
           p_profile_id: string
           p_region_id?: string
@@ -1315,7 +1316,7 @@ export type Database = {
         Returns: undefined
       }
       create_country: {
-        Args: { p_code: string; p_name: string }
+        Args: { p_code: string; p_currency: string; p_name: string }
         Returns: string
       }
       create_division: {
@@ -1514,8 +1515,8 @@ export type Database = {
           created_at: string
           created_by: string
           creator_name: string
-          note_id: string
-          note_text: string
+          id: string
+          note: string
         }[]
       }
       get_contacts: {
@@ -1524,6 +1525,7 @@ export type Database = {
           adults: number
           age_bracket: Database["public"]["Enums"]["age_enum"]
           allergies: boolean
+          attended_at: string
           children_gt16: number
           children_lt16: number
           created_at: string
@@ -1539,6 +1541,7 @@ export type Database = {
           owner_id: string
           phone: string
           postcode: string
+          referrer_code: string
           region_id: string
           status: string
           street_address: string
@@ -1568,6 +1571,7 @@ export type Database = {
           owner_id: string
           phone: string
           postcode: string
+          referrer_code: string
           region_id: string
           status: string
           street_address: string
@@ -1580,6 +1584,7 @@ export type Database = {
         Returns: {
           code: string
           created_at: string
+          currency_symbol: string
           id: string
           is_active: boolean
           name: string
@@ -1674,6 +1679,7 @@ export type Database = {
         Returns: {
           division_id: string
           entity_id: string
+          is_active: boolean
           role: string
         }[]
       }
@@ -1793,6 +1799,7 @@ export type Database = {
           division_id: string
           entity_id: string
           full_name: string
+          id: string
           region_id: string
           role: string
         }[]
@@ -1815,10 +1822,10 @@ export type Database = {
           entity_id: string
           full_name: string
           id: string
+          is_active: boolean
           manager_id: string
           region_id: string
           role: string
-          status: string
         }[]
       }
       insert_allotment_discretionary: {
@@ -1961,6 +1968,7 @@ export type Database = {
       update_country: {
         Args: {
           p_code: string
+          p_currency: string
           p_id: string
           p_is_active: boolean
           p_name: string
@@ -1986,6 +1994,7 @@ export type Database = {
       update_referrer_rating: {
         Args: {
           p_contact_id: string
+          p_id: string
           p_note: string
           p_rate_enumeration: number
           p_rate_inform: number
@@ -2071,7 +2080,6 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string
-          user_status: string
         }[]
       }
       user_update_profile: {
@@ -2126,7 +2134,6 @@ export type Database = {
         | "notification_tasks"
         | "notification_calendar"
         | "two_FA"
-      user_status_enum: "active" | "inactive" | "suspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2309,7 +2316,6 @@ export const Constants = {
         "notification_calendar",
         "two_FA",
       ],
-      user_status_enum: ["active", "inactive", "suspended"],
     },
   },
 } as const

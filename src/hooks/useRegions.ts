@@ -33,7 +33,7 @@ export const useRegions = () => {
         setRegions(data as Region[] ?? []);
       } catch (err: unknown) {
         const error = err as { message?: string }; 
-        console.error('Error fetching regions:', err);
+        // console.error('Error fetching regions:', err);
         setError(error.message);
         setRegions([]);
       } finally {
@@ -57,7 +57,7 @@ export const useRegions = () => {
       return { data, error: null };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(error);
+      // console.error(error);
       toast({ title: 'Error', description: 'Failed to create region', variant: 'destructive' });
       return { data: null, error: error.message };
     }
@@ -87,7 +87,7 @@ export const useRegions = () => {
       return { data, error: undefined };
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error(err)
+      // console.error(err)
       toast({ title: 'Error', description: 'Failed to update region', variant: 'destructive' });
       return { data: null, error: error.message };
     }
@@ -106,7 +106,7 @@ export const useRegions = () => {
       return { error: null };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Delete error', err);
+      // console.error('Delete error', err);
        toast({ title: 'Error', description: 'Failed to delete region', variant: 'destructive' });
       return { error: error.message };
     }

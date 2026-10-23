@@ -32,7 +32,7 @@ export function useDivisionSummary(
       setDivisions(data ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('useDivisions error:', err);
+      // console.error('useDivisions error:', err);
       setError(error.message);
       setDivisions([]);
     } finally {

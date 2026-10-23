@@ -19,7 +19,7 @@ export function useReferrerSummary(
   const [error, setError] = useState<string | undefined>();
 
   const fetchReferrers = useCallback(async () => {
-    if (!user) return;
+    if (!user || !(user.role === 'referrer')) return;
     try {
       setLoading(true);
       setError(undefined);
@@ -30,7 +30,7 @@ export function useReferrerSummary(
       setReferrers(data ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error('useReferrerSummary error:', err);
+      // console.error('useReferrerSummary error:', err);
       setError(error.message);
       setReferrers([]);
     } finally {

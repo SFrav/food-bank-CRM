@@ -437,10 +437,10 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
         </div>
       </div>
       {notes.map(n => (
-        <div key={n.note_id} className="space-y-1">
+        <div key={n.id} className="space-y-1">
           <Textarea
             disabled
-            value={n.note_text}
+            value={n.note}
             rows={1}
             className="bg-muted min-h-[20px]"
           />

@@ -30,6 +30,6 @@ export const ReferrerSummaryRow = React.memo(({
     </TableRow>
   );
 }, (prev, next) => { 
-  return(prev.row.referrer_id === next.row.referrer_id) 
+  return(prev.row === next.row) 
   }
 );

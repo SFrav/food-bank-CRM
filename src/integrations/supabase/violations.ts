@@ -1,5 +1,10 @@
 export const ViolationMessages = (error: Error | any, genericMessage: string): never => {
+  // https://www.postgresql.org/docs/current/errcodes-appendix.html
   const msg = error?.message || '';
+
+  if (error?.code === '23502') {
+    throw new Error('One or more fields can not be left blank');
+  }
 
   if (error?.code === '23505') {
     if (msg.includes('uq_contacts_email') || msg.includes('contacts_email_key')) throw new Error('A contact with this email address already exists');
@@ -38,10 +43,14 @@ export const ViolationMessages = (error: Error | any, genericMessage: string): n
 
   // Permission Violations (42501)
   if (error?.code === '42501') {
-    if (msg.includes('contacts_select')) {
-      throw new Error('You do not have the required permissions to perform this action');
+    if (msg.includes('contacts_update')) {
+      throw new Error('You may not have the required permissions to perform this action');
     }
-    throw new Error('You do not have the required permissions to perform this action');
+    throw new Error('You may not have the required permissions to perform this action');
+  }
+
+  if (error?.code === 'P0001') {
+    throw new Error(msg);
   }
 
   throw new Error(genericMessage);

@@ -23,7 +23,7 @@ const AddReferrerRate: React.FC<RateReferrerProps> = ({
   contactId
 }) => {
   const { profile } = useProfile();
-  const { createRating, loading: isLoading } = useReferrerRating();
+  const { createRating, loading: isLoading } = useReferrerRating(referrerId);
   const [ratingScreen, setRatingScreen] = useState(5)
   const [ratingSupport, setRatingSupport] = useState(5)
   const [ratingInform, setRatingInform] = useState(5)
@@ -52,7 +52,7 @@ const AddReferrerRate: React.FC<RateReferrerProps> = ({
     }
     setIsSubmitting(true);
     try {
-      const { success, error } = await createRating({
+      const { success } = await createRating({
         referrer: referrerId,
         contact: contactId || null,
         rating_screen: ratingScreen || null,
@@ -62,9 +62,9 @@ const AddReferrerRate: React.FC<RateReferrerProps> = ({
         notes: note.trim() || null,
         created_by: profile?.user_id,
       });
-      if (!success) {
-        throw new Error(error);
-      }
+      // if (!success) {
+      //   throw new Error(error);
+      // }
       handleClose();
     } catch (error) {
       console.error('Error:', error);

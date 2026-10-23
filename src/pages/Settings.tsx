@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import ProfilePage from '@/pages/Profile'; 
 import { useUserSettings } from '@/hooks/useUserSettings';
-import { useNotifications } from '@/hooks/useNotificationsContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 type SettingsSection = 'profile' | 'preferences' | 'security';
 

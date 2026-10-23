@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StarRating } from "@/components/ui/star-rating";
 import { Label } from '@/components/ui/label';
 import { useProfile } from "@/hooks/useProfile";
 import { useReferrerRating } from "@/hooks/useReferrerRating";
-import { Trash2 } from 'lucide-react';
+
 
 interface ReferrerRatingHistoryProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ const ReferrerRatingHistory: React.FC<ReferrerRatingHistoryProps> = ({
   referrerId
 }) => {
   const { profile } = useProfile();
-  const { ratings, fetchRatings, loading, deleteRating } = useReferrerRating(referrerId);
+  const { ratings, loading, deleteRating } = useReferrerRating(referrerId);
 
   // useEffect(() => {
   //   if (referrerId && profile) {

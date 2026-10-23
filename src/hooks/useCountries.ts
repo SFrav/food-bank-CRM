@@ -32,7 +32,7 @@ export const useCountries = () => {
         setCountries(data as Country[] ?? []);
       } catch (err: unknown) {
         const error = err as { message?: string }; 
-        console.error('Error fetching countries:', err);
+        // console.error('Error fetching countries:', err);
         setError(error.message);
         setCountries([]);
       } finally {
@@ -56,7 +56,7 @@ export const useCountries = () => {
       return { data, error: null };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error(error);
+      // console.error(error);
       toast({ title: 'Error', description: 'Failed to create country', variant: 'destructive' });
       return { data: null, error: error.message };
     }
@@ -86,7 +86,7 @@ export const useCountries = () => {
       return { data, error: undefined };
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error(err)
+      // console.error(err)
       toast({ title: 'Error', description: 'Failed to update country', variant: 'destructive' });
       return { data: null, error: error.message };
     }

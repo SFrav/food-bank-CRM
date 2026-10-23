@@ -36,7 +36,7 @@ export const useEntities = () => {
       setEntities(data || []);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error fetching entities:', err);
+      // console.error('Error fetching entities:', err);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -57,7 +57,7 @@ export const useEntities = () => {
       });
 
       if (rpcError) {
-        console.error('Error creating entity via RPC:', rpcError);
+        // console.error('Error creating entity via RPC:', rpcError);
         throw rpcError;
       }
       
@@ -84,20 +84,15 @@ export const useEntities = () => {
       });
 
       if (rpcError) {
-        console.error('Error updating entity via RPC:', rpcError);
         throw rpcError;
       }
-
-      // if (!success) {
-      //   throw new Error('Entity not found or update failed');
-      // }
 
       await fetchEntities();
       return { success: true, error: null };
       // return { data, error: null };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error updating entity:', error);
+      // console.error('Error updating entity:', error);
       return { success: false, error: error.message };
     }
   };
@@ -113,19 +108,14 @@ export const useEntities = () => {
       });
 
       if (rpcError) {
-        console.error('Error deleting entity via RPC:', rpcError);
         throw rpcError;
       }
-
-      // if (!success) {
-      //   throw new Error('Entity not found or delete failed');
-      // }
 
       await fetchEntities();
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error deleting entity:', err);
+      // console.error('Error deleting entity:', err);
       return { success: false, error: error.message };
     }
   };

@@ -61,6 +61,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
           p_page_size: pageSize,
         });
 
+      // if (error) {console.log(error); throw error;}
       if (error) throw error;
 
       // Transform the data to include joined information
@@ -129,7 +130,7 @@ export const useAuditLogs = (filters?: AuditLogFilters, pageSize: number = 5) =>
       return data;
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error clearing audit logs:', err);
+      // console.error('Error clearing audit logs:', err);
       setError(error.message);
       throw error;
     } finally {

@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 // import { useAuth } from '@/hooks/useAuth';
 import { useContacts, Contact, ContactDuplicate } from '@/hooks/useContacts';
-import { useContactDays } from '@/hooks/useContactDays';
+// import { useContactDays } from '@/hooks/useContactDays';
 import { useProfile } from "@/hooks/useProfile";
 import { useRegions, Region } from '@/hooks/useRegions';
 import { useDivisions, Division } from '@/hooks/useDivisions';
@@ -44,8 +44,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const { openMap, fetchOpen: fetchDivisionOpenDays } = useDivisionOpen();
   const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { settingsMap, fetchSettings} = useDivisionSettings();
-  const { createContact, updateContact, checkDuplicates, isExactMatch } = useContacts();
-  const { createContactDays } = useContactDays();
+  const { createContact, updateContact, checkDuplicates, isExactMatch } = useContacts(null);
+  // const { createContactDays } = useContactDays();
   const [checkingDup, setCheckingDup] = useState(false);
   const [duplicateCandidates, setDuplicateCandidates] = useState<ContactDuplicate[] | null>(null);
   const [dupExact, setDupExact] = useState(false);
@@ -253,7 +253,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const createNewAnyway = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { success, data: newContactId, error } = await createContact({
+      const result = await createContact({
         name: formData.name,
         email: formData.email.trim() || null,
         gender: formData.gender || null,
@@ -273,7 +273,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         owner_id: formData.owner_id || profile?.user_id,
       }, selectedDays ? Array.from(selectedDays) : null);
 
-      if (!success) throw new Error(error);
+      // if (!result.success) throw new Error(result.error? '');
 
       // if (newContactId && selectedDays.size > 0) {
       //   const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
@@ -329,7 +329,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     setDupExact(false);
 
     try {
-      const { success, data: newContactId, error } = await createContact({
+      const result = await createContact({
         name: formData.name,
         email: formData.email.trim() || null,
         gender: formData.gender || null,
@@ -349,9 +349,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         owner_id: formData.owner_id || profile?.user_id,
       }, selectedDays ? Array.from(selectedDays) : null);
 
-      if (!success) {
-        throw new Error(error);
-      }
+      // if (!success) {
+      //   throw new Error(error);
+      // }
     
       // if (newContactId && selectedDays.size > 0) {
       //   const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
@@ -384,8 +384,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       setCondition3(false);
       onClose();
       resetForm();
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (err: unknown) {
+      console.error('Error:', err);
     } finally {
       setIsLoading(false);
     }

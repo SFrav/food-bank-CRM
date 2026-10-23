@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProfile } from '@/hooks/useProfile';
-import { Users, Settings, Shield, Database, User, Sliders } from 'lucide-react';
+import { Users, Shield } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 
 const AdminDashboard: React.FC = () => {
@@ -13,7 +13,7 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const goTo = (path: string) => () => navigate(path);
-  const goToTab = (tab: string) => () => navigate(`/settings?tab=${tab}`);
+  // const goToTab = (tab: string) => () => navigate(`/settings?tab=${tab}`);
 
   // const handleManageUserRoles = () => {
   //   navigate('/admin/users');

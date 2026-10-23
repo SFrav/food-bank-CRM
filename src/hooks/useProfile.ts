@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+// import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { queryKeys } from './queryKeys';
 
 export interface UserProfile {
   id: string;
@@ -8,11 +10,11 @@ export interface UserProfile {
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  role: 'pending' | 'referrer' | 'associate' |  'specialist' | 'branch_manager' | 'manager' | 'head' | 'admin';
+  role: 'pending' | 'referrer' | 'associate' | 'specialist' | 'branch_manager' | 'manager' | 'head' | 'admin';
   entity_id: string | null;
   entity?: string | null;
   division_id: string | null;
-  division?: string | null; 
+  division?: string | null;
   region_id: string | null;
   region: string | null;
   manager_id?: string | null;
@@ -20,57 +22,39 @@ export interface UserProfile {
   updated_at: string | null;
 }
 
+export const profileQueryOptions = (userId: string | undefined) => ({
+  queryKey: queryKeys.profile(userId),
+  enabled: !!userId,
+  staleTime: Infinity, //@Profile is stable - invalidated when table is changed
+  cacheTime: 1000 * 60 * 60 * 24, 
+  queryFn: async (): Promise<UserProfile | null> => {
+    const { data, error } = await supabase.rpc('user_get_profile');
+    if (error) throw error;
+    return (data as UserProfile[])[0] ?? null;
+  },
+});
+
 export const useProfile = () => {
-  const { user, loading: authLoading } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const query = useQuery(profileQueryOptions(user?.id));
 
-  const fetchProfile = useCallback(async () => {
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data: profileData, error: fetchError } = await supabase.rpc('user_get_profile');
-
-      if (fetchError) throw fetchError;
-
-      setProfile((profileData as UserProfile[])[0] ?? null);
-
-    } catch (err: unknown) {
-      const error = err as { message?: string }; 
-      console.error('useProfile fetch error:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!authLoading) fetchProfile();
-  }, [authLoading, fetchProfile]);
+  const profile = query.data ?? null;
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user || !profile) return { error: 'No user or profile found' };
+    if (!user || !profile) return { data: null, error: 'No user or profile found' };
     try {
-      const { data, error } = await supabase.rpc('user_update_profile', {
+      const { error } = await supabase.rpc('user_update_profile', {
         p_user_id: user.id,
         p_full_name: updates.full_name,
         p_phone: updates.phone,
       });
       if (error) throw error;
 
-      await fetchProfile(); 
-
+      query.refetch();
       return { data: null, error: null };
     } catch (err: unknown) {
-      const error = err as { message?: string }; 
+      // console.error(err);
+      const error = err as { message?: string };
       return { data: null, error: error.message };
     }
   };
@@ -103,10 +87,10 @@ export const useProfile = () => {
 
   return {
     profile,
-    loading: loading || authLoading,
-    error,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
     updateProfile,
-    refetch: fetchProfile,
+    refetch: query.refetch,
     hasRole,
     canAccessDivisionData,
     canManageRoles,
@@ -120,3 +104,4 @@ export const useProfile = () => {
     getDisplayName: () => profile?.full_name ?? ''
   };
 };
+

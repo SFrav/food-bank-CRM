@@ -34,7 +34,7 @@ export const useDivisionSettings = () => {
       return local;
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error fetching settings:', err);
+      // console.error('Error fetching settings:', err);
       toast({
         title: 'Error',
         description: 'Could not load division settings.',
@@ -64,7 +64,7 @@ export const useDivisionSettings = () => {
       return { success: true };
     } catch (err: unknown) {
       const error = err as { message?: string }; 
-      console.error('Error updating setting:', err);
+      // console.error('Error updating setting:', err);
       toast({
         title: 'Error',
         description: 'Could not save settings.',
