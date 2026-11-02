@@ -16,7 +16,7 @@ interface Beneficiary {
 
 // interface Task {
 //   id: string;
-//   entry_type: "referrer_request" | "beneficiary_request" | "specialist_todo" | "Associate_todo" | "event";
+//   entry_type: "referrer_request" | "beneficiary_request" | "specialist_todo" | "associate_todo" | "event";
 //   beneficiary_id: string;
 //   beneficiary_name?: string;
 //   pic_id?: string;

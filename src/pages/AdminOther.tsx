@@ -1,6 +1,7 @@
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { CountryManagement } from '@/components/CountryManagement';
 import { RegionManagement } from '@/components/RegionManagement';
+import { EntityHolding } from '@/components/EntityHolding';
 import { EntityManagement } from '@/components/EntityManagement';
 import { EntitySettingsTable } from '@/components/EntitySettings';
 // import { GlobalSettings } from '@/components/GlobalSettings';
@@ -20,6 +21,7 @@ export default function AdminOther() {
               <RegionManagement />
             </div>
               
+            <EntityHolding/>
             <EntityManagement />
           </PermissionGuard>
 

@@ -116,7 +116,7 @@ export const usePermissions = (): PermissionSet => {
     case 'branch_manager':
       return {
         ...BASE_CRUD,
-        canAccessUserManagement: false,
+        canAccessUserManagement: true,
         canAccessAnalytics: false,
         canDeleteRecords: false,
         canCreateEntities: false,
@@ -153,7 +153,7 @@ export const usePermissions = (): PermissionSet => {
         canApproveReassignments: false,
       } as PermissionSet;
 
-    case 'Associate':
+    case 'associate':
       return {
         ...BASE_CRUD,
         canAccessUserManagement: false,

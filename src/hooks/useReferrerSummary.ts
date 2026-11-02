@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 
 export interface ReferrerSummary {
   id: string;
@@ -13,30 +13,33 @@ export interface ReferrerSummary {
 export function useReferrerSummary(
   entityId?: string | null
 ) {
-  const { user } = useAuth();
+  const { profile } = useProfile();
   const [referrerSummary, setReferrers] = useState<ReferrerSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
   const fetchReferrers = useCallback(async () => {
-    if (!user || !(user.role === 'referrer')) return;
+    if (!profile || profile.role !== 'referrer') {
+        setLoading(false);
+        return;
+      }
     try {
       setLoading(true);
       setError(undefined);
 
-      const { data, error: rpcErr } = await supabase.rpc('get_referrals_by_caller_summary', { p_entity_id: entityId ?? null });
+      const { data, error: rpcErr } = await supabase.rpc('get_referrals_by_caller_summary');
 
       if (rpcErr) throw rpcErr;
       setReferrers(data ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      // console.error('useReferrerSummary error:', err);
+      console.error('useReferrerSummary error:', err);
       setError(error.message);
       setReferrers([]);
     } finally {
       setLoading(false);
     }
-  }, [user, entityId]);
+  }, [profile, entityId]);
 
   useEffect(() => {
     fetchReferrers();

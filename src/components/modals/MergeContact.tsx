@@ -50,7 +50,7 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
   const [showMergeWarning, setShowMergeWarning] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !initialPrimary || !initialSecondary) return;
     setPrimary(initialPrimary);
     setSecondary(initialSecondary);
   }, [isOpen, initialPrimary, initialSecondary]);
@@ -70,53 +70,54 @@ export const MergeContactModal: React.FC<MergeContactModalProps> = ({
     return match?.name ?? id;
   };
 
-   const hasNearMatch = (a: Contact, b: Contact): boolean => {
-     const norm = (s: string | null) => s?.trim().toLowerCase() || '';
-     if (norm(a.email) === norm(b.email)) return true;
+  const hasNearMatch = (a: Contact, b: Contact): boolean => {
+    const norm = (s: string | null) => s?.trim().toLowerCase() || '';
+    if (norm(a.email) === norm(b.email)) return true;
 
-     const getLastName = (n: string | null) => n?.split(' ').pop()?.toLowerCase() || '';
-     const isSimilar = (s1: string, s2: string) => {
-       if (s1 === s2) return true;
-       if (s1.includes(s2) || s2.includes(s1)) return true;
-       const len = Math.max(s1.length, s2.length);
-       if (len === 0) return true;
-       let matches = 0;
-       for (let i = 0; i < Math.min(s1.length, s2.length); i++) if (s1[i] === s2[i]) matches++;
-       return matches / len > 0.75;
-     };
+    const getLastName = (n: string | null) => n?.split(' ').pop()?.toLowerCase() || '';
+    const isSimilar = (s1: string, s2: string) => {
+      if (s1 === s2) return true;
+      if (s1.includes(s2) || s2.includes(s1)) return true;
+      const len = Math.max(s1.length, s2.length);
+      if (len === 0) return true;
+      let matches = 0;
+      for (let i = 0; i < Math.min(s1.length, s2.length); i++) if (s1[i] === s2[i]) matches++;
+      return matches / len > 0.75;
+    };
 
-     return isSimilar(norm(a.name), norm(b.name)) || isSimilar(getLastName(a.name), getLastName(b.name));
-   };
+    return isSimilar(norm(a.name), norm(b.name)) || isSimilar(getLastName(a.name), getLastName(b.name));
+  };
 
-   const executeMerge = async () => {
-     setIsLoading(true);
-     console.log('[merge a]', primary.id, secondary.id);
-     const result = await mergeContacts(primary.id, secondary.id);
-     setIsLoading(false);
-     if (!result) {
-      console.log(result);
-      // setMergeError(result.error ?? 'Failed to merge'); return;
-      //  toast({ title: 'Error', description: 'Merge failed', variant: 'destructive' });
-     } else {
-       toast({ title: 'Success', description: 'Contacts merged' });
-       onMerged();
-       onClose();
-     }
-   };
+  const executeMerge = async (primaryId: string, secondaryId: string) => {
+    // console.log('[merge]', primary.id, secondary.id);
+    if (!primary.id || !secondary.id) {toast({ title: 'Error', description: 'Merge failed', variant: 'destructive' }); return;}
+    setIsLoading(true);
+    const result = await mergeContacts(primary.id, secondary.id);
+    setIsLoading(false);
+    if (!result) {
+    console.log(result);
+    // setMergeError(result.error ?? 'Failed to merge'); return;
+    //  toast({ title: 'Error', description: 'Merge failed', variant: 'destructive' });
+    } else {
+    //  toast({ title: 'Success', description: 'Contacts merged' });
+      onMerged();
+      onClose();
+    }
+  };
 
-   const handleMerge = () => {
-     if (!hasNearMatch(primary, secondary)) {
-       setShowMergeWarning(true);
-     } else {
-       executeMerge();
-     }
-   };
+  const handleMerge = useCallback(() => {
+    if (!hasNearMatch(primary, secondary)) {
+      setShowMergeWarning(true);
+    } else {
+    executeMerge(primary?.id, primary?.id);
+    }
+   }, [primary, secondary]);
 
-   const handleViewSize = useCallback(() => setIsFullScreen(prev => !prev), []);
+  const handleViewSize = useCallback(() => setIsFullScreen(prev => !prev), []);
 
-   const handleReviewMerge = useCallback(() => setShowMergeWarning(false), []);
+  const handleReviewMerge = useCallback(() => setShowMergeWarning(false), []);
 
-   const handleApproveMerge = useCallback(() => { setShowMergeWarning(false); executeMerge(); } ,[]);
+  const handleApproveMerge = useCallback(() => { setShowMergeWarning(false); executeMerge(primary?.id, primary?.id); }, [primary, secondary]);
 
   return (
     <div>

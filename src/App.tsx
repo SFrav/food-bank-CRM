@@ -65,7 +65,7 @@ const App = () => (
           } />
           <Route path="/admin/users" element={
             <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['manager','admin', 'head']}>
+              <RoleBasedRoute allowedRoles={['admin', 'head', 'manager', 'branch_manager']}>
                 <CRMLayout>
                   <Suspense fallback={<div className="p-4">Loading User Data &hellip;</div>}>
                   <lazyPages.AdminUsers/>

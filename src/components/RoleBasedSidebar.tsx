@@ -71,7 +71,7 @@ export const RoleBasedSidebar = ({
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
-          // { title: 'User & Roles', url: '/admin/users', icon: Shield },
+          { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
       case 'referrer':
@@ -91,6 +91,7 @@ export const RoleBasedSidebar = ({
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Tasks', url: '/tasks', icon: Activity },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
+          { title: 'User & Roles', url: '/admin/users', icon: Shield },
           { title: 'Settings', url: '/settings', icon: Settings }
         ];
       case 'specialist':

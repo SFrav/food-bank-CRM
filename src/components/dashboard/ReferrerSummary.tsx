@@ -9,11 +9,7 @@ import { LoadingDashboard } from '@/loading/LoadingDashboard'
 
 export function ReferrerSummary() {
   const { profile } = useProfile();
-  const { referrerSummary: referrers, loading, error } = useReferrerSummary(
-    profile?.role === 'referrer'
-      ? profile.entity_id ?? null
-      : null
-  );
+  const { referrerSummary: referrers, loading, error } = useReferrerSummary();
   // const navigate = useNavigate();
 
   // const goTo = (path: string) => () => navigate(path);

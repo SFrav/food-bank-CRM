@@ -6,10 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RoleBadge } from '@/components/RoleBadge';
 import { Badge } from '@/components/ui/badge';
-import { Users, useAdminUsers } from '@/hooks/useAdminUsers';
+import { ProfileReview, useAdminUsers } from '@/hooks/useAdminUsers';
 // import EditUserModal from '@/components/modals/EditUser';
 import { useProfile } from '@/hooks/useProfile';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import UserHoldingTable from '@/components/UserHoldingTable';
 import { useRegions } from '@/hooks/useRegions';
 import { useEntities } from '@/hooks/useEntities';
 import { useDivisions } from '@/hooks/useDivisions';
@@ -26,27 +27,40 @@ export default function AdminUsers() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [activeFilter, setActiveFilter] = useState('all');
   const { users, loading: usersLoading, refetch, updateUserProfile, deleteUser } = useAdminUsers(searchQuery, roleFilter);
   const { regions } = useRegions();
   const { entities, refetch: refetchEntities } = useEntities();
   const { refetch: refetchDivisions } = useDivisions();
 
+  const [selectedUser, setSelectedUser] = useState<ProfileReview | null>(null);
+  const [savingUsers, setSavingUsers] = useState<Set<string>>(new Set());
+
   useEffect(() => {
+    if (!profile || !users) return;
     const handler = () => {
       refetchDivisions();
       refetchEntities();
     };
     window.addEventListener('org-units-changed', handler);
     return () => window.removeEventListener('org-units-changed', handler);
-  }, [refetchDivisions, refetchEntities]);
-  const [selectedUser, setSelectedUser] = useState<Users | null>(null);
-  const [savingUsers, setSavingUsers] = useState<Set<string>>(new Set());
+  }, [profile, users]);
 
   const filteredUsers = useMemo(() => { 
-    if (!profile?.entity_id && !profile?.division_id) return users;
-    if (!profile?.division_id) return users.filter(u => u.entity_id === profile?.entity_id) ?? []
-    return users.filter(u => u.division_id === profile?.division_id) ?? []
-  }, [users, profile]);
+    if (!profile?.entity_id && !profile?.division_id) {
+      if (activeFilter === "all") return users ?? []
+      if (activeFilter === "true") return users.filter(u => u.is_active) ?? []
+      if (activeFilter === "false") return users.filter(u => !u.is_active) ?? []
+    };
+    if (!profile?.division_id) {
+      if (activeFilter === "all") return users.filter(u => u.entity_id === profile?.entity_id) ?? []
+      if (activeFilter === "true") return users.filter(u => u.division_id === profile?.division_id && u.is_active) ?? []
+      if (activeFilter === "false") return users.filter(u => u.division_id === profile?.division_id && !u.is_active) ?? []
+    }
+    if (activeFilter === "all") return users.filter(u => u.division_id === profile?.division_id) ?? []
+    if (activeFilter === "true") return users.filter(u => u.division_id === profile?.division_id && u.is_active) ?? []
+    if (activeFilter === "false") return users.filter(u => u.division_id === profile?.division_id && !u.is_active) ?? []
+  }, [users, profile, activeFilter]);
 
   const filteredRegions = useMemo (() => {
     if (!profile?.region_id) return regions ?? [];
@@ -64,7 +78,7 @@ export default function AdminUsers() {
     setSavingUsers(prev => new Set(prev).add(userId));
     const result = await updateUserProfile(
       userId, {
-      role: role as Users['role'], 
+      role: role as ProfileReview['role'], 
       is_active: null,
       entityId, 
       divisionId, 
@@ -113,6 +127,7 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
+      <UserHoldingTable/>
       <PermissionGuard permission="canAccessUserManagement">
         <Card>
           <CardHeader className="pb-4">
@@ -134,15 +149,26 @@ export default function AdminUsers() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-          <SelectItem value="all">All Roles</SelectItem>
-          <SelectItem value="pending">Pending Assignment</SelectItem>
-          <SelectItem value="associate">Associate</SelectItem>
-          <SelectItem value="specialist">Specialist</SelectItem>
-          <SelectItem value="branch_manager">Food Bank Manager</SelectItem>
-          <SelectItem value="manager">Level Manager</SelectItem>
-          <SelectItem value="head">Level Head</SelectItem>
-          <SelectItem value="referrer">Referrer</SelectItem>
-          <SelectItem value="admin">System Administrator</SelectItem>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="pending">Pending Assignment</SelectItem>
+                  <SelectItem value="associate">Associate</SelectItem>
+                  <SelectItem value="specialist">Specialist</SelectItem>
+                  <SelectItem value="branch_manager">Food Bank Manager</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="head">Head</SelectItem>
+                  <SelectItem value="referrer">Referrer</SelectItem>
+                  <SelectItem value="admin">System Administrator</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={activeFilter} onValueChange={(value) => setActiveFilter(value)}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <Filter className="mr-2 size-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="true">Active</SelectItem>
+                  <SelectItem value="false">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>

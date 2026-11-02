@@ -243,7 +243,7 @@ export const DivisionManagement = () => {
                 onChange={handleNewDivisionPostcode}
               />
               <Select value={newDivisionEntityId} onValueChange={handleCreateDivEntitySelect}>
-                <SelectTrigger className="w-[140px] sm:w-auto">
+                <SelectTrigger className="min-w-[130px] sm:w-auto sm:min-w-auto">
                    <SelectValue placeholder="Select entity"/>
                 </SelectTrigger>
                 <SelectContent>
@@ -258,7 +258,7 @@ export const DivisionManagement = () => {
               <Select value={newDivisionRegionId} 
                       onValueChange={handleCreateDivRegionSelect}
                       disabled={newDivisionEntityId === '' && !profile?.entity_id}>
-                <SelectTrigger className="w-[140px] sm:w-auto">
+                <SelectTrigger className="min-w-[150px] sm:w-auto sm:min-w-auto">
                    <SelectValue placeholder="Select region"/>
                 </SelectTrigger>
                 <SelectContent>
@@ -284,7 +284,7 @@ export const DivisionManagement = () => {
           <div className="flex items-center gap-2">
             
             <Select value={filterEntityId} onValueChange={setFilterEntityId}>
-              <SelectTrigger className="w-[240px]">
+              <SelectTrigger className="w-[240px] sm:w-auto">
                 <SelectValue placeholder="Filter by entity" />
               </SelectTrigger>
               <SelectContent>

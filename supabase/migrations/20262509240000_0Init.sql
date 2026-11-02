@@ -118,6 +118,32 @@ CREATE TABLE IF NOT EXISTS "public"."audit_logs" (
     "created_at" timestamp with time zone DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS "public"."holding_user" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL,
+    "user_id" uuid NOT NULL,
+    "full_name" text NOT NULL,
+    "email" text NOT NULL,
+    "phone" text,
+    "role" text NOT NULL,
+    "country_id" uuid NOT NULL,
+    "region_id" uuid NOT NULL,
+    "entity_id" uuid NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."holding_entity" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL,
+    "country_id" uuid NOT NULL,
+    "region_id" uuid NOT NULL,
+    "name" text NOT NULL,
+    "code" text,
+    "head_id" uuid,
+    "is_referrer" boolean,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid",
@@ -175,6 +201,15 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
 --     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 -- );
 
+-- CREATE TABLE IF NOT EXISTS "public"."contacts_preferences" (
+--     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+--     "contact_id" uuid NOT NULL,
+--     "preference_key" "contact_pref_key_enum" NOT NULL,
+--     "value" boolean
+--     "created_at" timestamp with time zone DEFAULT now(),
+--     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+-- );
+
 CREATE TABLE IF NOT EXISTS "public"."contacts_days" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" uuid NOT NULL,
@@ -213,11 +248,12 @@ CREATE TABLE IF NOT EXISTS "public"."divisions" (
 
 CREATE TABLE IF NOT EXISTS "public"."entities" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "country_id" "uuid" NOT NULL,
+    "country_id" "uuid",
     "name" "text" NOT NULL,
     "code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
     "is_referrer" boolean DEFAULT false NOT NULL, 
+    "head_id" uuid,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -292,9 +328,9 @@ CREATE TABLE IF NOT EXISTS "public"."countries" (
 
 CREATE TABLE IF NOT EXISTS "public"."regions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "country_id" "uuid" NOT NULL, 
+    "country_id" "uuid", 
     "name" "text" NOT NULL,
-    "code" "text" NOT NULL,
+    "code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -304,7 +340,7 @@ CREATE TABLE IF NOT EXISTS "public"."regions" (
 CREATE TABLE IF NOT EXISTS "public"."system_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "setting_key" "text" NOT NULL,
-    "setting_value" "text", --@revised from jsonb --@set enum to align with types
+    "setting_value" "text",
     "updated_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT now()
 );
@@ -504,16 +540,19 @@ ALTER TABLE ONLY "public"."audit_logs"
     ADD CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id"); --@ check if should be user_id
+    ADD CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("user_id"); 
 
 ALTER TABLE ONLY "public"."user_profiles"
     ADD CONSTRAINT "user_profiles_email_key" UNIQUE ("email");
 
-ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_user_id_key" UNIQUE ("user_id");
-
 ALTER TABLE ONLY "public"."entities"
     ADD CONSTRAINT "entities_pkey" PRIMARY KEY ("id"); 
+
+ALTER TABLE "public"."holding_user" 
+    ADD CONSTRAINT "holding_user_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."holding_entity" 
+    ADD CONSTRAINT "holding_entity_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."divisions"
     ADD CONSTRAINT "divisions_pkey" PRIMARY KEY ("id");
@@ -615,11 +654,6 @@ ALTER TABLE ONLY "public"."user_settings"
   ADD CONSTRAINT "user_settings_pkey" PRIMARY KEY ("id");
 
 
-
--- ALTER TABLE "public"."contacts_days" ADD CONSTRAINT "availability_pkey" PRIMARY KEY ("id");
--- ALTER TABLE "public"."contacts_days" ADD CONSTRAINT "uq_contacts_days" UNIQUE ("contact_id", "day_of_week");
--- -- ALTER TABLE "public"."contacts_days" ADD CONSTRAINT "contacts_days_pkey" PRIMARY KEY ("contact_id", "day_of_week"); --@replace with ID column
-
 --
 --Tables with cascades (req. primary keys)
 --
@@ -640,6 +674,12 @@ ALTER TABLE ONLY "public"."user_settings"
 
 ALTER TABLE ONLY "public"."audit_logs"
     ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id");
+
+ALTER TABLE "public"."holding_user" 
+    ADD CONSTRAINT "holding_user_email_unique" UNIQUE ("email");
+    
+ALTER TABLE "public"."holding_entity" 
+    ADD CONSTRAINT "holding_entity_country_region_name" UNIQUE ("country_id", "region_id", "name");
 
 ALTER TABLE ONLY "public"."user_settings"
     ADD CONSTRAINT "settings_user_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE CASCADE;
@@ -711,7 +751,7 @@ ALTER TABLE ONLY "public"."user_profiles"
     ADD CONSTRAINT "user_profiles_entity_id_fkey" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."user_profiles"
-    ADD CONSTRAINT "user_profiles_manager_id_fkey" FOREIGN KEY ("manager_id") REFERENCES "public"."user_profiles"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "user_profiles_manager_id_fkey" FOREIGN KEY ("manager_id") REFERENCES "public"."user_profiles"("user_id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."user_profiles"
     ADD CONSTRAINT "user_profiles_region_id_fkey" FOREIGN KEY ("region_id") REFERENCES "public"."regions"("id") ON DELETE SET NULL;
@@ -755,21 +795,61 @@ ALTER TABLE "public"."contacts_days"
 --Indexes
 --
 --@
+CREATE INDEX "idx_audit_logs_created_at_desc" ON "public"."audit_logs" ("created_at" DESC);
+
 CREATE INDEX "idx_contacts_status" ON "public"."contacts"(status);
 
-CREATE INDEX IF NOT EXISTS idx_contacts_name_trgm ON public.contacts USING gin (name gin_trgm_ops);
+CREATE INDEX "idx_contacts_name_trgm" ON "public"."contacts" USING gin (name gin_trgm_ops);
 
-CREATE INDEX IF NOT EXISTS idx_contacts_phone ON public.contacts (phone);
+CREATE INDEX "idx_contacts_phone" ON "public"."contacts" (phone);
 
-CREATE INDEX IF NOT EXISTS idx_contacts_postcode ON public.contacts (postcode);
+CREATE INDEX "idx_contacts_postcode" ON "public"."contacts" (postcode);
 
-CREATE INDEX "idx_allotment_contact_attended"
-  ON public.contacts_allotment(contact_id, attended, serving, served, updated_at)
+CREATE INDEX "idx_contacts_name_btree" ON "public"."contacts" ("name");
+
+CREATE INDEX "idx_contacts_region_id" ON "public"."contacts" ("region_id");
+
+CREATE INDEX "idx_contacts_notes_contact_created_at_desc" ON "public"."contacts_notes" ("contact_id", "created_at" DESC)
+  INCLUDE ("id", "note", "created_by", "updated_at", "updated_by");
+
+CREATE INDEX "idx_contacts_notes_contact_id" ON "public"."contacts_notes" ("contact_id");
+
+CREATE INDEX "idx_contacts_allotment_contact_date" ON "public"."contacts_allotment" ("contact_id", "date");
+
+CREATE INDEX "idx_contacts_allotment_division_date" ON "public"."contacts_allotment" ("division_id", "date");
+
+CREATE INDEX "idx_contacts_allotment_date_attended_serving_served_contact_id"
+  ON "public"."contacts_allotment" ("date", "attended", "serving", "served", "contact_id");
+
+CREATE INDEX "idx_contacts_allotment_division_date_type_attended"
+  ON "public"."contacts_allotment" ("division_id", "date", "type", "attended");
+
+CREATE INDEX "idx_contacts_allotment_contact_updated_at_desc"
+  ON "public"."contacts_allotment" ("contact_id", "updated_at" DESC);
+
+CREATE INDEX "idx_contacts_allotment_contact_attended_served_updated_at_desc"
+  ON "public"."contacts_allotment" ("contact_id", "attended", "served", "updated_at" DESC);
+
+CREATE INDEX "idx_allotment_contact_attended" ON "public"."contacts_allotment"("contact_id", "attended", "serving", "served", "updated_at")
   WHERE attended IS NOT NULL;
+
+CREATE INDEX "idx_contacts_days_contact_id" ON "public"."contacts_days" ("contact_id");
+
+CREATE INDEX "idx_contacts_referrer_contact_updated_at_desc" ON "public"."contacts_referrer" ("contact_id", "updated_at" DESC);
+
+CREATE INDEX "idx_contacts_referrer_referrer_contact" ON "public"."contacts_referrer" ("referrer_id", "contact_id");
+
+CREATE INDEX "idx_contacts_referrer_division_contact" ON "public"."contacts_referrer" ("division_id", "contact_id");
+
+CREATE INDEX "idx_entities_name" ON "public"."entities" ("name");
 
 CREATE INDEX "idx_divisions_entity_id" ON "public"."divisions" USING "btree" ("entity_id");
 
 CREATE INDEX "idx_divisions_head_id" ON "public"."divisions" USING "btree" ("head_id");
+
+CREATE INDEX "idx_user_profiles_full_name_gin" ON "public"."user_profiles" USING gin ("full_name" gin_trgm_ops);
+
+CREATE INDEX "idx_user_profiles_email_gin" ON "public"."user_profiles" USING gin ("email" gin_trgm_ops);
 
 CREATE INDEX "idx_user_profiles_division_id" ON "public"."user_profiles" USING "btree" ("division_id");
 
@@ -779,15 +859,15 @@ CREATE INDEX "idx_user_profiles_manager_id" ON "public"."user_profiles" USING "b
 
 CREATE INDEX "idx_user_profiles_role" ON "public"."user_profiles" USING "btree" ("role");
 
-CREATE INDEX "idx_user_profiles_user_id" ON "public"."user_profiles" USING "btree" ("user_id");
+-- CREATE INDEX "idx_user_profiles_user_id" ON "public"."user_profiles" USING "btree" ("user_id");
 
 CREATE UNIQUE INDEX "one_head_per_entity" ON "public"."user_profiles" USING "btree" ("entity_id") WHERE (("role" = 'head'::"public"."role_enum") AND ("is_active" = true));
 
 CREATE UNIQUE INDEX "one_manager_per_division" ON "public"."user_profiles" USING "btree" ("division_id") WHERE (("role" = 'manager'::"public"."role_enum") AND ("is_active" = true));
 
-CREATE INDEX idx_user_notifications_user_id ON "public"."notifications_user" USING "btree" ("user_id");
+CREATE INDEX "idx_user_notifications_user_id" ON "public"."notifications_user" USING "btree" ("user_id");
 
-CREATE INDEX idx_user_notifications_notification_id ON "public"."notifications_user" USING "btree" ("notification_id");
+CREATE INDEX "idx_user_notifications_notification_id" ON "public"."notifications_user" USING "btree" ("notification_id");
 
 CREATE INDEX "calendar_created_at_idx" ON "public"."calendar" USING "btree" ("created_at");
 
@@ -802,7 +882,7 @@ CREATE INDEX "calendar_pic_id_idx" ON "public"."calendar" USING "btree" ("pic_id
 CREATE INDEX "calendar_scheduled_at_idx" ON "public"."calendar" USING "btree" ("scheduled_at");
 
 -- CREATE INDEX IF NOT EXISTS idx_contacts_days_contact_day
---   ON public.contacts_days (contact_id, day_of_week);
+--   ON "public".contacts_days (contact_id, day_of_week);
 
 CREATE OR REPLACE FUNCTION date_trunc_day(val timestamptz) --@functions in indexes need to be marked as immutable
 RETURNS timestamptz
@@ -812,16 +892,16 @@ PARALLEL SAFE
 RETURN date_trunc('day', $1);
 
 CREATE INDEX IF NOT EXISTS idx_division_open_division_day
-  ON public.division_open (division_id, day_of_week);
+  ON "public".division_open (division_id, day_of_week);
 
 CREATE INDEX IF NOT EXISTS idx_division_closed_division_date_day 
-  ON public.division_closed (division_id, date_trunc_day(date::timestamptz));--@functions in indexes need to be marked as immutable
+  ON "public".division_closed (division_id, date_trunc_day(date::timestamptz));--@functions in indexes need to be marked as immutable
 
 -- CREATE INDEX IF NOT EXISTS idx_contacts_allotment_contact_date_day
---   ON public.contacts_allotment (contact_id, date_trunc_day(date::timestamptz));
+--   ON "public".contacts_allotment (contact_id, date_trunc_day(date::timestamptz));
 
 CREATE INDEX IF NOT EXISTS idx_division_settings_division_key
-  ON public.division_settings (division_id, setting_key);
+  ON "public".division_settings (division_id, setting_key);
 --
 --Functions
 --
@@ -1000,7 +1080,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 SET "search_path" TO 'public'
-SECURITY INVOKER
+SECURITY DEFINER --@ needed for sign-up only. Debug
 AS $$
   SELECT
     e.id, e.country_id, c.name as country_name, e.name, e.code, e.is_active, e.is_referrer, e.created_by, e.created_at, e.updated_at
@@ -1016,12 +1096,10 @@ CREATE OR REPLACE FUNCTION "public"."admin_update_entity"("p_entity_id" "uuid", 
     AS $$
 DECLARE
   v_is_admin boolean;
-  v_uid uuid;
   old_row jsonb; --for audit log
   new_row  public.entities; --for audit log
 BEGIN
-  v_uid := auth.uid();
-  IF v_uid IS NULL THEN
+  IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
   SELECT row_to_json(e)
@@ -1029,17 +1107,16 @@ BEGIN
   FROM public.entities e
   WHERE e.id = p_entity_id;
   SELECT EXISTS (
-    SELECT 1 
-    FROM public.user_profiles 
-    WHERE user_id = v_uid 
-      AND role = 'admin'
+    SELECT 1
+    FROM get_my_profile()
+    WHERE role = 'admin'
     LIMIT 1
   ) INTO v_is_admin;
   IF NOT v_is_admin THEN
     RAISE EXCEPTION 'Only admin can update entities';
   END IF;
   UPDATE public.entities
-  SET 
+  SET
     name = COALESCE(p_name, name),
     code = COALESCE(p_code, code),
     is_active = COALESCE(p_is_active, is_active),
@@ -1050,6 +1127,7 @@ BEGIN
   RETURN FOUND;
 END;
 $$;
+
 
 CREATE OR REPLACE FUNCTION "public"."admin_delete_entity"("p_entity_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" SECURITY INVOKER
@@ -1090,6 +1168,48 @@ BEGIN
   RETURN FOUND;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION "public"."update_entity_head"()
+RETURNS trigger
+LANGUAGE "plpgsql"
+SECURITY DEFINER
+SET "search_path" TO 'public', 'auth'
+AS $$
+DECLARE
+  v_has_other_head boolean;
+BEGIN
+  IF NEW."role" = 'head' AND (OLD IS NULL OR OLD."role" <> 'head') THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM "public"."user_profiles"
+      WHERE "role" = 'head'
+        AND "entity_id" = NEW."entity_id"
+        AND "user_id" <> NEW."user_id"
+      LIMIT 1
+    ) INTO v_has_other_head;
+    IF NOT v_has_other_head THEN
+      UPDATE "public"."entities"
+        SET "head_id" = NEW."user_id"
+      WHERE "id" = NEW."entity_id";
+    END IF;
+  END IF;
+  IF OLD IS NOT NULL AND OLD."role" = 'head' AND NEW."role" <> 'head' THEN
+    IF EXISTS (
+      SELECT 1
+      FROM "public"."entities"
+      WHERE "id" = NEW."entity_id"
+        AND "head_id" = NEW."user_id"
+    ) THEN
+      UPDATE "public"."entities"
+        SET "head_id" = NULL
+      WHERE "id" = NEW."entity_id";
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
 
 
 -- Settings - system, entity & division
@@ -1284,7 +1404,8 @@ RETURNS TABLE(
   entity_id uuid, 
   region_id uuid, 
   division_id uuid,
-  full_name text)
+  full_name text,
+  is_active boolean)
 LANGUAGE "plpgsql"
 SET "search_path" TO 'public'
 SECURITY DEFINER
@@ -1294,7 +1415,7 @@ BEGIN --@@@ add role level checks - allow all users with a role and that are cur
     RAISE EXCEPTION 'Only authenticated users can perform this action';
   END IF;
   RETURN QUERY
-  SELECT up.id, up.role::text, up.entity_id, up.region_id, up.division_id, up.full_name
+  SELECT up.id, up.role::text, up.entity_id, up.region_id, up.division_id, up.full_name, up.is_active
   FROM public.user_profiles up
   WHERE up.user_id = p_user_id
   LIMIT 1; 
@@ -1347,14 +1468,238 @@ BEGIN
 END;
 $$;
 
+-- User & entity holding and approval
+CREATE OR REPLACE FUNCTION "public"."validate_and_insert_holding"(
+    p_email text,
+    p_full_name text,
+    p_phone text,
+    p_country_id uuid,
+    p_region_id uuid,
+    p_entity_id uuid,
+    p_entity_name text,
+    p_is_referrer boolean,
+    p_is_head boolean
+) RETURNS TABLE(holding_user_id uuid, holding_entity_id uuid)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    v_user_id uuid;
+    v_entity_id uuid;
+    v_role public.role_enum;
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.user_profiles WHERE email = p_email) THEN
+        RAISE EXCEPTION 'Email % is already registered.', p_email;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.holding_user WHERE email = p_email) THEN
+        RAISE EXCEPTION 'An application using the email address % has already been received.', p_email;
+    END IF;
+
+    v_role := CASE WHEN p_is_head THEN 'head' --END,
+              WHEN p_is_referrer AND NOT p_is_head THEN 'referrer'
+              ELSE 'pending' END;
+
+    IF p_is_head THEN
+        IF EXISTS (SELECT 1 FROM public.holding_entity WHERE country_id = p_country_id AND region_id = p_region_id AND name = p_entity_name) THEN
+            RAISE EXCEPTION 'Entity name % already exists in region %.', p_entity_name, p_region_id;
+        END IF;
+    END IF;
+
+    v_entity_id = CASE WHEN p_is_head THEN gen_random_uuid() ELSE p_entity_id END;
+
+    INSERT INTO public.holding_user (
+        user_id, full_name, email, phone, role, country_id, region_id, entity_id, created_at, updated_at
+    ) VALUES (
+        gen_random_uuid(), p_full_name, p_email, p_phone, v_role, p_country_id, p_region_id, v_entity_id,
+        now(), now()
+    ) RETURNING user_id INTO v_user_id;
+
+    IF p_is_head THEN
+        INSERT INTO public.holding_entity (
+            id, country_id, region_id, name, is_referrer, head_id, created_at, updated_at
+        ) VALUES (
+            v_entity_id, p_country_id, p_region_id, p_entity_name, p_is_referrer, v_user_id, now(), now()
+        ) RETURNING id INTO v_entity_id;
+    END IF;
+
+    RETURN QUERY SELECT v_user_id, v_entity_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.approve_new_user(
+    p_holding_user_id uuid,
+    p_auth_id uuid,
+    p_full_name text DEFAULT NULL
+) RETURNS TABLE(success boolean, entity_id uuid, error_msg text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    v_user public.holding_user;
+    v_role public.role_enum;
+    v_entity_id uuid;
+    v_head_entity_id uuid;
+BEGIN
+    SELECT * INTO v_user FROM public.holding_user hu WHERE hu.user_id = p_holding_user_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User application not found';
+    END IF;
+
+    v_role := v_user.role::public.role_enum;
+
+    IF v_role::text = 'head' THEN
+      SELECT public.approve_entity(p_holding_user_id) INTO v_head_entity_id;
+    END IF;
+
+    v_entity_id := CASE WHEN v_role::text = 'head' THEN 
+      v_head_entity_id
+      ELSE v_user.entity_id END;
+
+    INSERT INTO public.user_profiles (user_id, full_name, email, phone, role, entity_id, is_active)
+    VALUES (p_auth_id, COALESCE(p_full_name, v_user.full_name), v_user.email, v_user.phone, v_role, v_entity_id, true)
+    ON CONFLICT (user_id) DO NOTHING;
+
+    INSERT INTO public.user_settings (user_id, setting_key, setting_value)
+    SELECT p_auth_id, unnest(array['dark_mode','notification_email','notification_tasks','notification_calendar','two_FA'])::user_setting_enum,
+           unnest(array['false','false','true','true','false'])
+    ON CONFLICT (user_id, setting_key) DO NOTHING;
+
+    IF FOUND THEN
+      PERFORM public.delete_holding(p_holding_user_id);
+    END IF;
+
+    RETURN QUERY SELECT true, COALESCE(v_entity_id, NULL::uuid), NULL::text;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."approve_entity"(p_head_id uuid) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    v_holding_entity public.holding_entity;
+    v_new_entity_id uuid;
+BEGIN
+    SELECT * INTO v_holding_entity FROM public.holding_entity WHERE head_id = p_head_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Holding entity not found for this user application';
+    END IF;
+
+    INSERT INTO public.entities (country_id, name, code, is_active, is_referrer, head_id, created_by)
+    VALUES (v_holding_entity.country_id, v_holding_entity.name, v_holding_entity.code, true, v_holding_entity.is_referrer, NULL, p_head_id)
+    RETURNING id INTO v_new_entity_id;
+
+    INSERT INTO public.entity_settings (entity_id, division_id, setting_key, setting_value)
+    SELECT v_new_entity_id, NULL,
+           unnest(array['referrer_request','contact_notify','contact_approve','contact_ban'])::entity_setting_enum,
+           unnest(array['manager','manager','manager','manager'])
+    ON CONFLICT DO NOTHING;
+
+    DELETE FROM public.holding_entity WHERE head_id = p_head_id;
+    RETURN v_new_entity_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_holding_users"() RETURNS TABLE(
+    id uuid, full_name text, email text, phone text, role text, country_id uuid, region_id uuid, entity_id uuid, 
+    created_at timestamptz, updated_at timestamptz
+) LANGUAGE sql SECURITY INVOKER SET search_path TO 'public' AS $$
+    SELECT user_id, full_name, email, phone, role::text, country_id, region_id, entity_id, created_at, updated_at
+    FROM holding_user ORDER BY created_at DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_holding_entities"() RETURNS TABLE(
+    id uuid, country_id uuid, country_name text, region_id uuid, region_name text, name text, code text, head_id uuid, is_referrer boolean, created_at timestamptz
+) LANGUAGE sql SECURITY INVOKER SET search_path TO 'public' AS $$
+    SELECT he.id, he.country_id, c.name AS country_name, he.region_id, r.name AS region_name, he.name, he.code, he.head_id, he.is_referrer, he.created_at
+    FROM holding_entity he 
+    LEFT JOIN public.countries c ON c.id = he.country_id
+    LEFT JOIN public.regions r ON r.id = he.region_id
+    ORDER BY created_at DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_holding_combined"(p_id uuid DEFAULT NULL)
+RETURNS TABLE(
+    id uuid, 
+    full_name text, 
+    email text, 
+    phone text,
+    role text, 
+    country_id uuid, 
+    region_id uuid, 
+    entity_id uuid,
+    created_at timestamptz, 
+    entity_name text, 
+    entity_code text, 
+    entity_is_referrer boolean
+)
+LANGUAGE sql SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+    SELECT
+        hu.user_id, hu.full_name, hu.email, hu.phone, hu.role::text, hu.country_id, hu.region_id, hu.entity_id, hu.created_at, he.name, he.code, he.is_referrer
+    FROM holding_user hu
+    LEFT JOIN holding_entity he ON he.head_id = hu.user_id
+    WHERE p_id IS NULL OR hu.id = p_id
+    ORDER BY hu.created_at DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_holding(p_user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY INVOKER
+SET search_path TO 'public'
+AS $$
+BEGIN
+    DELETE FROM public.holding_entity WHERE head_id = p_user_id;
+    DELETE FROM public.holding_user WHERE user_id = p_user_id;
+    RETURN FOUND;
+END;
+$$;
+
 -- User management
-CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
-
-$$;
-
 CREATE OR REPLACE FUNCTION "public"."validate_user_profile_assignment"() RETURNS "trigger"
-
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  -- Admin should have no entity/team
+  IF NEW.role = 'admin' AND (NEW.entity_id IS NOT NULL OR NEW.division_id IS NOT NULL) THEN
+    RAISE WARNING 'Admin role should not have entity_id or team (division_id) assigned. Auto-clearing.';
+    NEW.entity_id := NULL;
+    NEW.division_id := NULL;
+    NEW.manager_id := NULL;
+  END IF;
+  -- Head should have entity but ideally no division_id (assigned via divisions.head_id)
+  IF NEW.role = 'head' AND NEW.entity_id IS NULL THEN
+    RAISE EXCEPTION 'Head role must have entity_id assigned';
+  END IF;
+  -- Manager should have entity and team
+  IF NEW.role = 'manager' THEN
+    IF NEW.entity_id IS NULL THEN
+      RAISE EXCEPTION 'Manager role must have entity_id assigned';
+    END IF;
+    IF NEW.division_id IS NULL THEN
+      RAISE EXCEPTION 'Manager role must have team (division_id) assigned';
+    END IF;
+  END IF;
+  -- Associates/Branch Manager should have entity, team, and manager
+  IF NEW.role IN ('associate', 'branch_manager') THEN
+    IF NEW.entity_id IS NULL THEN
+      RAISE EXCEPTION 'Associate role must have entity_id assigned';
+    END IF;
+    IF NEW.division_id IS NULL THEN
+      RAISE EXCEPTION 'Associate role must have team (division_id) assigned';
+    END IF;
+    IF NEW.manager_id IS NULL THEN
+      RAISE WARNING 'Associate role should have manager_id assigned';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
 $$;
+
 
 CREATE OR REPLACE FUNCTION "public"."admin_update_user_profile"(
   "p_profile_id" "uuid", 
@@ -1547,7 +1892,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 SET "search_path" TO 'public'
-SECURITY DEFINER
+SECURITY DEFINER --@ needed for sign-up and others. Debug
 AS $$
   SELECT
     id, name, code, currency_symbol, is_active, created_at
@@ -1617,7 +1962,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 SET "search_path" TO 'public'
-SECURITY DEFINER
+SECURITY DEFINER --@ needed for sign-up and others. Debug
 AS $$
   SELECT
     r.id, r.country_id, c.name as country_name, r.name, r.code, r.is_active, r.created_at
@@ -1891,7 +2236,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SET "search_path" TO 'public'
-SECURITY DEFINER
+SECURITY DEFINER --@debug to security invoker
 AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -1936,7 +2281,7 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION public."get_contact_duplicates"( 
+CREATE OR REPLACE FUNCTION public."get_contact_duplicates"( --@add age and gender
     p_exact            boolean,
     p_email            text,
     p_phone            text,
@@ -2054,7 +2399,7 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."update_contact"( 
+CREATE OR REPLACE FUNCTION "public"."update_contact"( --@ add check on user_profile.is_active
   p_id    uuid DEFAULT NULL,
   p_name  text DEFAULT '',
   p_email text DEFAULT '',
@@ -2109,7 +2454,7 @@ BEGIN
     RAISE EXCEPTION 'Only authenticated users can update beneficiaries';
   END IF;
 
-  SELECT role::text, entity_id, region_id, division_id
+  SELECT role::text, entity_id, region_id, division_id --@ check is_active for caller
   INTO v_caller_role, v_caller_entity_id, v_caller_region_id, v_caller_division_id
   FROM get_user_profile_info(auth.uid());
 
@@ -2124,16 +2469,6 @@ BEGIN
   SELECT entity_id, division_id
   INTO v_owner_entity_id, v_division_id
   FROM get_user_profile_info(v_owner_id); 
-
-  -- SELECT entity_id, division_id
-  -- INTO v_owner_entity_id, v_division_id
-  -- FROM public.user_profiles
-  -- WHERE user_id = v_owner_id;
-
--- IF NOT FOUND THEN
---     RAISE EXCEPTION 'Record not found';
---   END IF;
-
 
   IF v_caller_role IN ('admin', 'head') THEN
     NULL; 
@@ -2246,7 +2581,7 @@ CREATE OR REPLACE FUNCTION "public"."merge_contacts"(
     p_secondary uuid
 ) RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY DEFINER --@debug to invoker
 SET "search_path" = 'public'
 AS $$
 DECLARE
@@ -2268,33 +2603,30 @@ BEGIN
 
     SELECT role::text, entity_id
     INTO v_caller_role, v_caller_entity_id
-    FROM public.user_profiles
-    WHERE user_id = auth.uid();
+    FROM get_my_profile();
 
     SELECT owner_id , created_by
     INTO v_primary_owner_id, v_primary_creator_id
-    FROM contacts WHERE id = p_primary;    
+    FROM contacts WHERE id = p_primary;
 
-    SELECT owner_id, created_by 
+    SELECT owner_id, created_by
     INTO v_secondary_owner_id, v_secondary_creator_id
     FROM contacts WHERE id = p_secondary;
 
     SELECT entity_id
     INTO v_p_owner_entity_id
-    FROM public.user_profiles
-    WHERE user_id = v_primary_owner_id;
+    FROM get_user_profile_info(v_primary_owner_id);
 
     SELECT entity_id
     INTO v_s_owner_entity_id
-    FROM public.user_profiles
-    WHERE user_id = v_secondary_owner_id;
+    FROM get_user_profile_info(v_secondary_owner_id);
 
     IF v_caller_role IN ('admin', 'head') THEN
     ELSE
       IF v_caller_role NOT IN ('manager', 'branch_manager', 'specialist', 'referrer') THEN
         RAISE EXCEPTION 'Only head, managers, branch managers, specialists and referrers can merge contacts';
       END IF;
-      IF (v_primary_creator_id <> auth.uid() OR v_secondary_creator_id <> auth.uid()) OR 
+      IF (v_primary_creator_id <> auth.uid() OR v_secondary_creator_id <> auth.uid()) OR
       (v_p_owner_entity_id <> v_caller_entity_id OR v_s_owner_entity_id <> v_caller_entity_id)  THEN
         RAISE EXCEPTION 'Contacts must be linked to your organisation unless you are an admin and head';
       END IF;
@@ -2302,7 +2634,7 @@ BEGIN
 
     SELECT status INTO v_primary_status
       FROM contacts WHERE id = p_primary
-      FOR UPDATE;    
+      FOR UPDATE;
 
     SELECT status INTO v_secondary_status
       FROM contacts WHERE id = p_secondary
@@ -2321,7 +2653,7 @@ BEGIN
         WHEN v_primary_status = 'banned'::beneficiary_enum
           OR v_secondary_status = 'banned'::beneficiary_enum
           THEN 'banned'::beneficiary_enum
-        ELSE 'merged'::beneficiary_enum  
+        ELSE 'merged'::beneficiary_enum
     END;
 
     UPDATE contacts_referrer SET contact_id = p_primary
@@ -2353,6 +2685,8 @@ BEGIN
     RETURN;
 END;
 $$;
+
+
 
 CREATE OR REPLACE FUNCTION "public"."delete_contact"(p_id uuid)
 RETURNS BOOLEAN
@@ -3093,7 +3427,7 @@ RETURNS TABLE (
   created_at timestamp with time zone
 )
 LANGUAGE plpgsql
-SECURITY DEFINER 
+SECURITY DEFINER --@debug to invoker. When set to invoker even those who created the note can't see them
 SET "search_path" TO 'public'
 AS $$
 BEGIN
@@ -3121,19 +3455,20 @@ SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
-
+--@restrict to non-associate?
   DELETE FROM public.contacts_notes
   WHERE id = p_note_id;
   RETURN FOUND;
 END;
 $$;
 
+
 CREATE OR REPLACE FUNCTION "public"."get_allotment"(p_contact_id uuid)
 RETURNS TABLE (
   allotment_id uuid,
   division_id uuid,
   referrer_id uuid,
-  referrer_org text, 
+  referrer_org text,
   referrer_code text,
   referrer_name text,
   approver_org text,
@@ -3147,7 +3482,7 @@ RETURNS TABLE (
   updated_at timestamp with time zone
 )
 LANGUAGE plpgsql
-SECURITY DEFINER --@debug policies
+SECURITY DEFINER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
@@ -3155,48 +3490,43 @@ BEGIN
   SELECT
     ca.id, ca.division_id,
     (SELECT cr.referrer_id
-    FROM public.contacts_referrer cr
-    WHERE cr.contact_id = p_contact_id
-    ORDER BY cr.updated_at DESC
-    LIMIT 1) AS referrer_id,
+     FROM public.contacts_referrer cr
+     WHERE cr.contact_id = p_contact_id
+     ORDER BY cr.updated_at DESC
+     LIMIT 1) AS referrer_id,
     (SELECT e.name
-    FROM public.entities e
-    JOIN public.user_profiles up ON up.entity_id = e.id
-    JOIN public.contacts_referrer cr
-      ON cr.referrer_id = up.user_id
-    WHERE cr.contact_id = p_contact_id
-    ORDER BY cr.updated_at DESC
-    LIMIT 1) AS referrer_org,
+     FROM public.contacts_referrer cr
+     JOIN LATERAL get_user_profile_info(cr.referrer_id) up ON TRUE
+     JOIN public.entities e ON up.entity_id = e.id
+     WHERE cr.contact_id = p_contact_id
+     ORDER BY cr.updated_at DESC
+     LIMIT 1) AS referrer_org,
     (SELECT e.code
-    FROM public.entities e
-    JOIN public.user_profiles up ON up.entity_id = e.id
-    JOIN public.contacts_referrer cr
-      ON cr.referrer_id = up.user_id
-    WHERE cr.contact_id = p_contact_id
-    ORDER BY cr.updated_at DESC
-    LIMIT 1) AS referrer_code,
+     FROM public.contacts_referrer cr
+     JOIN LATERAL get_user_profile_info(cr.referrer_id) up ON TRUE
+     JOIN public.entities e ON up.entity_id = e.id
+     WHERE cr.contact_id = p_contact_id
+     ORDER BY cr.updated_at DESC
+     LIMIT 1) AS referrer_code,
     (SELECT up.full_name
-    FROM public.user_profiles up
-    JOIN public.contacts_referrer cr
-      ON cr.referrer_id = up.user_id
-    WHERE cr.contact_id = p_contact_id
-    ORDER BY cr.updated_at DESC
-    LIMIT 1) AS referrer_name,
+     FROM public.contacts_referrer cr
+     JOIN LATERAL get_user_profile_info(cr.referrer_id) up ON TRUE
+     WHERE cr.contact_id = p_contact_id
+     ORDER BY cr.updated_at DESC
+     LIMIT 1) AS referrer_name,
     (SELECT e.name
-    FROM public.entities e
-    JOIN public.user_profiles up ON up.entity_id = e.id
-    JOIN public.contacts_referrer cr
-      ON cr.approved_by = up.user_id
-    WHERE cr.contact_id = p_contact_id
-    ORDER BY cr.updated_at DESC
-    LIMIT 1) AS approver_org,
+     FROM public.contacts_referrer cr
+     JOIN LATERAL get_user_profile_info(cr.approved_by) up ON TRUE
+     JOIN public.entities e ON up.entity_id = e.id
+     WHERE cr.contact_id = p_contact_id
+     ORDER BY cr.updated_at DESC
+     LIMIT 1) AS approver_org,
     (SELECT up.full_name
-    FROM public.user_profiles up
-    JOIN public.contacts_referrer cr
-      ON cr.approved_by = up.user_id
-    WHERE cr.contact_id = p_contact_id
-    ORDER BY cr.updated_at DESC
-    LIMIT 1) AS approver_name,
+     FROM public.contacts_referrer cr
+     JOIN LATERAL get_user_profile_info(cr.approved_by) up ON TRUE
+     WHERE cr.contact_id = p_contact_id
+     ORDER BY cr.updated_at DESC
+     LIMIT 1) AS approver_name,
     ca.date,
     ca.visit_num,
     ca.attended,
@@ -3479,9 +3809,10 @@ BEGIN
   SELECT entity_id INTO v_entity_id FROM get_user_profile_info(auth.uid());
 
   SELECT COUNT(*)::bigint INTO v_workforce
-  FROM public.user_profiles
-  WHERE entity_id = v_entity_id
-    AND role = 'referrer'::"public"."role_enum";
+  FROM public.user_profiles u
+  JOIN LATERAL get_user_profile_info(u.id) up ON TRUE
+  WHERE up.entity_id = v_entity_id
+    AND up.role = 'referrer';
 
   RETURN QUERY
   SELECT
@@ -3492,9 +3823,9 @@ BEGIN
     v_workforce AS workforce
   FROM public.contacts_allotment ca
   JOIN public.contacts_referrer cr ON ca.contact_id = cr.contact_id
-  JOIN public.user_profiles up ON cr.referrer_id = up.user_id
-  WHERE cr.referrer_id = v_caller_id
-    AND up.role = 'referrer'::"public"."role_enum"
+  JOIN LATERAL get_user_profile_info(cr.referrer_id) up ON TRUE
+  WHERE up.entity_id = v_entity_id
+    AND up.role = 'referrer'
     AND ca.date >= p_start_ts::date
     AND ca.date < p_end_ts::date
   GROUP BY week_start
@@ -3528,9 +3859,10 @@ BEGIN
   SELECT entity_id INTO v_entity_id FROM get_user_profile_info(auth.uid());
 
   SELECT COUNT(*)::bigint INTO v_workforce
-  FROM public.user_profiles
-  WHERE entity_id = v_entity_id
-    AND role = 'referrer'::"public"."role_enum";
+  FROM public.user_profiles u
+  JOIN LATERAL get_user_profile_info(u.id) up ON TRUE
+  WHERE up.entity_id = v_entity_id
+    AND up.role = 'referrer'::"public"."role_enum";
 
   RETURN QUERY
   SELECT
@@ -3541,7 +3873,7 @@ BEGIN
     v_workforce AS workforce
   FROM public.contacts_allotment ca
   JOIN public.contacts_referrer cr ON ca.contact_id = cr.contact_id
-  JOIN public.user_profiles up ON cr.referrer_id = up.user_id
+  JOIN LATERAL get_user_profile_info(cr.referrer_id) up ON TRUE
   WHERE up.entity_id = v_entity_id
     AND up.role = 'referrer'::"public"."role_enum"
     AND ca.date >= p_start_ts::date
@@ -3582,28 +3914,24 @@ BEGIN
     COALESCE(w.cnt,0) AS workforce
   FROM public.divisions d
 
+  LEFT JOIN LATERAL get_my_profile() up_u ON up_u.division_id = d.id
+
   LEFT JOIN LATERAL (
       SELECT *
-      FROM public.user_profiles up
-      WHERE up.user_id = auth.uid()
-        AND up.division_id = d.id
+      FROM get_my_profile() up_u
+      WHERE up_u.division_id = d.id
   ) up_user ON true
 
   LEFT JOIN LATERAL (
       SELECT COUNT(*) AS cnt
       FROM public.contacts c
-      -- JOIN public.user_profiles up2
-      --   ON up2.user_id = c.owner_id
-      -- WHERE up2.division_id = d.id
-      --   AND c.status = 'pending'
       WHERE  c.status = 'pending'
   ) p ON true
 
   LEFT JOIN LATERAL (
       SELECT COUNT(*) AS cnt
       FROM public.contacts c
-      JOIN public.user_profiles up2
-        ON up2.user_id = c.owner_id
+      JOIN LATERAL get_user_profile_info(c.owner_id) up2 ON TRUE
       WHERE up2.division_id = d.id
         AND c.status = 'active'
   ) a ON true
@@ -3625,16 +3953,13 @@ BEGIN
   ) w ON true
 
   WHERE (p_entity_id IS NOT NULL AND d.entity_id = p_entity_id)
-     OR (p_entity_id IS NULL AND up_user.user_id IS NOT NULL) 
-     OR (up_user.role = 'referrer'); 
+     OR (p_entity_id IS NULL AND up_user IS NOT NULL)
+     OR (up_user.role = 'referrer'); --@link referrers to all relevant entities
 END;
 $$;
 
 
-
-CREATE OR REPLACE FUNCTION "public"."get_referrals_by_caller_summary"(
-  p_entity_id uuid DEFAULT NULL
-)
+CREATE OR REPLACE FUNCTION "public"."get_referrals_by_caller_summary"()
 RETURNS TABLE (
   id uuid,
   name text,
@@ -3646,46 +3971,31 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
+DECLARE
+  v_role text;
+  v_entity_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can view referral summaries';
   END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM public.get_user_profile_info(auth.uid()) WHERE role = 'referrer'
-  ) THEN
+  SELECT up_u.role, up_u.entity_id INTO v_role, v_entity_id
+  FROM public.get_my_profile() up_u;
+  IF v_role != 'referrer' THEN
     RAISE EXCEPTION 'Only referrers can view referral summaries';
   END IF;
-
   RETURN QUERY
   SELECT
-    e.id,
-    e.name,
-    COALESCE(p.cnt, 0) AS pending_beneficiaries,
-    COALESCE(a.cnt, 0) AS beneficiaries,
-    0::bigint AS workforce --COALESCE(w.cnt, 0) AS workforce
-  FROM public.entities e
-  LEFT JOIN LATERAL (
-    SELECT COUNT(*) AS cnt
-    FROM public.contacts c
-    CROSS JOIN LATERAL public.get_user_profile_info(c.owner_id) up
-    WHERE c.status = 'pending'
-  ) p ON true
-  LEFT JOIN LATERAL (
-    SELECT COUNT(*) AS cnt
-    FROM public.contacts c
-    CROSS JOIN LATERAL public.get_user_profile_info(c.owner_id) up
-    WHERE c.status = 'active'
-  ) a ON true
-  -- LEFT JOIN LATERAL (
-  --   SELECT COUNT(*) AS cnt
-  --   FROM public.user_profiles up2
-  --   WHERE up2.entity_id = e.id
-  --     AND up2.role IN ('referrer')
-  --     AND up2.is_active = true
-  -- ) w ON true
-  WHERE e.is_referrer = true
-    AND (p_entity_id IS NULL OR e.id = p_entity_id);
+    up.id,
+    up.full_name,
+    COALESCE(SUM(CASE WHEN c.status = 'pending' THEN 1 ELSE 0 END), 0)::bigint AS pending_beneficiaries,
+    COALESCE(SUM(CASE WHEN c.status = 'active' THEN 1 ELSE 0 END), 0)::bigint AS beneficiaries,
+    0::bigint AS workforce
+  FROM public.user_profiles up
+  LEFT JOIN public.contacts_referrer cr ON cr.referrer_id = up.user_id
+  LEFT JOIN public.contacts c ON cr.contact_id = c.id
+  WHERE up.entity_id = v_entity_id
+    AND cr.created_at >= (now() - interval '12 months')
+  GROUP BY up.user_id;
 END;
 $$;
 
@@ -3803,7 +4113,7 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can update divisions';
   END IF;
-
+  --@ add check on role to match policy
   SELECT row_to_json(d)
   INTO old_row
   FROM public.divisions d
@@ -3847,7 +4157,7 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can delete divisions';
   END IF;
-
+  --@add check on role to match policy
   SELECT row_to_json(d)::jsonb
   INTO old_row
   FROM public.divisions d
@@ -3863,11 +4173,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.update_division_manager()
+CREATE OR REPLACE FUNCTION "public"."update_division_manager"()
 RETURNS trigger
-LANGUAGE plpgsql
+LANGUAGE "plpgsql"
 SECURITY DEFINER
-SET search_path TO 'public', 'auth'
+SET "search_path" TO 'public', 'auth'
 AS $$
 DECLARE
   other_manager uuid;
@@ -3903,6 +4213,7 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
 
 -- Division open and closed
 CREATE OR REPLACE FUNCTION public."get_division_open"("p_division_id" "uuid")
@@ -4244,6 +4555,7 @@ BEGIN
     IF auth.uid() IS NULL THEN
       RAISE EXCEPTION 'Only authenticated users can update events and tasks';
     END IF;
+    --@ add role and user_id=created_by restrictions
     UPDATE public.calendar SET
         entry_type     = p_entry_type,
         subject       = p_subject,
@@ -4764,8 +5076,6 @@ $$;
 --
 
 -- Trigger: after insert on auth.users
-CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
-
 -- CREATE OR REPLACE TRIGGER "calendar_delete_trigger" BEFORE DELETE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_delete_trigger"();
 
 -- CREATE OR REPLACE TRIGGER "calendar_insert_trigger" BEFORE INSERT ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_insert_trigger"();
@@ -4802,6 +5112,12 @@ AFTER UPDATE ON "public"."contacts"
 FOR EACH ROW
 WHEN (OLD.notes IS DISTINCT FROM NEW.notes)
 EXECUTE FUNCTION "public"."handle_contact_note"();
+
+CREATE OR REPLACE TRIGGER entityHead_update_trigger
+AFTER INSERT OR UPDATE OF "role"
+ON "public"."user_profiles"
+FOR EACH ROW
+EXECUTE FUNCTION "public"."update_entity_head"();
 
 CREATE OR REPLACE TRIGGER divisionManager_update_trigger
 AFTER INSERT OR UPDATE OF role, division_id, is_active
@@ -4855,6 +5171,7 @@ CREATE POLICY "audit_logs_insert" ON "public"."audit_logs" FOR INSERT TO "authen
 CREATE POLICY "audit_logs_delete" ON "public"."audit_logs" FOR DELETE USING ((EXISTS ( SELECT 1
    FROM "public"."user_profiles" "up"
   WHERE (("up"."user_id" = (select auth.uid())) AND (up.is_active) AND ("up"."role" = ANY (ARRAY['admin'::"public"."role_enum", 'head'::"public"."role_enum"]))))));
+
 
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
 
@@ -5411,6 +5728,34 @@ CREATE POLICY "regions_update" ON "public"."regions" FOR UPDATE TO "authenticate
 
 CREATE POLICY "regions_delete" ON "public"."regions" FOR DELETE TO "authenticated" USING (((SELECT "role" FROM "public"."get_my_profile"()) = 'admin'::"text"));
 
+-- Holding tables
+ALTER TABLE "public"."holding_user" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "holding_user_insert_anon" ON "public"."holding_user" FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "holding_user_select" ON "public"."holding_user" FOR SELECT TO "authenticated" USING (
+  EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = (select auth.uid()) AND up.role::text IN ('admin', 'head'))
+);
+
+CREATE POLICY "holding_user_insert" ON "public"."holding_user" FOR INSERT TO "authenticated" WITH CHECK (true);
+
+CREATE POLICY "holding_user_delete" ON "public"."holding_user" FOR DELETE TO "authenticated" USING (
+  EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = (select auth.uid()) AND up.role::text IN ('admin', 'head'))
+);
+
+ALTER TABLE "public"."holding_entity" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "holding_entity_insert_anon" ON "public"."holding_entity" FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "holding_entity_select" ON "public"."holding_entity" FOR SELECT TO "authenticated" USING (
+  EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = (select auth.uid()) AND up.role::text IN ('admin', 'head'))
+);
+
+CREATE POLICY "holding_entity_insert" ON "public"."holding_entity" FOR INSERT TO "authenticated" WITH CHECK (true);
+
+CREATE POLICY "holding_entity_delete" ON "public"."holding_entity" FOR DELETE TO "authenticated" USING (
+  EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = (select auth.uid()) AND up.role::text = 'admin')
+);
+
 ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "user_profiles_select" ON "public"."user_profiles" FOR SELECT TO "authenticated" USING ((("user_id" = (select auth.uid())) OR (EXISTS ( SELECT 1
@@ -5428,8 +5773,6 @@ CREATE POLICY "user_profiles_delete" ON "public"."user_profiles" FOR DELETE TO "
 --
 --Grants 
 --
-
-REVOKE EXECUTE ON FUNCTION "public"."handle_new_auth_user"() FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_old_values" "jsonb", "p_new_values" "jsonb") FROM PUBLIC;
 
@@ -5487,13 +5830,13 @@ REVOKE EXECUTE ON FUNCTION "public"."delete_division"("p_id" "uuid") FROM PUBLIC
 
 REVOKE EXECUTE ON FUNCTION "public"."create_country"(p_name text, p_code text, p_currency text) FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."get_countries"() FROM PUBLIC; 
+-- REVOKE EXECUTE ON FUNCTION "public"."get_countries"() FROM PUBLIC; 
 
 REVOKE EXECUTE ON FUNCTION "public"."update_country"(p_id uuid, p_name text, p_code text, p_currency text, p_is_active boolean) FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."create_region"(p_name text, p_code text, p_country_id uuid) FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."get_regions"() FROM PUBLIC; 
+-- REVOKE EXECUTE ON FUNCTION "public"."get_regions"() FROM PUBLIC; 
 
 REVOKE EXECUTE ON FUNCTION "public"."update_region"(p_id uuid, p_country_id uuid, p_name text, p_code text, p_is_active boolean) FROM PUBLIC;
 
@@ -5531,7 +5874,7 @@ REVOKE EXECUTE ON FUNCTION "public"."get_allotment_by_entity_summary"(timestampt
 
 REVOKE EXECUTE ON FUNCTION "public"."get_division_summary"("p_entity_id" "uuid") FROM PUBLIC;
 
-REVOKE EXECUTE ON FUNCTION "public"."get_referrals_by_caller_summary"("p_entity_id" "uuid") FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION "public"."get_referrals_by_caller_summary"() FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."get_referrer_rating_ave"(p_caller_region_id uuid) FROM PUBLIC;
 
@@ -5573,9 +5916,6 @@ REVOKE EXECUTE ON FUNCTION "public"."delete_contact_days"("p_id" "uuid") FROM PU
 
 
 
-
-GRANT EXECUTE ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated"; 
-
 GRANT EXECUTE ON FUNCTION "public"."log_audit_event"("p_action" "text", "p_table_name" "text", "p_record_id" "uuid", "p_old_values" "jsonb", "p_new_values" "jsonb") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."get_audit_logs"("p_filters" "jsonb", "p_page" "numeric", "p_page_size" "numeric") TO "authenticated";
@@ -5600,6 +5940,8 @@ GRANT EXECUTE ON FUNCTION "public"."get_system_settings"() TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."upsert_system_setting"("p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
 
+GRANT EXECUTE ON FUNCTION "public"."get_entities"() TO "authenticated";
+
 GRANT EXECUTE ON FUNCTION "public"."get_entity_settings"("p_entity_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."upsert_entity_setting"("p_entity_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
@@ -5612,7 +5954,11 @@ GRANT EXECUTE ON FUNCTION "public"."get_user_settings"("p_user_id" "uuid") TO "a
 
 GRANT EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; 
+-- GRANT EXECUTE ON FUNCTION "public"."validate_and_insert_holding_user"(uuid, text, text, text, role_enum, uuid, uuid, uuid) TO "authenticated";
+
+-- GRANT EXECUTE ON FUNCTION "public"."validate_and_insert_holding_entity"(uuid, uuid, uuid, text, text) TO "authenticated";
+
+-- GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; --@ currently weak? Anyone can sign-up and so add to auth and user_profiles via useAuth GoTrueClient
 
 GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_country_id" "uuid","p_name" "text", "p_code" "text", "p_referrer" boolean) TO "authenticated";
 
@@ -5681,7 +6027,7 @@ GRANT EXECUTE ON FUNCTION "public"."get_allotment_by_entity_summary"(timestamptz
 
 GRANT EXECUTE ON FUNCTION "public"."get_division_summary"("p_entity_id" "uuid") TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."get_referrals_by_caller_summary"("p_entity_id" "uuid") TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."get_referrals_by_caller_summary"() TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."get_referrer_rating_ave"(p_referrer_id uuid) TO authenticated;
 
@@ -5747,7 +6093,9 @@ REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."v_audit_log_complete" F
 
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_profiles" FROM PUBLIC; 
 
-REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."regions" FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON TABLE "public"."countries" FROM PUBLIC;
+
+REVOKE INSERT, UPDATE, DELETE ON TABLE "public"."regions" FROM PUBLIC;
 
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."system_settings" FROM PUBLIC;
 
@@ -5759,7 +6107,7 @@ REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_referrer" FROM
 
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_allotment" FROM PUBLIC;
 
-REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entities" FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON TABLE "public"."entities" FROM PUBLIC;
 
 REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."entity_settings" FROM PUBLIC;
 
@@ -5832,6 +6180,28 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."organisations" TO "authe
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_settings" TO "authenticated";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_days" TO "authenticated";
+
+
+GRANT SELECT ON TABLE "public"."countries" TO anon;
+GRANT SELECT ON TABLE "public"."regions" TO anon;
+GRANT SELECT ON TABLE "public"."entities" TO anon;
+REVOKE SELECT, UPDATE, DELETE ON "public"."holding_user" FROM anon;
+REVOKE SELECT, UPDATE, DELETE ON "public"."holding_entity" FROM anon;
+GRANT INSERT ON TABLE "public"."holding_user" TO anon;
+GRANT INSERT ON TABLE "public"."holding_entity" TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."holding_user" TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."holding_entity" TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."validate_and_insert_holding"(
+    p_email text, p_full_name text, p_phone text, p_country_id uuid, p_region_id uuid,
+    p_entity_id uuid, p_entity_name text, p_is_referrer boolean, p_is_head boolean) TO public, anon;
+
+GRANT EXECUTE ON FUNCTION public.approve_new_user(p_holding_user_id uuid, p_auth_id uuid, p_full_name text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.approve_entity(p_head_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_holding_users() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_holding_entities() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_holding_combined(p_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_holding(p_user_id uuid) TO authenticated;
+
 
 
 --

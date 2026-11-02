@@ -297,7 +297,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       }
       setServingOngoing(true);
       // await fetchAllotment();
-      
   };
 
   const handleMarkServed = async (entryId: string) => {
@@ -571,21 +570,6 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
           </Tabs>
         </DialogContent>
       </Dialog>
-
-      {/* <AlertDialog open={showMinimiseWarning} onOpenChange={setShowMinimiseWarning}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes for <strong>{contact?.name}</strong>. They'll be preserved in the minimised tab
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay here</AlertDialogCancel>
-            <AlertDialogAction onClick={doMinimise}>Minimise</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog> */}
 
       <AlertDialog open={showMaxTabsWarning} onOpenChange={setShowMaxTabsWarning}>
         <AlertDialogContent>

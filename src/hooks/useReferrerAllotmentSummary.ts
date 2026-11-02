@@ -45,7 +45,7 @@ export const useReferrerAllotmentSummary = (
       // console.error(err);
       setError(true);
       try {
-        ViolationMessages(err, 'Failed to fetch contact.');
+        ViolationMessages(err, 'Failed to fetch data');
       } catch (customError) {
         toast({ title: 'Error', description: (customError as Error).message, variant: 'destructive' });
       }

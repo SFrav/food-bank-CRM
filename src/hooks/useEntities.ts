@@ -25,7 +25,7 @@ export const useEntities = () => {
   const [error, setError] = useState<string | undefined | null>(undefined);
 
   const fetchEntities = useCallback(async () => {
-    if (!user) return;
+    // if (!user) return;
     try {
       setLoading(true);
       setError(null);
@@ -41,7 +41,7 @@ export const useEntities = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []); //user
 
   const createEntity = async (countryId: string, name: string, code?: string, is_referrer?: boolean) => {
     if (!profile?.role || profile.role !== 'admin') {
@@ -121,11 +121,11 @@ export const useEntities = () => {
   };
 
   useEffect(() => {
-    if (!profile) return;
+    // if (!profile) return;
       (async () => {
         await fetchEntities();
       })();
-    }, [profile]);
+    }, []); //profile
 
   return {
     entities,

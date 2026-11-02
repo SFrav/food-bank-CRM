@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+// import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 
-export interface Users {
+export interface ProfileReview {
   id: string;
   email: string;
   full_name: string | null;
@@ -17,7 +20,9 @@ export interface Users {
 
 export function useAdminUsers(query: string, roleFilter: string) {
   const { toast } = useToast();
-  const [users, setUsers] = useState<Users[]>([]);
+  const { profile } = useProfile();
+  // const { user } = useAuth(); //is_super_admin is not available
+  const [users, setProfileReview] = useState<ProfileReview[]>([]); //@This is too similar to useAuth user export. Revise to profileReview and ensure that it's only used in the manage user section
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
@@ -44,12 +49,12 @@ export function useAdminUsers(query: string, roleFilter: string) {
       });
 
       if (error) throw error;
-      setUsers(data as Users[] ?? []);
+      setProfileReview(data as ProfileReview[] ?? []);
     } catch (err: unknown) {
       const error = err as { message?: string }; 
       console.error('Error fetching divisions:', err);
       setError(error.message);
-      setUsers([]);
+      setProfileReview([]);
     } finally {
       setLoading(false);
     }
@@ -97,7 +102,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
       }
 
       // Update local state instantly
-      setUsers((prev) =>
+      setProfileReview((prev) =>
         prev.map((u) =>
           u.id === userId
             ? {
@@ -123,7 +128,9 @@ export function useAdminUsers(query: string, roleFilter: string) {
     }
   };
 
-  const deleteUser = async (userId: string) => {
+  const deleteUser = useCallback(async (userId: string) => {
+    if(profile?.role !== 'admin') return;
+    // if (users?.role !== 'admin') return; //@role doesn't exist on ProfileReview?
     try {
       const { data, error } = await supabase.rpc('admin_delete_user', {
         p_id: userId,
@@ -133,6 +140,27 @@ export function useAdminUsers(query: string, roleFilter: string) {
         console.error('Delete failed:', error);
         return { success: false, error: error };
       }
+      if (data) {
+        const { error: authError } = await supabase.functions.invoke('edgeUserDelete', {
+          body: { userId }
+        });
+        if (authError) {
+          let errorMessage = authError.message;
+          
+          if (authError instanceof FunctionsHttpError) {
+            try {
+              const errorBody = await authError.context.json();
+              errorMessage = errorBody.error || errorMessage;
+            } catch (e) {
+              // Fallback if parsing fails
+            }
+          }
+          console.error('Edge function failed:', errorMessage);
+          // toast({ title: 'Partial Delete', description: 'Profile deleted, but Auth removal failed', variant: 'destructive' });
+          throw new Error(errorMessage);
+        }
+      }
+      
       refetch();
       return { success: true };
     } catch (err: unknown) {
@@ -141,7 +169,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
       toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
       return { success: false, error: error.message };
     }
-  };
+  }, [profile]);
 
   return { 
     users, 

@@ -22,7 +22,7 @@ export const EntitySettingsTable = () => {
   }, [profile, entities, fetchSettings]);
 
   const filteredEntities = useMemo(() => {
-      if (profile?.entity_id) return entities.filter((e) => e.id === profile.entity_id);
+      if (profile?.entity_id) return entities.filter((e) => e.id === profile.entity_id && e.is_active);
       return entities;
     }, [profile, entities]);
 
@@ -59,7 +59,7 @@ export const EntitySettingsTable = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredEntities.filter(e => e.is_active).map(entity => {
+                filteredEntities.map(entity => {
                   const s = rowSettings(entity.id);
                   return (
                     <TableRow key={entity.id}>

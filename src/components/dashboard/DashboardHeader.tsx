@@ -15,7 +15,7 @@ const ROLE_CONFIG = {
   },
   head: {
     dashboard: 'Head Dashboard', 
-    badge: 'Level Head',
+    badge: 'Head',
     icon: Users,
     badgeClass: 'bg-primary text-primary-foreground'
   },
@@ -43,9 +43,9 @@ const ROLE_CONFIG = {
     icon: User,
     badgeClass: 'bg-primary text-primary-foreground'
   },
-  Associate: {
-    dashboard: 'Specialist Dashboard',
-    badge: 'Specialist',
+  associate: {
+    dashboard: 'Associate Dashboard',
+    badge: 'Associate',
     icon: User,
     badgeClass: 'bg-primary text-primary-foreground'
   }

@@ -1,12 +1,54 @@
-SET row_security = off;
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+  v_full_name text;
+  v_role public.role_enum;
+BEGIN
+  IF NEW.id IS NULL THEN RETURN NEW; END IF;
+  v_full_name := COALESCE(
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'name',
+    split_part(NEW.email, '@', 1)
+  );
+
+  v_role := 'pending';
+  INSERT INTO public.user_profiles (
+    user_id, full_name, role, is_active
+  ) VALUES (
+    NEW.id, v_full_name, v_role, true
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+
+  -- insert default settings
+  INSERT INTO public.user_settings (
+    user_id, setting_key, setting_value
+  )
+  SELECT
+    NEW.id,
+    unnest(array['notification_email','notification_tasks','notification_calendar','dark_mode', 'two_FA'])::user_setting_enum,
+    unnest(array['false','true','false','false', 'false'])
+  ON CONFLICT (user_id, setting_key) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
 
 DO $$
+
+
 DECLARE
     v_ts timestamptz := now();  
 
 BEGIN
-    -- Auth users
+
+SET row_security = off;
+
+    -- `admin is_super_admin = true` didn't allow admin to access the auth table
     INSERT INTO "auth"."users" ("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous") VALUES
     ('00000000-0000-0000-0000-000000000000','bb661f86-5cac-47b4-b446-1b13380ba69d','authenticated','authenticated','admin@company.com','$2a$10$oxlC35hRS7Z5CwzeMAf3z.WAYqdCGWf.nhR838ytXlFzv6aRUBvWe',v_ts,NULL,'Confirmed0',NULL,'',NULL,'','',NULL,v_ts,'{"provider":"email","providers":["email"]}','{"email_verified":true}',FALSE,'2026-04-16 15:41:37.346471+00','2026-04-25 10:41:19.754376+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,false,NULL,false),
     ('00000000-0000-0000-0000-000000000000','00000000-0000-0000-0001-000000000001','authenticated','authenticated','augustin@ecm.com','$2a$10$oxlC35hRS7Z5CwzeMAf3z.WAYqdCGWf.nhR838ytXlFzv6aRUBvWe',v_ts,NULL,'Confirmed1',NULL,'',NULL,'','',NULL,v_ts,'{"provider":"email","providers":["email"]}','{"email_verified":true}',FALSE,'2026-04-24 10:52:00.000000+00','2026-04-25 10:52:00.000000+00','07000000001',NULL,'','',NULL,'',0,NULL,'',NULL,false,NULL,false),
@@ -330,7 +372,6 @@ BEGIN
         ('c13a4d4c-a829-426c-88d7-19df9e6757a5', '60000000-0000-0000-0000-000000000041', 0, true, '2026-09-25 08:40:10.675981+00');
 
     SET session_replication_role = 'origin'; -- re-enable foreign keys
-
     INSERT INTO "public"."calendar" ("id", "entry_type", "subject", "location", "notes", "status", "scheduled_at", "created_by", "beneficiary_id", "created_at", "updated_at", "due_at", "pic_id") VALUES
         ('bdd340bf-99ba-41a1-8e23-1a88d5cadf8f', 'beneficiary_request', NULL, NULL, 'Jane asked for a bike. Needed to get to work', 'scheduled', date_trunc('day', v_ts) + interval '8 hours', '00000000-0000-0000-0001-000000000001', '60000000-0000-0000-0000-000000000037', v_ts, v_ts, NULL, '60000000-0000-0000-0000-000000000037'),
         ('00cf93c6-d747-4d28-b1d6-616cf9353c1c', 'specialist_todo', NULL, NULL, 'All specialists please enable two-factor authentication', 'scheduled', date_trunc('day', v_ts) + interval '3 hours', '00000000-0000-0000-0001-000000000001', NULL, v_ts, v_ts, NULL, NULL),
@@ -413,4 +454,8 @@ BEGIN
 
     SET row_security = on;
 
+DROP TRIGGER on_auth_user_created ON auth.users;
+DROP FUNCTION "public"."handle_new_auth_user"();
 END $$;
+
+

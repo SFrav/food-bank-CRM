@@ -28,4 +28,14 @@ Look and feel:
 - [Logs](assets/Admin-logs.gif)
 - [Settings for users - profile, preferences and security](assets/Other-settings.gif)
 
-Repo limitation: Core SQL logic of user authentication removed.
+Repo limitation:
+- Edge functions currently use depreciated SUPABASE_SERVICE_ROLE_KEY. Use SUPABASE_SECRET_KEYS issued through JWT Signing Keys instead.
+- Several security definer functions need to be revised to invoker
+- Facility for password reset is currently a placeholder
+- Email client not chosen or tested - for auth, password reset and email notifications
+- Full suite of tests have not yet been prepared (vitest etc.)
+- Runtime tests carried out locally with two users. Longer term testing needed
+
+AI usage:
+- Local AI inference using open weight models (Qwen 3.6 35B A3B, GPT-OSS 20B and Gemma 4 E4B)
+- Drafting code and debugging for clearly defined tasks within the competence of the calling developer (no 'agentic' AI)
