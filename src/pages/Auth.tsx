@@ -15,7 +15,7 @@ import { useRegions } from '@/hooks/useRegions';
 import { useEntities } from '@/hooks/useEntities';
 import { useApplication, ApplicationResult } from '@/hooks/useApplication';
 import { usePasswordReset } from '@/hooks/usePasswordReset';
-import ResetPasswordModal from '@/components/modals/ResetPassword';
+import ForgotPasswordRequestModal from '@/components/modals/ForgotPasswordRequest';
 
 // Types for form data
 interface FormData {
@@ -31,7 +31,7 @@ interface FormData {
 const Auth = () => {
   const { user, signIn, loading: profileLoading } = useAuth();
   const { profile } = useProfile();
-  const { status, resetEmail, setResetEmail, validateResetEmail, executeReset, clearStatus, loading: resetLoading } = usePasswordReset();
+  const { status, resetEmail, setResetEmail, validateResetEmail, executeResetByEmail, loading: resetLoading } = usePasswordReset();
   const { toast } = useToast();
   const { countries, loading: loadingCountries } = useCountries();
   const { regions } = useRegions();
@@ -377,6 +377,7 @@ const Auth = () => {
                     </div>
                   ) : 'Submit Application'}
                 </Button>
+                {/* {applicationError && <p className="text-sm text-red-500 text-center">{applicationError}</p>} */}
               </form>
             </TabsContent>
           </Tabs>
@@ -410,15 +411,15 @@ const Auth = () => {
       </Dialog>
 
       {/* Reset Password Modal */}
-          <ResetPasswordModal
+          <ForgotPasswordRequestModal
             isOpen={showResetModal}
-            onClose={() => {setShowResetModal(false); clearStatus;}}
+            onClose={() => {setShowResetModal(false);}}
             email={resetEmail}
             setEmail={setResetEmail}
             validateEmail={validateResetEmail}
             status={status}
             loading={resetLoading}
-            onReset={executeReset}
+            onReset={executeResetByEmail}
           />
     </div>
   );

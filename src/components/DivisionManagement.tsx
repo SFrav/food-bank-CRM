@@ -14,6 +14,8 @@ import { useProfile } from "@/hooks/useProfile";
 import { useToast } from '@/hooks/useToast';
 // import { PermissionGuard } from '@/components/PermissionGuard';
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thusday', 'Friday', 'Saturday'];
+
 export const DivisionManagement = () => {
   const { toast } = useToast();
   const { profile } = useProfile();
@@ -279,8 +281,8 @@ export const DivisionManagement = () => {
 
           {/* Filter by Entity */}
           {profile?.entity_id === null ? (
-            <div>
-              <label className="text-sm font-medium text-foreground">Filter by entity</label>
+          <div>
+            <label className="text-sm font-medium text-foreground">Filter by entity</label>
           <div className="flex items-center gap-2">
             
             <Select value={filterEntityId} onValueChange={setFilterEntityId}>

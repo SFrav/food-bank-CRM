@@ -10,9 +10,11 @@ import Forbidden from "./pages/Forbidden";
 import Index from "./Index";
 import PendingApproval from "./pages/PendingApproval";
 import Auth from "./pages/Auth";
+import RecoverPassword from "./pages/PasswordForgot";
 import Notifications from "./pages/Notifications";
 import Beneficiaries from "./pages/Beneficiaries";
 import Referrers from "./pages/Referrers";
+import Divisions from "./pages/Divisions";
 // import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import Dashboard from "./pages/Dashboard";
@@ -52,6 +54,12 @@ const App = () => (
               <Index />
             </ProtectedRoute>
           } />
+
+          <Route path="/auth/recover" element={
+            <CRMLayout>
+              <RecoverPassword />
+            </CRMLayout>} 
+          />
 
           {/* Admin specific routes */}
           <Route path="/admin/dashboard" element={
@@ -143,6 +151,15 @@ const App = () => (
               <RoleBasedRoute allowedRoles={['specialist', 'branch_manager', 'manager', 'head', 'admin']}>
                 <CRMLayout>
                   <Referrers />
+                </CRMLayout>
+              </RoleBasedRoute>
+            </ProtectedRoute>
+          } />
+          <Route path="/branches" element={
+            <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['referrer', 'associate', 'specialist', 'branch_manager', 'manager', 'head', 'admin']}>
+                <CRMLayout>
+                  <Divisions />
                 </CRMLayout>
               </RoleBasedRoute>
             </ProtectedRoute>

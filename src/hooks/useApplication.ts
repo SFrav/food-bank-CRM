@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 
 export interface ApplicationResult {
+  // userId: string | null;
+  // entityId: string | null;
   error: string | null;
   success: boolean;
 }
@@ -49,14 +51,15 @@ export const useApplication = () => {
       return {
         success: true,
         error: null,
-
+        // userId: data[0].holding_user_id,
+        // entityId: data[0].holding_entity_id
       };
     } catch (err: unknown) {
       const error = err as { message?: string };
       const errorMessage = error.message || 'Application failed';
       setError(errorMessage);
       toast({ title: 'Application Error', description: errorMessage, variant: 'destructive' });
-      return { error: errorMessage, success: false };
+      return { error: errorMessage, success: false }; //userId: null, entityId: null, 
     } finally {
       setLoading(false);
     }

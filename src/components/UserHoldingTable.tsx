@@ -40,9 +40,17 @@ export default function UserHoldingTable() {
   const [selectedRow, setSelectedRow] = useState<HoldingCombined | null>(null);
 
   useEffect(() => {
-      if (!profile) return;
-      refetch();
+    if (!profile) return;
+    const onHoldingUpdated = () => refetch();
+    window.addEventListener('holding-updated', onHoldingUpdated);
+    return () => window.removeEventListener('holding-updated', onHoldingUpdated);
     }, [profile]);
+
+useEffect(() => {
+  const onHoldingUpdated = () => refetch();
+  window.addEventListener('holding-updated', onHoldingUpdated);
+  return () => window.removeEventListener('holding-updated', onHoldingUpdated);
+}, [refetch]);
 
   const filteredData = useMemo(() => {
     if (!holdingCombined || ! holdingUsers) return [];

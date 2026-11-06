@@ -57,6 +57,7 @@ const EditUserModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // New state for secure delete confirmation & role warnings
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [showRoleWarning, setShowRoleWarning] = useState(false);
@@ -141,6 +142,7 @@ const EditUserModal = ({
     if (result.success) onClose();
   };
 
+  // Safe case-insensitive match
   const isNameMatch = deleteInput.trim().toLowerCase() === (user.full_name ?? '').trim().toLowerCase();
 
   return (
@@ -214,6 +216,7 @@ const EditUserModal = ({
         <DialogFooter className="flex-col sm:flex-row gap-2">
           {canManage && (
             <>
+              {/* Secure Delete Confirmation Dialog */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -257,6 +260,7 @@ const EditUserModal = ({
                 </AlertDialogContent>
               </AlertDialog>
 
+              {/* Role Restriction Warning Dialog */}
               {showRoleWarning && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

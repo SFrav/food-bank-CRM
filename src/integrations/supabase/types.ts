@@ -167,14 +167,14 @@ isOneToOne: false
                   ]
                 },"contacts_notes": {
                   Row: {
-                    "contact_id": string,"created_at": string | null,"created_by": string | null,"id": string,"note": string | null,"updated_at": string | null,"updated_by": string | null
+                    "contact_id": string,"created_at": string | null,"created_by": string | null,"id": string,"is_pinned": boolean | null,"is_sensitive": boolean | null,"note": string | null,"updated_at": string | null,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "contact_id": string,"created_at"?: string | null,"created_by"?: string | null,"id"?: string,"note"?: string | null,"updated_at"?: string | null,"updated_by"?: string | null
+                    "contact_id": string,"created_at"?: string | null,"created_by"?: string | null,"id"?: string,"is_pinned"?: boolean | null,"is_sensitive"?: boolean | null,"note"?: string | null,"updated_at"?: string | null,"updated_by"?: string | null
                   }
                   Update: {
-                    "contact_id"?: string,"created_at"?: string | null,"created_by"?: string | null,"id"?: string,"note"?: string | null,"updated_at"?: string | null,"updated_by"?: string | null
+                    "contact_id"?: string,"created_at"?: string | null,"created_by"?: string | null,"id"?: string,"is_pinned"?: boolean | null,"is_sensitive"?: boolean | null,"note"?: string | null,"updated_at"?: string | null,"updated_by"?: string | null
                   }
                   Relationships: [
                     
@@ -391,14 +391,14 @@ isOneToOne: false
                   ]
                 },"holding_user": {
                   Row: {
-                    "country_id": string,"created_at": string,"email": string,"entity_id": string,"full_name": string,"id": string,"phone": string | null,"region_id": string,"role": Database["public"]['Enums']["role_enum"],"updated_at": string,"user_id": string
+                    "country_id": string,"created_at": string,"email": string,"entity_id": string,"full_name": string,"id": string,"phone": string | null,"region_id": string,"role": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "country_id": string,"created_at"?: string,"email": string,"entity_id": string,"full_name": string,"id"?: string,"phone"?: string | null,"region_id": string,"role"?: Database["public"]['Enums']["role_enum"],"updated_at"?: string,"user_id": string
+                    "country_id": string,"created_at"?: string,"email": string,"entity_id": string,"full_name": string,"id"?: string,"phone"?: string | null,"region_id": string,"role": string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "country_id"?: string,"created_at"?: string,"email"?: string,"entity_id"?: string,"full_name"?: string,"id"?: string,"phone"?: string | null,"region_id"?: string,"role"?: Database["public"]['Enums']["role_enum"],"updated_at"?: string,"user_id"?: string
+                    "country_id"?: string,"created_at"?: string,"email"?: string,"entity_id"?: string,"full_name"?: string,"id"?: string,"phone"?: string | null,"region_id"?: string,"role"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     
@@ -676,7 +676,7 @@ isOneToOne: false
 { Args: { "p_division_id"?: string,"p_entity_id"?: string,"p_is_active"?: boolean,"p_manager_id"?: string,"p_profile_id": string,"p_region_id"?: string,"p_role"?: Database["public"]['Enums']["role_enum"] }; Returns: boolean
                            },
 "approve_entity":
-{ Args: { "p_head_id": string }; Returns: undefined
+{ Args: { "p_head_id": string }; Returns: string
                            },
 "approve_new_user":
 { Args: { "p_auth_id": string,"p_full_name"?: string,"p_holding_user_id": string }; Returns: {
@@ -690,7 +690,7 @@ isOneToOne: false
 { Args: { "events": Json }; Returns: boolean
                            },
 "create_contact":
-{ Args: { "p_address"?: string,"p_adults"?: number,"p_age_bracket"?: Database["public"]['Enums']["age_enum"],"p_children_gt16"?: number,"p_children_lt16"?: number,"p_days"?: (number)[],"p_delayed_days"?: number,"p_duration_request"?: number,"p_email"?: string,"p_gender"?: Database["public"]['Enums']["gender_enum"],"p_name"?: string,"p_notes"?: string,"p_owner_id"?: string,"p_phone"?: string,"p_postcode"?: string,"p_region_id"?: string,"p_status"?: Database["public"]['Enums']["beneficiary_enum"],"p_user_id"?: string }; Returns: string
+{ Args: { "p_address"?: string,"p_adults"?: number,"p_age_bracket"?: Database["public"]['Enums']["age_enum"],"p_children_gt16"?: number,"p_children_lt16"?: number,"p_days"?: (number)[],"p_delayed_days"?: number,"p_duration_request"?: number,"p_email"?: string,"p_gender"?: Database["public"]['Enums']["gender_enum"],"p_name"?: string,"p_notes"?: string,"p_owner_id"?: string,"p_phone"?: string,"p_pinned"?: boolean,"p_postcode"?: string,"p_region_id"?: string,"p_sensitive"?: boolean,"p_status"?: Database["public"]['Enums']["beneficiary_enum"],"p_user_id"?: string }; Returns: string
                            },
 "create_contact_days":
 { Args: { "p_contact_id": string,"p_days": (Database["public"]['Tables']["contacts_days"]['Row'])[] }; Returns: undefined
@@ -741,7 +741,7 @@ isOneToOne: false
 { Args: { "p_id": string }; Returns: boolean
                            },
 "delete_holding":
-{ Args: { "p_user_id": string }; Returns: undefined
+{ Args: { "p_user_id": string }; Returns: boolean
                            },
 "delete_organisation":
 { Args: { "p_id": string }; Returns: boolean
@@ -794,7 +794,7 @@ isOneToOne: false
                            },
 "get_contact_notes":
 { Args: { "p_contact_id": string }; Returns: {
-              "created_at": string,"created_by": string,"creator_name": string,"id": string,"note": string
+              "created_at": string,"created_by": string,"creator_name": string,"id": string,"note": string,"pinned": boolean,"sensitive": boolean
             }[]
                            },
 "get_contacts":
@@ -925,6 +925,9 @@ isOneToOne: false
               "division_id": string,"email": string,"entity_id": string,"full_name": string,"id": string,"is_active": boolean,"manager_id": string,"region_id": string,"role": string
             }[]
                            },
+"handle_contact_note":
+{ Args: { "p_created_by": string,"p_id": string,"p_note": string,"p_pinned": boolean,"p_sensitive": boolean,"p_updated_by": string }; Returns: boolean
+                           },
 "insert_allotment_discretionary":
 { Args: { "p_contact_id"?: string,"p_date"?: string,"p_note"?: string,"p_type"?: Database["public"]['Enums']["allotment_type_enum"],"p_user_id"?: string }; Returns: string
                            },
@@ -942,6 +945,12 @@ isOneToOne: false
                            },
 "mark_allotment_serving":
 { Args: { "p_id": string }; Returns: boolean
+                           },
+"mark_note_pinned":
+{ Args: { "p_id": string,"p_v": boolean }; Returns: boolean
+                           },
+"mark_note_sensitive":
+{ Args: { "p_id": string,"p_v": boolean }; Returns: boolean
                            },
 "mark_notification_read":
 { Args: { "p_id": string }; Returns: boolean
@@ -965,7 +974,7 @@ isOneToOne: false
 { Args: { "p_id": string,"p_status": string }; Returns: boolean
                            },
 "update_contact":
-{ Args: { "p_address"?: string,"p_adults"?: number,"p_age_bracket"?: Database["public"]['Enums']["age_enum"],"p_allergies"?: boolean,"p_children_gt16"?: number,"p_children_lt16"?: number,"p_delayed_days"?: number,"p_duration_request"?: number,"p_email"?: string,"p_gender"?: Database["public"]['Enums']["gender_enum"],"p_hallal"?: boolean,"p_id"?: string,"p_infant"?: boolean,"p_name"?: string,"p_notes"?: string,"p_owner_id"?: string,"p_phone"?: string,"p_postcode"?: string,"p_region_id"?: string,"p_status"?: Database["public"]['Enums']["beneficiary_enum"],"p_user_id"?: string,"p_vegetarian"?: boolean }; Returns: {
+{ Args: { "p_address"?: string,"p_adults"?: number,"p_age_bracket"?: Database["public"]['Enums']["age_enum"],"p_allergies"?: boolean,"p_children_gt16"?: number,"p_children_lt16"?: number,"p_delayed_days"?: number,"p_duration_request"?: number,"p_email"?: string,"p_gender"?: Database["public"]['Enums']["gender_enum"],"p_hallal"?: boolean,"p_id"?: string,"p_infant"?: boolean,"p_name"?: string,"p_notes"?: string,"p_owner_id"?: string,"p_phone"?: string,"p_pinned"?: boolean,"p_postcode"?: string,"p_region_id"?: string,"p_sensitive"?: boolean,"p_status"?: Database["public"]['Enums']["beneficiary_enum"],"p_user_id"?: string,"p_vegetarian"?: boolean }; Returns: {
               "adults_count": number | null,
 "age_bracket": Database["public"]['Enums']["age_enum"] | null,
 "allergies": boolean | null,
@@ -1012,6 +1021,9 @@ isOneToOne: false
                            },
 "update_region":
 { Args: { "p_code": string,"p_country_id": string,"p_id": string,"p_is_active": boolean,"p_name": string }; Returns: boolean
+                           },
+"update_user_password":
+{ Args: { "p_new_password": string,"p_old_password": string }; Returns: boolean
                            },
 "upsert_contact_days":
 { Args: { "p_available": boolean,"p_contact_id": string,"p_day_of_week": number }; Returns: undefined

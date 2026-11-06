@@ -6,3 +6,25 @@ additional_redirect_urls = ["https://localhost:8081/*", "https://localhost:8080"
 enable_signup = true
 double_confirm_changes = false
 enable_confirmations = false
+
+[functions.edgeAuth]
+enabled = true
+verify_jwt = false
+import_map = "./functions/edgeAuth/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/edgeAuth/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/edgeAuth/*.html" ]
+
+[functions.edgeUserDelete]
+enabled = true
+verify_jwt = false
+import_map = "./functions/edgeUserDelete/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/edgeUserDelete/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/edgeUserDelete/*.html" ]

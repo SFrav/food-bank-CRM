@@ -3,6 +3,7 @@ BEGIN;
 -- A unified and complete database initialisation migration
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA pg_catalog;
+-- CREATE EXTENSION IF NOT EXISTS pg_crypto WITH SCHEMA pg_catalog;
 
 SET row_security = off;
 
@@ -177,7 +178,7 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "infant" boolean DEFAULT NULL,
     "allergies" boolean DEFAULT NULL,
     "vegetarian" boolean DEFAULT NULL,
-    "hallal" boolean DEFAULT NULL, 
+    "hallal" boolean DEFAULT NULL,
     "notes" "text",
     "owner_id" "uuid",
     "updated_by" "uuid",
@@ -189,27 +190,6 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
 
--- CREATE TABLE IF NOT EXISTS "public"."contacts_preferences" (
---     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
---     "contact_id" uuid NOT NULL,
---     "infant" boolean DEFAULT NULL,
---     "allergies" boolean DEFAULT NULL,
---     "vegetarian" boolean DEFAULT NULL,
---     "hallal" boolean DEFAULT NULL, --@ add no_cooking, no_freezer, no_fridge, gluten free? Move all these preferences to another table?
---     "created_at" timestamp with time zone DEFAULT now(),
---     "created_by" "uuid",
---     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
--- );
-
--- CREATE TABLE IF NOT EXISTS "public"."contacts_preferences" (
---     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
---     "contact_id" uuid NOT NULL,
---     "preference_key" "contact_pref_key_enum" NOT NULL,
---     "value" boolean
---     "created_at" timestamp with time zone DEFAULT now(),
---     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP
--- );
-
 CREATE TABLE IF NOT EXISTS "public"."contacts_days" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" uuid NOT NULL,
@@ -218,12 +198,12 @@ CREATE TABLE IF NOT EXISTS "public"."contacts_days" (
     "updated_at" timestamp with time zone DEFAULT now()
 );
 
-
-
 CREATE TABLE IF NOT EXISTS "public"."contacts_notes" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "contact_id" "uuid" NOT NULL,
     "note" "text",
+    "is_sensitive" boolean,
+    "is_pinned" boolean,
     "created_at" timestamp with time zone DEFAULT now(),
     "created_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -252,7 +232,7 @@ CREATE TABLE IF NOT EXISTS "public"."entities" (
     "name" "text" NOT NULL,
     "code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
-    "is_referrer" boolean DEFAULT false NOT NULL, 
+    "is_referrer" boolean DEFAULT false NOT NULL, --@ CREATE TABLE entities_linked - join referrers to food banks and foodbanks to eachother 
     "head_id" uuid,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -340,7 +320,7 @@ CREATE TABLE IF NOT EXISTS "public"."regions" (
 CREATE TABLE IF NOT EXISTS "public"."system_settings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "setting_key" "text" NOT NULL,
-    "setting_value" "text",
+    "setting_value" "text", --@revised from jsonb --@set enum to align with types
     "updated_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT now()
 );
@@ -653,6 +633,11 @@ ALTER TABLE "public"."contacts_days"
 ALTER TABLE ONLY "public"."user_settings" 
   ADD CONSTRAINT "user_settings_pkey" PRIMARY KEY ("id");
 
+
+
+-- ALTER TABLE "public"."contacts_days" ADD CONSTRAINT "availability_pkey" PRIMARY KEY ("id");
+-- ALTER TABLE "public"."contacts_days" ADD CONSTRAINT "uq_contacts_days" UNIQUE ("contact_id", "day_of_week");
+-- -- ALTER TABLE "public"."contacts_days" ADD CONSTRAINT "contacts_days_pkey" PRIMARY KEY ("contact_id", "day_of_week"); --@replace with ID column
 
 --
 --Tables with cascades (req. primary keys)
@@ -1527,7 +1512,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.approve_new_user(
+CREATE OR REPLACE FUNCTION "public"."approve_new_user"(
     p_holding_user_id uuid,
     p_auth_id uuid,
     p_full_name text DEFAULT NULL
@@ -1541,6 +1526,15 @@ DECLARE
     v_entity_id uuid;
     v_head_entity_id uuid;
 BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can perform this action';
+    END IF;
+    SELECT role::text, entity_id INTO v_role, v_entity_id
+      FROM "public"."get_my_profile"();
+    IF v_role NOT IN ('head', 'manager') THEN
+      RAISE EXCEPTION 'Only admin or head users can perform this action';
+    END IF; 
+
     SELECT * INTO v_user FROM public.holding_user hu WHERE hu.user_id = p_holding_user_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'User application not found';
@@ -1823,7 +1817,6 @@ RETURNS TABLE(
   region_id uuid,
   region text,
   manager_id uuid,
-  -- user_status text,
   is_active BOOLEAN,
   created_at timestamp with time zone,
   updated_at timestamp with time zone   
@@ -1846,7 +1839,6 @@ AS $$
     up.region_id,
     r.name      AS region,
     up.manager_id,
-    -- up.status as user_status,
     up.is_active,
     up.created_at,
     up.updated_at       
@@ -1861,7 +1853,8 @@ $$;
 CREATE OR REPLACE FUNCTION "public"."user_update_profile"(
   p_user_id uuid, 
   p_full_name text, 
-  p_phone text)
+  p_phone text
+  )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -1876,6 +1869,38 @@ BEGIN
       phone = coalesce(p_phone, phone),
       updated_at = now()
   WHERE user_id = p_user_id;
+  RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."update_user_password"(p_old_password varchar, p_new_password varchar) --source: https://github.com/supabase/cli/issues/568
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET "search_path" TO 'public', 'auth', 'extensions'
+AS $$
+DECLARE
+_uid uuid; 
+user_id uuid; 
+BEGIN
+  IF (p_new_password = '') IS NOT FALSE THEN
+    RAISE EXCEPTION 'new password is empty';
+  ELSIF char_length(p_new_password) < 6 THEN
+    RAISE EXCEPTION 'Your password must be at least 6 characters in length';
+  END IF;
+  user_id := auth.uid();
+  SELECT id INTO _uid
+  FROM auth.users
+  WHERE id = user_id
+  AND encrypted_password = crypt(p_old_password::text, auth.users.encrypted_password);
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'incorrect password';
+  END IF;
+
+  UPDATE auth.users SET 
+  encrypted_password =
+  crypt(p_new_password, gen_salt('bf'))
+  WHERE id = user_id;
   RETURN FOUND;
 END;
 $$;
@@ -2053,6 +2078,8 @@ CREATE OR REPLACE FUNCTION "public"."create_contact"(
   p_children_gt16 numeric DEFAULT 0,
   p_children_lt16 numeric DEFAULT 0,
   p_notes       text DEFAULT '',
+  p_sensitive   boolean DEFAULT false,
+  p_pinned      boolean DEFAULT false,
   p_status      "public"."beneficiary_enum" DEFAULT 'inactive',
   p_delayed_days numeric DEFAULT 7,
   p_duration_request integer DEFAULT NULL,
@@ -2127,11 +2154,14 @@ BEGIN
       WHERE id = v_contact_id;
   END IF;
 
+  PERFORM handle_contact_note(v_contact_id, p_notes, p_sensitive, p_pinned, p_user_id, p_user_id);
+
   SELECT * INTO new_row FROM "public"."contacts" WHERE id = v_contact_id;
   PERFORM log_audit_event('CREATE', 'contacts', v_contact_id, NULL, row_to_json(new_row)::jsonb);
   RETURN v_contact_id;
 END;
 $$;
+
 
 
 CREATE OR REPLACE FUNCTION "public"."get_contacts"(p_order_desc boolean DEFAULT false)
@@ -2421,7 +2451,9 @@ CREATE OR REPLACE FUNCTION "public"."update_contact"( --@ add check on user_prof
   p_duration_request integer DEFAULT NULL,
   p_user_id uuid DEFAULT NULL,
   p_owner_id uuid DEFAULT NULL,
-  p_notes text DEFAULT ''
+  p_notes text DEFAULT '',
+  p_sensitive boolean DEFAULT false,
+  p_pinned boolean DEFAULT false
 )
 RETURNS public.contacts
 LANGUAGE plpgsql
@@ -2568,6 +2600,7 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Update failed';
   END IF;
+  PERFORM handle_contact_note(p_id, p_notes, p_sensitive, p_pinned, v_creator_id, p_user_id);  
   PERFORM log_audit_event('UPDATE', 'contacts', p_id, old_row, row_to_json(new_row)::jsonb);
 
   RETURN new_row;
@@ -2575,6 +2608,7 @@ BEGIN
 --   RAISE;
 END;
 $$;
+
 
 CREATE OR REPLACE FUNCTION "public"."merge_contacts"(
     p_primary   uuid,
@@ -3060,7 +3094,7 @@ BEGIN
           v_notify_role,
           'referral'::notification_type_enum,
           'New referral',
-          CASE WHEN v_div_name IS NOT NULL THEN v_referrer_name || ' has referred ' || p_contact_name || ' to ' || v_div_name --@v_div_name NOT NULL
+          CASE WHEN v_div_name IS NOT NULL THEN v_referrer_name || ' has referred ' || p_contact_name || ' to ' || v_div_name 
               WHEN p_postcode != '' AND v_div_name IS NULL THEN v_referrer_name || ' has referred ' || p_contact_name || ' to the food bank nearest to ' || p_postcode
               ELSE v_referrer_name || ' has referred ' || p_contact_name
           END,
@@ -3387,66 +3421,176 @@ $$;
 --
 
 -- Contact notes
-CREATE OR REPLACE FUNCTION "public"."handle_contact_note"() RETURNS "trigger"
-LANGUAGE "plpgsql" SECURITY DEFINER
-SET "search_path" TO 'public'
+--@secret created using select vault.create_secret('xyz123', 'note_encrypt', 'Encryption key for notes marked as sensitive');
+CREATE OR REPLACE FUNCTION "public"."handle_contact_note"(
+	p_id uuid,
+	p_note text, 
+	p_sensitive boolean, 
+	p_pinned boolean, 
+	p_created_by uuid, 
+	p_updated_by uuid
+	
+) RETURNS BOOLEAN
+LANGUAGE "plpgsql" SECURITY DEFINER --@required for accessing vault.decrypted_secrets
+SET "search_path" TO 'public', 'extensions'
 AS $$
+DECLARE
+  v_secret bytea;
+  v_note_encrypted bytea;
+  v_note_encry_text text;
 BEGIN
-  IF (NEW."notes" IS DISTINCT FROM OLD."notes" AND NEW."notes" IS NOT NULL) THEN
+  IF auth.uid() IS NULL THEN --@@@ add role level checks for encryption-decryption
+    RAISE EXCEPTION 'Only authenticated users can mark as sensitive';
+  END IF;
+  IF (p_note IS NOT NULL) THEN
+    IF p_sensitive THEN
+      SELECT dc.secret::bytea INTO v_secret
+      FROM vault.decrypted_secrets dc
+      WHERE dc.name = 'note_encrypt'
+      ORDER by dc.created_at DESC 
+      LIMIT 1;
+      v_note_encrypted := encrypt(p_note::bytea, v_secret, 'aes');
+      v_note_encry_text := encode(v_note_encrypted, 'base64'); --replace(encode(v_note_encrypted, 'base64'), E'\n', '');
+    END IF;
     INSERT INTO "public"."contacts_notes" (
       "contact_id",
       "note",
+      "is_sensitive",
+      "is_pinned",
       "created_by",
       "updated_by"
     ) VALUES (
-      NEW."id",
-      NEW."notes",
-      NEW."updated_by",
-      NEW."updated_by"
+      p_id,
+      CASE WHEN p_sensitive THEN v_note_encry_text ELSE p_note END,
+      p_sensitive,
+      p_pinned,
+      p_created_by,
+      p_updated_by
     );
   END IF;
-  RETURN NEW;
+  RETURN FOUND;
 END;
 $$;
 
--- Contact notes and allotment
--- CREATE OR REPLACE FUNCTION "public"."get_profile_names"() RETURNS TABLE("user_id" "uuid", "full_name" "text")
---     LANGUAGE "sql" STABLE SECURITY DEFINER
---     SET "search_path" TO 'public', 'auth'
---     AS $$
---   SELECT user_id, full_name
---   FROM public.user_profiles;
--- $$;
+CREATE OR REPLACE FUNCTION "public"."mark_note_sensitive"("p_id" "uuid", "p_v" boolean) RETURNS BOOLEAN
+  LANGUAGE "plpgsql" SECURITY DEFINER --@required for accessing vault.decrypted_secrets
+  SET "search_path" TO 'public', 'extensions'
+  AS $$
+DECLARE
+  v_caller_role text;
+  v_secret bytea;
+  v_sensitive boolean;
+  v_note text;
+  v_note_encrypted bytea;
+  v_note_encry_text text := NULL;
+BEGIN
+    IF auth.uid() IS NULL THEN --@@@ add role level checks for encryption-decryption
+      RAISE EXCEPTION 'Only authenticated users can mark as sensitive';
+    END IF;
 
+    SELECT role::text INTO v_caller_role
+      FROM public.user_profiles
+      WHERE user_id = auth.uid();
+
+    SELECT cn.is_sensitive, cn.note INTO v_sensitive, v_note
+      FROM public.contacts_notes cn
+      WHERE cn.id = p_id;    
+    SELECT dc.secret::bytea INTO v_secret
+      FROM vault.decrypted_secrets dc
+      WHERE dc.name = 'note_encrypt'
+      ORDER by dc.created_at DESC 
+      LIMIT 1;
+    IF NOT v_sensitive AND p_v AND v_note IS NOT NULL THEN
+      v_note_encrypted := encrypt(v_note::bytea, v_secret, 'aes');
+      v_note_encry_text := encode(v_note_encrypted, 'base64'); --replace(encode(v_note_encrypted, 'base64'), E'\n', '');
+    END IF;
+    IF v_sensitive AND NOT p_v AND v_note IS NOT NULL THEN
+      v_note_encry_text := convert_from(decrypt(decode(v_note, 'base64'), v_secret, 'aes'), 'UTF8');
+    END IF;
+    IF v_caller_role NOT IN ('admin', 'head', 'manager', 'branch_manager', 'specialist') THEN
+      RAISE EXCEPTION 'Referrers and associates can not mark notes as sensitive';
+    END IF;
+    UPDATE public.contacts_notes
+       SET is_sensitive = p_v,
+        note = COALESCE(v_note_encry_text, note),
+        updated_at = now()
+     WHERE id = p_id;
+    RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."mark_note_pinned"("p_id" "uuid", "p_v" boolean) RETURNS BOOLEAN
+  LANGUAGE "plpgsql" SECURITY INVOKER
+  SET "search_path" TO 'public'
+  AS $$
+DECLARE
+  v_caller_role text;
+BEGIN
+    IF auth.uid() IS NULL THEN
+      RAISE EXCEPTION 'Only authenticated users can mark as pinned  ';
+    END IF;
+
+    SELECT role::text
+    INTO v_caller_role
+    FROM public.user_profiles
+    WHERE user_id = auth.uid();
+
+    UPDATE public.contacts_notes
+       SET is_pinned = p_v,
+        updated_at = now()
+     WHERE id = p_id;
+    RETURN FOUND;
+END;
+$$;
+
+
+--@secret created using select vault.create_secret('xyz123', 'note_encrypt', 'Encryption key for notes marked as sensitive');
 CREATE OR REPLACE FUNCTION "public"."get_contact_notes"(p_contact_id uuid)
 RETURNS TABLE (
   id uuid,
   note text,
+  sensitive boolean,
+  pinned boolean,
   created_by uuid,
   creator_name text,
   created_at timestamp with time zone
 )
 LANGUAGE plpgsql
-SECURITY DEFINER --@debug to invoker. When set to invoker even those who created the note can't see them
-SET "search_path" TO 'public'
+SECURITY DEFINER 
+SET "search_path" TO 'public', 'extensions'
 AS $$
+DECLARE
+  v_role text;
+  v_secret varchar;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Only authenticated users can view beneficiaries';
   END IF;
+  SELECT up.role::text INTO v_role
+  FROM public.get_my_profile() up;
+
+  SELECT dc.secret INTO v_secret
+  FROM vault.decrypted_secrets dc
+  WHERE name = 'note_encrypt'
+  ORDER by dc.created_at DESC 
+  LIMIT 1;
+  
   RETURN QUERY
   SELECT
     cn.id,
-    cn.note,
+    CASE WHEN cn.is_sensitive AND (v_role NOT IN ('referrer', 'associate') OR cn.created_by = auth.uid()) THEN convert_from(decrypt(decode(cn.note, 'base64'), v_secret::bytea, 'aes'), 'UTF8') ELSE cn.note END,
+    cn.is_sensitive AS sensitive,
+    cn.is_pinned AS pinned,
     cn.created_by,
     up.full_name,
     cn.created_at
   FROM public.contacts_notes cn
   CROSS JOIN LATERAL get_user_profile_info(cn.created_by) up 
   WHERE cn.contact_id = p_contact_id
-  ORDER BY cn.created_at DESC;
+  ORDER BY cn.is_pinned DESC, cn.created_at DESC;
 END;
 $$;
+
 
 CREATE OR REPLACE FUNCTION public.delete_contact_note(p_note_id uuid)
 RETURNS BOOLEAN
@@ -3455,7 +3599,6 @@ SECURITY INVOKER
 SET "search_path" TO 'public'
 AS $$
 BEGIN
---@restrict to non-associate?
   DELETE FROM public.contacts_notes
   WHERE id = p_note_id;
   RETURN FOUND;
@@ -3591,9 +3734,9 @@ BEGIN
       (p_contact_id, v_division_out, p_date::date, now()::time, NULL, true, false, false, p_type)
       RETURNING id INTO v_id;
   INSERT INTO public.contacts_notes
-      (contact_id, note, created_by, updated_by)
+      (contact_id, note, is_sensitive, is_pinned, created_by, updated_by)
   VALUES
-      (p_contact_id, p_note, p_user_id, p_user_id);
+      (p_contact_id, p_note, false, false, p_user_id, p_user_id);
   RETURN v_id;
 END;
 $$;
@@ -3654,18 +3797,6 @@ BEGIN
     RETURN FOUND;
 END;
 $$;
-
--- CREATE OR REPLACE FUNCTION "public"."mark_allotment_served"("p_id" "uuid") RETURNS "void"
---   LANGUAGE "plpgsql" SECURITY INVOKER
---   SET "search_path" TO 'public'
---   AS $$
--- BEGIN
---     UPDATE public.contacts_allotment
---        SET served = TRUE
---      WHERE id = p_id
---        AND served = FALSE;
--- END;
--- $$;
 
 CREATE OR REPLACE FUNCTION public."mark_allotment_served"(p_id uuid)
 RETURNS BOOLEAN
@@ -4614,7 +4745,6 @@ $$;
 --
 --
 --
---@
 CREATE OR REPLACE FUNCTION "public"."calendar_notify_insert"()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -4818,7 +4948,7 @@ $$;
 --
 --
 --
---@
+
 
 
 CREATE OR REPLACE FUNCTION "public"."get_user_notifications"(
@@ -5076,6 +5206,8 @@ $$;
 --
 
 -- Trigger: after insert on auth.users
+-- CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+
 -- CREATE OR REPLACE TRIGGER "calendar_delete_trigger" BEFORE DELETE ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_delete_trigger"();
 
 -- CREATE OR REPLACE TRIGGER "calendar_insert_trigger" BEFORE INSERT ON "public"."calendar" FOR EACH ROW EXECUTE FUNCTION "public"."calendar_insert_trigger"();
@@ -5102,16 +5234,16 @@ AFTER INSERT OR UPDATE ON public.contacts_allotment
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_allotment_complete();
 
-CREATE TRIGGER "contacts_note_insert_trigger"
-AFTER INSERT ON "public"."contacts"
-FOR EACH ROW
-EXECUTE FUNCTION "public"."handle_contact_note"();
+-- CREATE TRIGGER "contacts_note_insert_trigger"
+-- AFTER INSERT ON "public"."contacts"
+-- FOR EACH ROW
+-- EXECUTE FUNCTION "public"."handle_contact_note"();
 
-CREATE TRIGGER "contacts_note_update_trigger"
-AFTER UPDATE ON "public"."contacts"
-FOR EACH ROW
-WHEN (OLD.notes IS DISTINCT FROM NEW.notes)
-EXECUTE FUNCTION "public"."handle_contact_note"();
+-- CREATE TRIGGER "contacts_note_update_trigger"
+-- AFTER UPDATE ON "public"."contacts"
+-- FOR EACH ROW
+-- WHEN (OLD.notes IS DISTINCT FROM NEW.notes)
+-- EXECUTE FUNCTION "public"."handle_contact_note"();
 
 CREATE OR REPLACE TRIGGER entityHead_update_trigger
 AFTER INSERT OR UPDATE OF "role"
@@ -5782,8 +5914,6 @@ REVOKE EXECUTE ON FUNCTION "public"."admin_clear_audit_logs"("p_filters" "jsonb"
 
 -- REVOKE EXECUTE ON FUNCTION "public"."ensure_admin_profile"() FROM PUBLIC;
 
--- REVOKE EXECUTE ON FUNCTION "public"."get_profile_names"() FROM PUBLIC;
-
 REVOKE EXECUTE ON FUNCTION "public"."user_update_profile"("p_user_id" "uuid", "p_full_name" "text", "p_phone" "text") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."user_get_profile"() FROM PUBLIC;
@@ -5793,6 +5923,8 @@ REVOKE EXECUTE ON FUNCTION "public"."get_my_profile"() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION "public"."get_user_profile_info"("p_user_id" "uuid") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."get_users_with_profiles"("p_query" "text", "p_role" "text") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."update_user_password"("p_old_password" "varchar", "p_new_password" "varchar") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."get_manager_by_division"("p_division_id" "uuid") FROM PUBLIC;
 
@@ -5846,11 +5978,14 @@ REVOKE EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "
 
 REVOKE EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_gender" public.gender_enum, "p_age_bracket" public.age_enum, "p_phone" "text", "p_address" "text", 
 "p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", 
-"p_notes" "text", "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_duration_request" integer, "p_user_id" "uuid", "p_owner_id" "uuid", "p_days" integer[]) FROM PUBLIC; 
+"p_notes" "text", "p_sensitive" boolean, "p_pinned" boolean, "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric,
+"p_duration_request" integer, "p_user_id" "uuid", 
+"p_owner_id" "uuid", "p_days" integer[]) FROM PUBLIC; 
 
 REVOKE EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_gender" public.gender_enum, "p_age_bracket" public.age_enum, "p_phone" "text", 
 "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
-"p_allergies" boolean, "p_vegetarian" boolean, "p_hallal" boolean, "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_duration_request" integer, "p_user_id" "uuid", "p_owner_id" "uuid","p_notes" "text") 
+"p_allergies" boolean, "p_vegetarian" boolean, "p_hallal" boolean, "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, 
+"p_duration_request" integer, "p_user_id" "uuid", "p_owner_id" "uuid","p_notes" "text" , "p_sensitive" boolean, "p_pinned" boolean) 
 FROM PUBLIC; 
 
 REVOKE EXECUTE ON FUNCTION "public"."delete_contact"("p_id" "uuid") FROM PUBLIC;
@@ -5904,6 +6039,8 @@ REVOKE EXECUTE ON FUNCTION "public"."delete_old_notifications"() FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."preserve_non_admin_fields"() FROM PUBLIC;
 
+REVOKE EXECUTE ON FUNCTION "public"."get_contacts"(p_order_desc boolean) FROM PUBLIC;
+
 REVOKE EXECUTE ON FUNCTION "public"."get_contact_days"("p_contact_id" "uuid") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."create_contact_days"("p_contact_id" "uuid", "p_days" public.contacts_days[]) FROM PUBLIC;
@@ -5913,6 +6050,12 @@ REVOKE EXECUTE ON FUNCTION "public"."upsert_contact_days"("p_contact_id" "uuid",
 REVOKE EXECUTE ON FUNCTION "public"."delete_contact_days"("p_contact_id" "uuid") FROM PUBLIC;
 
 REVOKE EXECUTE ON FUNCTION "public"."delete_contact_days"("p_id" "uuid") FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "public"."get_contact_notes"(p_contact_id uuid) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "mark_note_sensitive"("p_id" "uuid", "p_v" boolean) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION "mark_note_pinned"("p_id" "uuid", "p_v" boolean) FROM PUBLIC;
 
 
 
@@ -5934,6 +6077,8 @@ GRANT EXECUTE ON FUNCTION "public"."get_my_profile"() TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."get_users_with_profiles"("p_query" "text", "p_role" "text") TO "authenticated";
 
+GRANT EXECUTE ON FUNCTION "public"."update_user_password"("p_old_password" "varchar", "p_new_password" "varchar") TO "authenticated";
+
 GRANT EXECUTE ON FUNCTION "public"."get_manager_by_division"("p_division_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."get_system_settings"() TO "authenticated";
@@ -5953,12 +6098,6 @@ GRANT EXECUTE ON FUNCTION "public"."upsert_division_setting"("p_division_id" "uu
 GRANT EXECUTE ON FUNCTION "public"."get_user_settings"("p_user_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."upsert_user_setting"("p_user_id" "uuid", "p_setting_key" "text", "p_setting_value" "text") TO "authenticated";
-
--- GRANT EXECUTE ON FUNCTION "public"."validate_and_insert_holding_user"(uuid, text, text, text, role_enum, uuid, uuid, uuid) TO "authenticated";
-
--- GRANT EXECUTE ON FUNCTION "public"."validate_and_insert_holding_entity"(uuid, uuid, uuid, text, text) TO "authenticated";
-
--- GRANT EXECUTE ON FUNCTION "public"."validate_user_profile_assignment"() TO "authenticated"; --@ currently weak? Anyone can sign-up and so add to auth and user_profiles via useAuth GoTrueClient
 
 GRANT EXECUTE ON FUNCTION "public"."admin_create_entity"("p_country_id" "uuid","p_name" "text", "p_code" "text", "p_referrer" boolean) TO "authenticated";
 
@@ -6000,12 +6139,20 @@ GRANT EXECUTE ON FUNCTION "public"."admin_update_user_profile"("p_profile_id" "u
 
 GRANT EXECUTE ON FUNCTION "public"."get_regions"() TO "authenticated"; 
 
-GRANT EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_gender" public.gender_enum, "p_age_bracket" public.age_enum, "p_phone" "text", "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_notes" "text", "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_duration_request" integer, "p_user_id" "uuid", "p_owner_id" "uuid", "p_days" integer[]) TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."create_contact"("p_name" "text", "p_email" "text", "p_gender" public.gender_enum, 
+  "p_age_bracket" public.age_enum, "p_phone" "text", "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", 
+  "p_adults_count"  "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_notes" "text", "p_sensitive" boolean, "p_pinned" boolean,
+  "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_duration_request" integer, 
+  "p_user_id" "uuid", "p_owner_id" "uuid", "p_days" integer[]) TO "authenticated"; 
 
-GRANT EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", "p_gender" public.gender_enum, "p_age_bracket" public.age_enum, "p_phone" "text", 
-"p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
-"p_allergies" boolean, "p_vegetarian" boolean, "p_hallal" boolean, "p_status" "public"."beneficiary_enum", "p_delayed_days" numeric, "p_duration_request" integer, "p_user_id" "uuid", "p_owner_id" "uuid","p_notes" "text") 
-TO "authenticated"; 
+GRANT EXECUTE ON FUNCTION "public"."update_contact"("p_id" "uuid", "p_name" "text", "p_email" "text", 
+  "p_gender" public.gender_enum, "p_age_bracket" public.age_enum, "p_phone" "text", 
+  "p_address" "text", "p_postcode" "text", "p_region_id" "uuid", "p_adults" "numeric", 
+  "p_children_gt16" "numeric", "p_children_lt16" "numeric", "p_infant" boolean, 
+  "p_allergies" boolean, "p_vegetarian" boolean, "p_hallal" boolean, "p_status" "public"."beneficiary_enum", 
+  "p_delayed_days" numeric, "p_duration_request" integer, "p_user_id" "uuid", "p_owner_id" "uuid",
+  "p_notes" "text", "p_sensitive" boolean, "p_pinned" boolean) 
+  TO "authenticated"; 
 
 GRANT EXECUTE ON FUNCTION "public"."delete_contact"("p_id" "uuid") TO "authenticated";
 
@@ -6057,6 +6204,8 @@ GRANT EXECUTE ON FUNCTION "public"."delete_old_notifications"() TO "authenticate
 
 GRANT EXECUTE ON FUNCTION "public"."preserve_non_admin_fields"() TO "authenticated";
 
+GRANT EXECUTE ON FUNCTION "public"."get_contacts"(p_order_desc boolean) TO "authenticated";
+
 GRANT EXECUTE ON FUNCTION "public"."get_contact_days"("p_contact_id" "uuid") TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."create_contact_days"("p_contact_id" "uuid", "p_days" public.contacts_days[]) TO Authenticated;
@@ -6067,7 +6216,11 @@ GRANT EXECUTE ON FUNCTION "public"."delete_contact_days"("p_contact_id" "uuid") 
 
 GRANT EXECUTE ON FUNCTION "public"."delete_contact_days"("p_id" "uuid") TO "authenticated";
 
+GRANT EXECUTE ON FUNCTION "public"."get_contact_notes"(p_contact_id uuid) TO "authenticated";
 
+GRANT EXECUTE ON FUNCTION "mark_note_sensitive"("p_id" "uuid", "p_v" boolean) TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "mark_note_pinned"("p_id" "uuid", "p_v" boolean) TO "authenticated";
 
 -- GRANT EXECUTE ON FUNCTION public.perform_status_notifications( --Internal CTEs. Grants not needed?
 --     p_contact_id uuid,
@@ -6182,7 +6335,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."user_settings" TO "authe
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."contacts_days" TO "authenticated";
 
 
-GRANT SELECT ON TABLE "public"."countries" TO anon;
+GRANT SELECT ON TABLE "public"."countries" TO anon; --@ did not resolve. Security definer still needed on 'get' funciton
 GRANT SELECT ON TABLE "public"."regions" TO anon;
 GRANT SELECT ON TABLE "public"."entities" TO anon;
 REVOKE SELECT, UPDATE, DELETE ON "public"."holding_user" FROM anon;
@@ -6201,7 +6354,6 @@ GRANT EXECUTE ON FUNCTION public.get_holding_users() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_holding_entities() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_holding_combined(p_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_holding(p_user_id uuid) TO authenticated;
-
 
 
 --

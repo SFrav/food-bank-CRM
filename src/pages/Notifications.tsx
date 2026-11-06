@@ -11,7 +11,7 @@ import { Bell, AlertTriangle, Target, CheckSquare, Brain, Settings as SettingsIc
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 // import { useCreateNotifications } from "@/hooks/useNotifications";
 import { useProfile } from "@/hooks/useProfile";
-import { useAdminUsers, Users } from '@/hooks/useAdminUsers';
+import { useAdminUsers, ProfileReview } from '@/hooks/useAdminUsers';
 import { PermissionGuard } from '@/components/PermissionGuard';
 
 type TargetRole = 'referrer' | 'branch_manager' | 'specialist' | 'associate' | null
@@ -46,7 +46,7 @@ const NotificationsPage: React.FC = () => {
   const [filteredNotifications , setFilteredNotifications] = useState<Notification[]>([]);
   // const {createNotification} = useCreateNotifications();
   const { profile } = useProfile();
-  const { users: allUsers, loading: usersLoading } = useAdminUsers('', '');
+  const { profileReview: allUsers, loading: usersLoading } = useAdminUsers('', '');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [targetUser, setTargetUser] = useState('');
@@ -88,7 +88,7 @@ const NotificationsPage: React.FC = () => {
 
   const filteredUsers = useMemo(() => {
     if (!profile) return [];   
-    return allUsers.filter((u: Users) => u.id !== profile.user_id && u.entity_id === profile.entity_id);
+    return allUsers.filter((u: ProfileReview) => u.id !== profile.user_id && u.entity_id === profile.entity_id);
   }, [allUsers, profile]);
 
   const handleSubmit = async () => {
@@ -243,7 +243,7 @@ const NotificationsPage: React.FC = () => {
                   <SelectValue placeholder="Select a user" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredUsers.map((user: Users) => (
+                  {filteredUsers.map((user: ProfileReview) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.full_name ?? user.email}
                     </SelectItem>

@@ -197,7 +197,8 @@ export const useContacts = (orderDesc: boolean = false, initialFilterQueue: bool
   }, []);
 
   const create = useContactMutation({
-    mutationFn: async ({ contact: c, days }: { contact: NewContact; days?: number[] }) => {
+    mutationFn: async ({ contact: c, sensitive, days}: 
+      { contact: NewContact; sensitive: boolean; days?: number[]; }) => {
       const { data, error } = await supabase
         .rpc('create_contact', {
           p_name: c.name,
@@ -218,6 +219,8 @@ export const useContacts = (orderDesc: boolean = false, initialFilterQueue: bool
           p_user_id: c.user_id,
           p_owner_id: c.owner_id,
           p_days: days ?? null,
+          p_sensitive: sensitive,
+          p_pinned: false
         })
         .single();
       if (error) throw error;
@@ -228,7 +231,8 @@ export const useContacts = (orderDesc: boolean = false, initialFilterQueue: bool
   });
 
   const update = useContactMutation({
-    mutationFn: async (c: Contact) => {
+    mutationFn: async ({ c, sensitive, pinned }: 
+      { c: Contact; sensitive: boolean; pinned: boolean }) => {
       const { data, error } = await supabase
         .rpc('update_contact', {
           p_id: c.id,
@@ -253,12 +257,14 @@ export const useContacts = (orderDesc: boolean = false, initialFilterQueue: bool
           p_user_id: c.user_id,
           p_owner_id: c.owner_id,
           p_notes: c.notes,
+          p_sensitive: sensitive,
+          p_pinned: pinned
         })
         .single();
       if (error) throw error;
       return data;
     },
-    patch: (old, c) => old.map((row) => (row.id === c.id ? { ...row, ...c } : row)),
+    patch: (old, c) => old.map((row) => (row.id === c.c.id ? { ...row, ...c } : row)),
     toastOnError: false,
     errorMessage: 'Update failed',
   });
@@ -291,18 +297,19 @@ export const useContacts = (orderDesc: boolean = false, initialFilterQueue: bool
   const { mutateAsync: mergeAsync } = merge;
 
   const createContact = useCallback(
-    async (c: NewContact, days?: number[]): Promise<Result<string>> => {
+    async (c: NewContact, sensitive: boolean, days?: number[]
+    ): Promise<Result<string>> => {
       const errs = validateContact(c);
       if (errs.length) {
         toast({ title: 'Validation Error', description: errs.join('. '), variant: 'destructive' });
         return { success: false, error: 'Validation failed' };
       }
-      toResult(createAsync({ contact: c, days }));
+      toResult(createAsync({ contact: c, sensitive, days }));
     },
     [createAsync, toast],
   );
 
-  const updateContact = useCallback((c: Contact) => toResult(updateAsync(c)), [updateAsync]);
+  const updateContact = useCallback((c: Contact, sensitive: boolean, pinned: boolean) => toResult(updateAsync({c, sensitive, pinned})), [updateAsync]);
   const deleteContact = useCallback((id: string) => toResult(deleteAsync({ id })), [deleteAsync]);
   const mergeContacts = useCallback(
     (primaryId: string, secondaryId: string) => toResult(mergeAsync({ primaryId, secondaryId }), 'Failed to merge'),

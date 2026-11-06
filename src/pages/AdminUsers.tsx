@@ -28,7 +28,7 @@ export default function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [activeFilter, setActiveFilter] = useState('all');
-  const { users, loading: usersLoading, refetch, updateUserProfile, deleteUser } = useAdminUsers(searchQuery, roleFilter);
+  const { profileReview, loading: usersLoading, refetch, updateUserProfile, deleteUser } = useAdminUsers(searchQuery, roleFilter);
   const { regions } = useRegions();
   const { entities, refetch: refetchEntities } = useEntities();
   const { refetch: refetchDivisions } = useDivisions();
@@ -37,30 +37,40 @@ export default function AdminUsers() {
   const [savingUsers, setSavingUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!profile || !users) return;
+    if (!profile) return;
+    const onHoldingUpdated = () => {
+      refetch();                 // refresh the users table
+      window.dispatchEvent(new CustomEvent('org-units-changed')); // notify children
+    };
+    window.addEventListener('holding-updated', onHoldingUpdated);
+    return () => window.removeEventListener('holding-updated', onHoldingUpdated);
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile || !profileReview) return;
     const handler = () => {
       refetchDivisions();
       refetchEntities();
     };
     window.addEventListener('org-units-changed', handler);
     return () => window.removeEventListener('org-units-changed', handler);
-  }, [profile, users]);
+  }, [profile, profileReview]);
 
   const filteredUsers = useMemo(() => { 
     if (!profile?.entity_id && !profile?.division_id) {
-      if (activeFilter === "all") return users ?? []
-      if (activeFilter === "true") return users.filter(u => u.is_active) ?? []
-      if (activeFilter === "false") return users.filter(u => !u.is_active) ?? []
+      if (activeFilter === "all") return profileReview ?? []
+      if (activeFilter === "true") return profileReview.filter(u => u.is_active) ?? []
+      if (activeFilter === "false") return profileReview.filter(u => !u.is_active) ?? []
     };
     if (!profile?.division_id) {
-      if (activeFilter === "all") return users.filter(u => u.entity_id === profile?.entity_id) ?? []
-      if (activeFilter === "true") return users.filter(u => u.division_id === profile?.division_id && u.is_active) ?? []
-      if (activeFilter === "false") return users.filter(u => u.division_id === profile?.division_id && !u.is_active) ?? []
+      if (activeFilter === "all") return profileReview.filter(u => u.entity_id === profile?.entity_id) ?? []
+      if (activeFilter === "true") return profileReview.filter(u => u.division_id === profile?.division_id && u.is_active) ?? []
+      if (activeFilter === "false") return profileReview.filter(u => u.division_id === profile?.division_id && !u.is_active) ?? []
     }
-    if (activeFilter === "all") return users.filter(u => u.division_id === profile?.division_id) ?? []
-    if (activeFilter === "true") return users.filter(u => u.division_id === profile?.division_id && u.is_active) ?? []
-    if (activeFilter === "false") return users.filter(u => u.division_id === profile?.division_id && !u.is_active) ?? []
-  }, [users, profile, activeFilter]);
+    if (activeFilter === "all") return profileReview.filter(u => u.division_id === profile?.division_id) ?? []
+    if (activeFilter === "true") return profileReview.filter(u => u.division_id === profile?.division_id && u.is_active) ?? []
+    if (activeFilter === "false") return profileReview.filter(u => u.division_id === profile?.division_id && !u.is_active) ?? []
+  }, [profileReview, profile, activeFilter]);
 
   const filteredRegions = useMemo (() => {
     if (!profile?.region_id) return regions ?? [];

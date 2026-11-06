@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback, useMemo} from 'react';
-import { Trash2, X } from 'lucide-react';
+import { Trash2, X, Lock, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +18,6 @@ import { ContactNote } from '@/hooks/useContactNotes';
 
 interface ContactEditFormProps {
   formData: ContactFormData;
-  // setFormData: React.Dispatch<React.SetStateAction<ContactFormData>>;
   selectedDays: Set<number>;
   onDayToggle: (day: number) => void;
   openMap: Record<string, Record<number, DivisionOpen>>; 
@@ -30,6 +29,10 @@ interface ContactEditFormProps {
   onRegionChange: (v: string) => void;
   onDivisionChange: (v: string) => void;
   onStatusChange: (v: string) => void;
+  onSensitiveChange: (v: boolean) => void;
+  onPinnedChange: (v: boolean) => void;
+  onToggleNoteSensitive: (noteId: string, v: boolean) => void;
+  onToggleNotePinned: (noteId: string, v: boolean) => void;
   handleSubmit: (e: React.ChangeEvent) => void; 
   isLoading: boolean;
   isLoadingRegions: boolean;
@@ -55,7 +58,6 @@ interface ContactEditFormProps {
 
 const ContactEditForm: React.FC<ContactEditFormProps> = ({
   formData,
-  // setFormData,
   selectedDays,
   onDayToggle,
   openMap,
@@ -67,6 +69,10 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
   onRegionChange,
   onDivisionChange,
   onStatusChange,
+  onSensitiveChange,
+  onPinnedChange,
+  onToggleNoteSensitive,
+  onToggleNotePinned,
   handleSubmit,
   isLoading,
   isLoadingRegions,
@@ -291,7 +297,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
               <Select
                 value={formData.status}
                 onValueChange={onStatusChange}
-                disabled={isAssociate}
+                disabled={isAssociate || ((isReferrer || isSpecialist ) && contact.status === 'banned')}
               >
                 <SelectTrigger className="sm:w-full">
                   <SelectValue placeholder="Select Status"/>
@@ -303,6 +309,7 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
                     <SelectItem value="active">Active</SelectItem> : 
                     <SelectItem value="active" disabled={isReferrer}>Approve</SelectItem>
                   }
+                  <SelectItem value="banned" disabled={isReferrer || isSpecialist || isAssociate}>{"Banned"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -395,9 +402,29 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="notes">New Note</Label>
+      <Label htmlFor="notes">New Note</Label>
+      <div className="flex flex-row-1 space-y-2">
         <Textarea id="notes_new" name="notes_new" value={formData.notes_new || ""} onChange={onInputChange} placeholder="Additional notes..." rows={3} />
+        <div className="items-center gap-2 ml-2 mt-6">
+          <div className="flex mb-2 gap-1">
+          <input
+            type="checkbox"
+            checked={formData.sensitive}
+            onChange={(e) => onSensitiveChange(e.target.checked)}
+            disabled={isAssociate || isReferrer}
+          />
+          <Lock className="size-4 cursor-pointer opacity-70 hover:opacity-100" />
+          </div>
+          <div className="flex gap-1">
+          <input
+            type="checkbox"
+            checked={formData.pinned}
+            onChange={(e) => onPinnedChange(e.target.checked)}
+            disabled={isAssociate || isReferrer}
+          />
+          <Pin className="size-4 cursor-pointer opacity-70 hover:opacity-100" />
+          </div>
+        </div>
       </div>
 
       {/* Footer text - case specific warnings */}
@@ -437,17 +464,34 @@ const ContactEditForm: React.FC<ContactEditFormProps> = ({
         </div>
       </div>
       {notes.map(n => (
-        <div key={n.id} className="space-y-1">
-          <Textarea
-            disabled
-            value={n.note}
-            rows={1}
-            className="bg-muted min-h-[20px]"
-          />
-          <small className="text-xs text-muted-foreground">
+        <div key={n.id} className="space-y-1 flex items-center justify-between">
+          <div className="w-[90%]">
+            <Textarea disabled value={n.sensitive && (isReferrer || isAssociate) ? "[Note marked as sensitive]" : n.note} rows={1} className="bg-muted min-h-[20px] flex-1" />
+            <small className="text-xs text-muted-foreground">
             {n.creator_name ?? 'Unknown'} •{' '}
             {new Date(n.created_at).toLocaleDateString('en-GB')} {new Date(n.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
           </small>
+          </div>
+          <div className="items-center gap-2 ml-2 -mt-6">
+            <div className="flex mb-2 gap-1">
+            <input
+              type="checkbox"
+              checked={n.sensitive}
+              onChange={(e) => onToggleNoteSensitive(n.id, e.target.checked)}
+              disabled={isAssociate || isReferrer}
+            />
+            <Lock className="size-4 cursor-pointer opacity-70 hover:opacity-100" />
+            </div>
+            <div className="flex gap-1">
+            <input
+              type="checkbox"
+              checked={n.pinned}
+              onChange={(e) => onToggleNotePinned(n.id, e.target.checked)}
+              disabled={isAssociate || isReferrer}
+            />
+            <Pin className="size-4 cursor-pointer opacity-70 hover:opacity-100" />
+            </div>
+          </div>
         </div>
       ))}
     </form>

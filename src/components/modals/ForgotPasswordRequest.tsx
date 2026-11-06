@@ -2,9 +2,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+// import { Loader2 } from 'lucide-react';
 
-interface ResetPasswordModalProps {
+interface ForgotPasswordRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   email: string;
@@ -15,14 +15,14 @@ interface ResetPasswordModalProps {
   onReset: () => Promise<void>;
 }
 
-export default function ResetPasswordModal({ isOpen, onClose, email, setEmail, validateEmail, status, onReset }: ResetPasswordModalProps) {
+export default function ForgotPasswordRequestModal({ isOpen, onClose, email, setEmail, validateEmail, status, onReset }: ForgotPasswordRequestModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-center">Reset Password</DialogTitle>
           <DialogDescription className="text-center">
-            Enter your registered email address. A secure recovery link will be sent immediately.
+            Enter your registered email address. A secure recovery link will be sent immediately
           </DialogDescription>
         </DialogHeader>
 

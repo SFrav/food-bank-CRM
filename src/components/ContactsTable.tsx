@@ -267,6 +267,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">inactive</SelectItem>
+                      <SelectItem value="banned">Banned</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

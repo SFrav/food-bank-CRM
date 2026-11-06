@@ -49,11 +49,13 @@ export interface FormData {
   duration_request: number;
   owner_id: string;
   notes_new: string;
+  sensitive: boolean;
+  pinned: boolean;
 }
 
 export type { FormData as ContactFormData };
 
-const emptyForm: FormData = { name: '', email: '', gender: null, age_bracket: null, phone: '', street_address: '', postcode: '', region_id: '', adults: 1, children_gt16: 0, children_lt16: 0, status: 'inactive', delayed_days: 7, duration_request: null, owner_id: '', notes_new: '' };
+const emptyForm: FormData = { name: '', email: '', gender: null, age_bracket: null, phone: '', street_address: '', postcode: '', region_id: '', adults: 1, children_gt16: 0, children_lt16: 0, status: 'inactive', delayed_days: 7, duration_request: null, owner_id: '', notes_new: '', sensitive: false, pinned: false };
 
 
 const formFromContact = (c: Contact): FormData => ({
@@ -73,6 +75,8 @@ const formFromContact = (c: Contact): FormData => ({
   duration_request: c.duration_request || null,
   owner_id: c.owner_id || '',
   notes_new: '',
+  sensitive: false,
+  pinned: false
 });
 
 export const EditContactModal: React.FC<EditContactModalProps> = ({
@@ -98,7 +102,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const { settingsMap, fetchSettings} = useDivisionSettings();
   // const [divsRegion, setDivsRegion] = useState<Division[]>([]);
   const { deleteContact, updateContact, refetch: fetchContacts } = useContacts();
-  const { notes, refetch: fetchNotes } = useContactNotes(contact?.id ?? null);
+  const { notes, markSensitive, markPinned, refetch: fetchNotes } = useContactNotes(contact?.id ?? null);
   const { contactDays, upsertContactDays, deleteContactDays} = useContactDays(contact?.id ?? null);
   const { allotment, markAttendance, markAllotmentServing, markServed, insertDiscretionary, 
     loading: loadingAllotment, error: errorAllotment} = useContactAllotment(contact?.id ?? null);
@@ -111,6 +115,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const [formData, setFormData] = useState<FormData>(() => 
     contact && isOpen ? (restoredFormData ?? formFromContact(contact)) : emptyForm
   );
+  // const [sensitive, setSensitive] = useState(false);
+  // const [pinned, setPinned] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // const [showMinimiseWarning, setShowMinimiseWarning] = useState(false);
@@ -139,6 +145,8 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     return (
       formData.name !== (contact.name ?? '') ||
       formData.email !== (contact.email ?? '') ||
+      formData.gender !== (contact.gender ?? null) || 
+      formData.age_bracket !== (contact.age_bracket ?? null) ||
       formData.phone !== (contact.phone ?? '') ||
       formData.street_address !== (contact.street_address ?? '') ||
       formData.postcode !== (contact.postcode ?? '') ||
@@ -225,6 +233,30 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
     {...prev, status: v})
   ), [setFormData]);
 
+   const handleSensitiveChange = useCallback((v: boolean) => setFormData(prev => (
+    {...prev, sensitive: v})
+  ), [setFormData]);
+
+  const handlePinnedChange = useCallback((v: boolean) => setFormData(prev => (
+    {...prev, pinned: v})
+  ), [setFormData]);
+
+  const handleToggleSensitive = useCallback(async(noteId: string, v: boolean) => {
+    const { success } = await markSensitive(noteId, v);
+      if(!success) {
+        return;
+      }
+      // setSensitive(v)
+  }, []);
+
+  const handleTogglePinned = useCallback(async(noteId: string, v: boolean) => {
+    const { success } = await markPinned(noteId, v);
+      if(!success) {
+        return;
+      }
+      // setPinned(v)
+  }, []);
+
   const handleMinimiseClick = () => {
     if (currentMinimisedCount >= maxMinimised) {
       setShowMaxTabsWarning(true);
@@ -297,6 +329,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
       }
       setServingOngoing(true);
       // await fetchAllotment();
+      
   };
 
   const handleMarkServed = async (entryId: string) => {
@@ -330,7 +363,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleToggleInfant = async () => {
     if (!localContact) return;
     const updated = { ...localContact, infant: !localContact.infant };
-    const { success } = await updateContact(updated);
+    const { success } = await updateContact(updated, false, false);
     if(success){
     setLocalContact(updated);
     fetchContacts(false);
@@ -341,7 +374,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleToggleAllergies = async () => {
     if (!localContact) return;
     const updated = { ...localContact, allergies: !localContact.allergies };
-    const { success } = await updateContact(updated);
+    const { success } = await updateContact(updated, false, false);
     if(success) setLocalContact(updated);
     // onContactUpdated();
   };
@@ -349,7 +382,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleToggleVegetarian = async () => {
     if (!localContact) return;
     const updated = { ...localContact, vegetarian: !localContact.vegetarian };
-    const { success } = await updateContact(updated);
+    const { success } = await updateContact(updated, false, false);
     if(success) setLocalContact(updated);
 
     // onContactUpdated();
@@ -358,7 +391,7 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleToggleHallal = async () => {
     if (!localContact) return;
     const updated = { ...localContact, hallal: !localContact.hallal };
-    const { success } = await updateContact(updated);
+    const { success } = await updateContact(updated, false, false);
     if(success) setLocalContact(updated);
   };
 
@@ -411,8 +444,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
         duration_request: formData.duration_request === 0 || formData.duration_request === null ? null : formData.duration_request,
         user_id: user.id,
         owner_id: formData.owner_id === '' ? contact.owner_id : formData.owner_id || profile?.user_id,
-        notes: formData.notes_new.trim() || null 
-      });
+        notes: formData.notes_new.trim() || null}, 
+        formData.sensitive,
+        formData.pinned
+      );
       if (!success) return;
       // onContactUpdated();
       // if (showAllotment) return; 
@@ -516,6 +551,10 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
                   onRegionChange={handleRegionChange}
                   onDivisionChange={handleDivisionChange}
                   onStatusChange={handleStatusChange}
+                  onSensitiveChange={handleSensitiveChange}
+                  onPinnedChange={handlePinnedChange}
+                  onToggleNoteSensitive={handleToggleSensitive}
+                  onToggleNotePinned={handleTogglePinned}
                   handleSubmit={handleSubmit}
                   isLoading={isLoading}
                   isLoadingRegions={loadingRegions}
@@ -570,6 +609,21 @@ export const EditContactModal: React.FC<EditContactModalProps> = ({
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* <AlertDialog open={showMinimiseWarning} onOpenChange={setShowMinimiseWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes for <strong>{contact?.name}</strong>. They'll be preserved in the minimised tab
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay here</AlertDialogCancel>
+            <AlertDialogAction onClick={doMinimise}>Minimise</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog> */}
 
       <AlertDialog open={showMaxTabsWarning} onOpenChange={setShowMaxTabsWarning}>
         <AlertDialogContent>

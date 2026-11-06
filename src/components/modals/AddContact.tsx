@@ -88,6 +88,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     owner_id: '',
     notes: '',
   });
+  const [sensitive, setSensitive] = useState(false);
 
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
 
@@ -194,6 +195,8 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     {...prev, status: v})
   ), []);
 
+  const handleSensitiveChange = useCallback((v: boolean) => setSensitive(v), []);
+
   const resetForm = () => {
     setDuplicateCandidates(null);
     setDupExact(false);
@@ -271,34 +274,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         duration_request: formData.duration_request === 0 || formData.duration_request === null ? null : formData.duration_request,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
-      }, selectedDays ? Array.from(selectedDays) : null);
+      }, sensitive, selectedDays ? Array.from(selectedDays) : null);
 
       // if (!result.success) throw new Error(result.error? '');
-
-      // if (newContactId && selectedDays.size > 0) {
-      //   const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
-      //   await createContactDays(newContactId, daysToCreate);
-      // }
-
-      // if ( newContactId && formData.status === 'active') {
-      //   await updateContact({
-      //   id: newContactId,
-      //   name: null,
-      //   email: null,
-      //   phone: null,
-      //   street_address: null,
-      //   postcode: null,
-      //   region_id: null,
-      //   adults: null,
-      //   children_gt16: null,
-      //   children_lt16: null,
-      //   status: formData.status,
-      //   delayed_days: formData.delayed_days || 7,
-      //   user_id: null,
-      //   owner_id: null,
-      //   notes: null 
-      // })
-      // };
 
       onContactAdded();
       setCondition1(false);
@@ -347,36 +325,12 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         duration_request: formData.duration_request === 0 || formData.duration_request === null ? null : formData.duration_request,
         user_id: profile?.user_id,
         owner_id: formData.owner_id || profile?.user_id,
-      }, selectedDays ? Array.from(selectedDays) : null);
+      }, sensitive, selectedDays ? Array.from(selectedDays) : null);
 
       // if (!success) {
       //   throw new Error(error);
       // }
     
-      // if (newContactId && selectedDays.size > 0) {
-      //   const daysToCreate = Array.from(selectedDays).map(d => ({ day_of_week: d, is_available: true }));
-      //   await createContactDays(newContactId, daysToCreate);
-      // }
-
-      // if ( newContactId && formData.status === 'active') {
-      //   await updateContact({
-      //   id: newContactId,
-      //   name: null,
-      //   email: null,
-      //   phone: null,
-      //   street_address: null,
-      //   postcode: null,
-      //   region_id: null,
-      //   adults: null,
-      //   children_gt16: null,
-      //   children_lt16: null,
-      //   status: formData.status,
-      //   delayed_days: formData.delayed_days || 7,
-      //   user_id: null,
-      //   owner_id: null,
-      //   notes: null 
-      // })
-      // };
       
       onContactAdded();
       setCondition1(false);

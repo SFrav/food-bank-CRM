@@ -29,6 +29,7 @@ export const useDivisionClosed = () => {
         // Add the freshly fetched rows
         return [...withoutOld, ...(data ?? [])];
       });
+      return data ?? [];
       // return divisionClosed;
     } catch (err: unknown) {
       const error = err as { message?: string };

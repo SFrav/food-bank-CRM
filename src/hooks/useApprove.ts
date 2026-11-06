@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+// import { crypto } from 'crypto';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useProfile } from '@/hooks/useProfile';
@@ -11,6 +12,7 @@ const generateSecureTempPassword = (): string => {
   const base64 = btoa(String.fromCharCode(...bytes));
   return base64.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
 };
+
 
 export interface HoldingUser {
   id: string;
@@ -154,6 +156,7 @@ export const useApprove = () => {
             const errorBody = await authError.context.json();
             errorMessage = errorBody.error || errorMessage;
           } catch (e) {
+            // Fallback if parsing fails
           }
         }
 
@@ -179,6 +182,7 @@ export const useApprove = () => {
       }
 
       await Promise.all([fetchHoldingUsers(), fetchHoldingEntities(), fetchHoldingCombined()]);
+      window.dispatchEvent(new CustomEvent('holding-updated'));
 
       toast({ title: 'Approved', description: 'User successfully approved', variant: 'default' });
       return true;
@@ -199,7 +203,9 @@ export const useApprove = () => {
       const { data, error } = await supabase.rpc('delete_holding', { p_user_id: holdingUserId });
       if (error) throw error;
 
+      // Refresh lists after successful deletion
       await Promise.all([fetchHoldingUsers(), fetchHoldingEntities(), fetchHoldingCombined()]);
+      window.dispatchEvent(new CustomEvent('holding-updated'));
       if(data) {
       toast({ title: 'Deleted', description: 'Application successfully removed', variant: 'default' });
       }
@@ -217,6 +223,7 @@ export const useApprove = () => {
 
   useEffect(() => {
     if (!profile) return;
+    // Only fetch if user is admin or head (based on policies)
     if (['admin', 'head', 'manager', 'branch_manager'].includes(profile.role)) {
       fetchHoldingUsers();
       fetchHoldingEntities();

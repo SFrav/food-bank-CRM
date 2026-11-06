@@ -8,6 +8,8 @@ import { ViolationMessages } from '@/integrations/supabase/violations';
 export interface ContactNote {
   id: string;
   note: string;
+  sensitive: boolean;
+  pinned: boolean;
   created_by: string | null;
   creator_name: string | null;
   created_at: string;
@@ -82,14 +84,63 @@ function useContactNoteMutation<TVars>({
 }
 
 export const useContactNotes = (contactId: string | null) => {
-  // const { toast } = useToast();
-  // const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const query = useQuery(contactNotesQueryOptions(contactId));
+  const notesKey = queryKeys.contactsNotes();
 
   const notes = query.data ?? [];
 
-  const deleteNote = useContactNoteMutation({
+  const mark_note_sensitive = useMutation({
+    mutationFn: async ({ noteId, v }: { noteId: string; v: boolean }) => {
+      const { error } = await supabase.rpc('mark_note_sensitive', {
+        p_id: noteId,
+        p_v: v
+      });
+      if (error) throw error;
+    },
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: notesKey });
+      const snapshots = queryClient.getQueriesData<ContactNote[]>({ queryKey: notesKey });
+      queryClient.setQueriesData<ContactNote[]>({ queryKey: notesKey }, (old) =>
+        old?.map((n) => (n.id === vars.noteId ? { ...n, sensitive: vars.v } : n)) ?? []
+      );
+      return { snapshots };
+    },
+    onError: (err) => {
+      toast({ title: 'Error', description: 'Failed to mark note as sensitive', variant: 'destructive' });
+    },
+    onSettled: async () => {
+      await Promise.all(notesKey.map((qk) => queryClient.invalidateQueries({ queryKey: qk })));
+    },
+  });
+
+  const mark_note_pinned = useMutation({
+    mutationFn: async ({ noteId, v }: { noteId: string; v: boolean }) => {
+      const { error } = await supabase.rpc('mark_note_pinned', {
+        p_id: noteId,
+        p_v: v
+      });
+      if (error) throw error;
+    },
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: notesKey });
+      const snapshots = queryClient.getQueriesData<ContactNote[]>({ queryKey: notesKey });
+      queryClient.setQueriesData<ContactNote[]>({ queryKey: notesKey }, (old) =>
+        old?.map((n) => (n.id === vars.noteId ? { ...n, pinned: vars.v } : n)) ?? []
+      );
+      return { snapshots };
+    },
+    onError: (err) => {
+      toast({ title: 'Error', description: 'Failed to pin note', variant: 'destructive' });
+    },
+    onSettled: async () => {
+      await Promise.all(notesKey.map((qk) => queryClient.invalidateQueries({ queryKey: qk })));
+    },
+  });
+
+  const delete_note = useContactNoteMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.rpc('delete_contact_note', {
         p_note_id: id,
@@ -101,9 +152,21 @@ export const useContactNotes = (contactId: string | null) => {
     errorMessage: 'Failed to delete the note',
   });
 
-  const { mutateAsync: deleteNoteAsync } = deleteNote;
+  const { mutateAsync: sensitiveNoteAsync } = mark_note_sensitive;
+  const { mutateAsync: pinnedNoteAsync } = mark_note_pinned;
+  const { mutateAsync: deleteNoteAsync } = delete_note;
 
-  const delete_note = useCallback(
+  const markSensitive = useCallback(
+    async (noteId: string, v: boolean) => toResult(sensitiveNoteAsync({noteId, v})),
+    [sensitiveNoteAsync]
+  );
+
+  const markPinned = useCallback(
+    async (noteId: string, v: boolean) => toResult(pinnedNoteAsync({noteId, v})),
+    [pinnedNoteAsync]
+  );
+
+  const deleteNote = useCallback(
     async (noteId: string) => toResult(deleteNoteAsync(noteId)),
     [deleteNoteAsync]
   );
@@ -114,7 +177,9 @@ export const useContactNotes = (contactId: string | null) => {
 
   return {
     notes,
-    delete_note,
+    markSensitive,
+    markPinned,
+    deleteNote,
     refetch,
     loading: query.isLoading,
     error: query.error,

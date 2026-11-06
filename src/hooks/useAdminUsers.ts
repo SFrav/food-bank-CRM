@@ -22,7 +22,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
   const { toast } = useToast();
   const { profile } = useProfile();
   // const { user } = useAuth(); //is_super_admin is not available
-  const [users, setProfileReview] = useState<ProfileReview[]>([]); //@This is too similar to useAuth user export. Revise to profileReview and ensure that it's only used in the manage user section
+  const [profileReview, setProfileReview] = useState<ProfileReview[]>([]); //@This is too similar to useAuth user export. Revise to profileReview and ensure that it's only used in the manage user section
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
@@ -129,7 +129,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
   };
 
   const deleteUser = useCallback(async (userId: string) => {
-    if(profile?.role !== 'admin') return;
+    // if(profile?.role !== 'admin') return;
     // if (users?.role !== 'admin') return; //@role doesn't exist on ProfileReview?
     try {
       const { data, error } = await supabase.rpc('admin_delete_user', {
@@ -172,7 +172,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
   }, [profile]);
 
   return { 
-    users, 
+    profileReview, 
     loading, 
     error,
     refetch, 

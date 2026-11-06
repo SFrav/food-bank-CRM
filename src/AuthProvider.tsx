@@ -76,6 +76,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { data: data?.session ?? null, error };
   }, []);
 
+  // const inviteUser = useCallback(async (email: string, password: string) => {
+  //   const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, 
+  //     // password}
+  //   )
+
+  // }, []);    
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     setSession(null);

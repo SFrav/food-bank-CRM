@@ -78,6 +78,7 @@ export const RoleBasedSidebar = ({
         return [
           { title: 'Dashboard', url: '/dashboard', icon: Home },
           { title: 'Referral System', url: '/referrals', icon: UserPlus },
+          { title: 'Branch Summaries', url: '/branches', icon: Calendar },
           { title: 'Support Services', url: '/services', icon: Building },
           { title: 'Calendar', url: '/calendar', icon: Calendar },
           { title: 'Settings', url: '/settings', icon: Settings }

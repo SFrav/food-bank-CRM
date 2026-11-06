@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import ProfilePage from '@/pages/Profile'; 
+import PasswordReset from '@/pages/PasswordReset'; 
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useNotifications } from '@/hooks/useNotifications';
 
-type SettingsSection = 'profile' | 'preferences' | 'security';
+type SettingsSection = 'profile' | 'preferences' | 'security' | 'password';
 
 interface Settings {
   dark_mode?: string;
@@ -221,6 +222,8 @@ export default function Settings() {
         return renderPreferencesSection();
       case 'security':
         return renderSecuritySection();
+      case 'password':
+        return <PasswordReset />;
       default:
         return <ProfilePage />;
     }
@@ -234,7 +237,7 @@ export default function Settings() {
           <Card className="sticky top-0">
             <CardContent className="p-4">
               <nav className="space-y-2">
-                {['profile', 'preferences', 'security'].map((id: SettingsSection) => {
+                {['profile', 'preferences', 'security', 'password'].map((id: SettingsSection) => {
                   const Icon = id === 'profile' ? User : id === 'preferences' ? SettingsIcon : Shield;
                   const isActive = activeSection === id;
 
